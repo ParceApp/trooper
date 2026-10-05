@@ -11,7 +11,7 @@ import 'dart:async';
 ///   name: 'user',
 ///   fetch: (param) => api.getUser(param.id),
 ///   sideEffects: TrooperSideEffects(
-///     onData: (user, param) => analytics.logUserLoaded(user.id),
+///     onData: (user, param, isLatest) => analytics.logUserLoaded(user.id),
 ///     onError: (error, stack, param) => crashlytics.report(error, stack),
 ///   ),
 /// );
@@ -33,7 +33,7 @@ class TrooperSideEffects<T, P extends Record> {
        );
 
   /// Invoked when fresh data is loaded, set, or revalidated.
-  final FutureOr<void> Function(T data, P param)? onData;
+  final FutureOr<void> Function(T data, P param, bool isLatest)? onData;
 
   /// Invoked when an asynchronous operation fails with an error.
   final FutureOr<void> Function(Object error, StackTrace stackTrace, P param)?

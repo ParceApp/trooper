@@ -1,0 +1,12 @@
+name: trooper_workspace
+description: "Workspace root for the Trooper reactive data-flow package family."
+publish_to: none
+
+environment:
+  sdk: ^3.12.0
+
+workspace:
+  - packages/trooper
+
+dev_dependencies:
+  very_good_analysis: ^11.0.0

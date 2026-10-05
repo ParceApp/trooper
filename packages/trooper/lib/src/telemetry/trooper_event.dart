@@ -83,7 +83,7 @@ final class RequestErrorEvent extends TrooperEvent {
       'RequestErrorEvent(${key.describe()}, error: $error, duration: ${duration.inMilliseconds}ms)';
 }
 
-/// Emitted when a cache entry or query family is invalidated.
+/// Emitted when a cache entry or query namespace is invalidated.
 final class CacheInvalidatedEvent extends TrooperEvent {
   CacheInvalidatedEvent(this.key, {super.timestamp});
   final QueryKey key;

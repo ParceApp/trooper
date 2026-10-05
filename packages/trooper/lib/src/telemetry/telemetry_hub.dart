@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:meta/meta.dart';
 import 'package:trooper/src/lifecycle/lifecycle_aware.dart';
 import 'package:trooper/src/telemetry/trooper_event.dart';
+import 'package:trooper/src/telemetry/trooper_logger.dart';
 
 /// Central dispatch bus for telemetry, logging, and DevTools diagnostic events.
 ///
@@ -38,6 +39,12 @@ class TelemetryHub with LifecycleAware {
 
   /// Returns `true` if there are any active subscribers listening to this hub.
   bool get hasListeners => _controller.hasListener;
+
+  /// Registers a [TrooperLogger] to receive all events emitted by this hub.
+  void registerLogger(TrooperLogger logger) {
+    if (_isDisposed) return;
+    _controller.stream.listen(logger.log);
+  }
 
   /// Emits a [TrooperEvent] to all registered listeners.
   ///

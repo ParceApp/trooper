@@ -1,0 +1,29 @@
+/// Trooper: High-performance, reactive data-flow and caching framework in pure Dart.
+library;
+
+export 'src/codec/trooper_codec.dart';
+export 'src/concurrency/cancel_token.dart';
+export 'src/concurrency/mutation_queue.dart';
+export 'src/concurrency/query_queue.dart';
+export 'src/config/query_conflict_policy.dart';
+export 'src/config/stale_policy.dart';
+export 'src/config/trooper_config.dart';
+export 'src/effects/trooper_keyed_side_effects.dart';
+export 'src/effects/trooper_mutation_side_effects.dart';
+export 'src/effects/trooper_side_effects.dart';
+export 'src/error/trooper_exception.dart';
+export 'src/key/query_key.dart';
+export 'src/lifecycle/lifecycle_aware.dart';
+export 'src/state/data_metadata.dart';
+export 'src/state/stateful_data.dart';
+export 'src/storage/cache_entry.dart';
+export 'src/storage/cache_store.dart';
+export 'src/storage/invalidatable.dart';
+export 'src/storage/storage_backend.dart';
+export 'src/stream/keyed_stateful_stream.dart';
+export 'src/stream/stateful_stream.dart';
+export 'src/stream/stateful_stream_controller.dart';
+export 'src/telemetry/telemetry_hub.dart';
+export 'src/telemetry/trooper_event.dart';
+export 'src/telemetry/trooper_logger.dart';
+export 'types/parameter.dart';

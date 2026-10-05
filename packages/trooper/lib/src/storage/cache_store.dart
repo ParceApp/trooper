@@ -1,15 +1,15 @@
 import 'dart:async';
-import 'package:trooper/src/cache/cache_entry.dart';
-import 'package:trooper/src/cache/invalidatable.dart';
 import 'package:trooper/src/key/query_key.dart';
 import 'package:trooper/src/lifecycle/lifecycle_aware.dart';
 import 'package:trooper/src/state/data_metadata.dart';
+import 'package:trooper/src/storage/cache_entry.dart';
+import 'package:trooper/src/storage/invalidatable.dart';
 
 /// An in-memory L1 cache store managing cached entries partitioned by [QueryKey].
 ///
 /// Features:
 /// - Per-entry TTL and staleness tracking via [CacheEntry].
-/// - Targetable invalidation by key, family name, or predicate.
+/// - Targetable invalidation by key, namespace, or predicate.
 /// - Invalidation notification stream via [invalidationStream].
 /// - Full integration with [LifecycleAware] and [Invalidatable].
 ///
@@ -24,7 +24,7 @@ import 'package:trooper/src/state/data_metadata.dart';
 /// final cached = cache.get<Lecture>(key);
 ///
 /// // Invalidate all lectures:
-/// cache.invalidateFamily('lecture');
+/// cache.invalidateNamespace('lecture');
 /// ```
 class CacheStore with LifecycleAware implements Invalidatable {
   /// Creates an in-memory [CacheStore].
@@ -126,18 +126,15 @@ class CacheStore with LifecycleAware implements Invalidatable {
     }
   }
 
-  /// Marks all entries belonging to query [familyName] as stale.
-  void invalidateFamily(String familyName) {
+  /// Marks all entries belonging to query [name] as stale.
+  void invalidateNamespace(String name) {
     if (_isDisposed) return;
     for (final key in _entries.keys.toList()) {
-      if (key.matchesFamily(familyName)) {
+      if (key.matchesName(name)) {
         invalidateKey(key);
       }
     }
   }
-
-  /// Alias for [invalidateFamily].
-  void invalidateName(String name) => invalidateFamily(name);
 
   /// Marks all entries satisfying [predicate] as stale.
   void invalidateWhere(bool Function(QueryKey key) predicate) {
@@ -168,13 +165,10 @@ class CacheStore with LifecycleAware implements Invalidatable {
     _entries.removeWhere((key, _) => predicate(key));
   }
 
-  /// Removes all entries whose [QueryKey.name] equals [familyName].
-  void removeFamily(String familyName) {
-    removeWhere((key) => key.matchesFamily(familyName));
+  /// Removes all entries whose [QueryKey.name] equals [namespace].
+  void removeName(String namespace) {
+    removeWhere((key) => key.matchesName(namespace));
   }
-
-  /// Alias for [removeFamily].
-  void removeName(String name) => removeFamily(name);
 
   /// Removes all entries whose TTL has expired.
   void removeExpired() {
@@ -188,6 +182,7 @@ class CacheStore with LifecycleAware implements Invalidatable {
     _entries.clear();
   }
 
+  ///
   @override
   void pause() {
     _evictionTimer?.cancel();

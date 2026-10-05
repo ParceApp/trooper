@@ -70,6 +70,9 @@ class CacheEntry<T> {
   /// Returns a copy of this entry marked as manually invalidated.
   CacheEntry<T> markStale() => copyWith(isManuallyInvalidated: true);
 
+  // Alias for `markStale()` to improve readability when invalidating cache entries.
+  CacheEntry<T> invalidate() => markStale();
+
   /// Creates a copy with optionally updated fields.
   CacheEntry<T> copyWith({
     T? data,

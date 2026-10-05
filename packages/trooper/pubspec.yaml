@@ -1,0 +1,26 @@
+name: trooper
+description: "An architectural blueprint and reactive data-flow framework for Dart, providing multi-tier caching, SWR revalidation, and state management."
+version: 0.1.0
+
+homepage: https://parceapp.de
+repository: https://github.com/ParceApp/trooper/tree/main/packages/trooper
+issue_tracker: https://github.com/ParceApp/trooper/issues
+
+topics:
+  - state-management
+  - caching
+  - architecture
+  - reactive
+  - data-flow
+
+environment:
+  sdk: ^3.12.0
+
+resolution: workspace
+
+dependencies:
+  meta: ^1.19.0
+
+dev_dependencies:
+  lints: ^6.1.0
+  test: ^1.32.0
