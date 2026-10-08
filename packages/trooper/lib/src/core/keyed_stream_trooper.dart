@@ -10,6 +10,9 @@ import 'package:trooper/src/error/trooper_exception.dart';
 import 'package:trooper/src/key/query_key.dart';
 import 'package:trooper/src/state/data_metadata.dart';
 import 'package:trooper/src/state/stateful_data.dart';
+import 'package:trooper/src/codec/trooper_codec.dart';
+import 'package:trooper/src/storage/cache_entry.dart';
+import 'package:trooper/src/storage/storage_envelope.dart';
 import 'package:trooper/src/storage/cache_store.dart';
 import 'package:trooper/src/stream/keyed_stateful_stream.dart';
 import 'package:trooper/src/stream/stateful_stream.dart';
@@ -63,6 +66,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
   KeyedStreamTrooper({
     required super.namespace,
     required this.streamFactory,
+    this.codec,
     this.onConnect,
     this.onRefresh,
     this.onDisconnect,
@@ -79,6 +83,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
   static KeyedStreamTrooper<K, T, ()> fromStream<K extends Object, T>({
     required String namespace,
     required FutureOr<Stream<T>> Function(K key) stream,
+    TrooperCodec<T>? codec,
     FutureOr<void> Function(K key, TrooperCancelToken cancelToken)? onConnect,
     FutureOr<void> Function(K key)? onRefresh,
     FutureOr<void> Function(K key)? onDisconnect,
@@ -92,6 +97,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
   }) => KeyedStreamTrooper<K, T, ()>(
     namespace: namespace,
     streamFactory: (key, _, _) => stream(key),
+    codec: codec,
     onConnect: onConnect != null
         ? (key, _, token) => onConnect(key, token)
         : null,
@@ -108,6 +114,9 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
 
   /// Factory creating the upstream [Stream] for a given key.
   final KeyedStreamFactory<K, T, P> streamFactory;
+
+  /// Optional codec for L2 storage serialization and hydration.
+  final TrooperCodec<T>? codec;
 
   /// Optional hook invoked when connecting to the upstream stream for an entity key.
   final FutureOr<void> Function(
@@ -162,12 +171,68 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
 
     // Emit loading/refreshing according to stale policy
     final currentKeyDataVal = currentKeyData(key);
-    if (currentKeyDataVal == null ||
-        config.stalePolicy == StalePolicy.discardStaleOnRefresh) {
-      stream.emitLoading(key);
-    } else {
+    if (currentKeyDataVal != null &&
+        config.stalePolicy == StalePolicy.keepStaleWhileRevalidate) {
       final entry = cache.getEntry<T>(qKey);
       stream.emitRefreshing(key, currentKeyDataVal, metadata: entry?.metadata);
+    } else if (currentKeyDataVal == null &&
+        config.hasCache &&
+        config.storage != null &&
+        codec != null) {
+      final storage = config.storage!;
+      final currentCodec = codec!;
+      try {
+        final raw = await storage.read(qKey.storageKey);
+        if (raw != null) {
+          final envelope = StorageEnvelope.tryDecode(raw);
+          if (envelope == null) {
+            storage.delete(qKey.storageKey).ignore();
+            stream.emitLoading(key);
+          } else if (envelope.isExpired) {
+            if (config.stalePolicy == StalePolicy.keepStaleWhileRevalidate) {
+              final restoredData = currentCodec.decode(envelope.payload);
+              final restoredEntry = CacheEntry<T>(
+                restoredData,
+                createdAt: envelope.createdAt,
+                expiresAt: envelope.expiresAt,
+                timeToLive: envelope.timeToLive,
+                source: DataSource.storage,
+              );
+              cache.putEntry(qKey, restoredEntry);
+              stream.emitRefreshing(
+                key,
+                restoredData,
+                metadata: restoredEntry.metadata,
+              );
+            } else {
+              storage.delete(qKey.storageKey).ignore();
+              stream.emitLoading(key);
+            }
+          } else {
+            final restoredData = currentCodec.decode(envelope.payload);
+            final restoredEntry = CacheEntry<T>(
+              restoredData,
+              createdAt: envelope.createdAt,
+              expiresAt: envelope.expiresAt,
+              timeToLive: envelope.timeToLive,
+              source: DataSource.storage,
+            );
+            cache.putEntry(qKey, restoredEntry);
+            stream.emitData(
+              key,
+              restoredData,
+              metadata: restoredEntry.metadata,
+            );
+          }
+        } else {
+          stream.emitLoading(key);
+        }
+      } catch (_) {
+        storage.delete(qKey.storageKey).ignore();
+        stream.emitLoading(key);
+      }
+    } else {
+      stream.emitLoading(key);
     }
 
     if (telemetry.hasListeners) {
@@ -232,6 +297,36 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
         }
         final entry = config.hasCache ? cache.getEntry<T>(qKey) : null;
         stream.emitData(key, data, metadata: entry?.metadata);
+
+        // Persist to L2 storage asynchronously if configured
+        final storage = config.storage;
+        final currentCodec = codec;
+        if (storage != null && currentCodec != null) {
+          try {
+            final serialized = currentCodec.encode(data);
+            final now = DateTime.now();
+            final envelope = StorageEnvelope(
+              payload: serialized,
+              createdAt: now,
+              expiresAt: config.hasCache ? now.add(config.timeToLive) : null,
+              timeToLiveMillis: config.hasCache
+                  ? config.timeToLive.inMilliseconds
+                  : null,
+            );
+            storage.write(qKey.storageKey, envelope.encode()).ignore();
+          } catch (error, stacktrace) {
+            if (telemetry.hasListeners) {
+              telemetry.emit(
+                PersistenceErrorEvent(
+                  qKey,
+                  error: error,
+                  duration: Duration.zero,
+                  stackTrace: stacktrace,
+                ),
+              );
+            }
+          }
+        }
 
         if (telemetry.hasListeners) {
           telemetry.emit(
@@ -342,6 +437,57 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
       if (cached != null && !cache.isStale(qKey)) {
         return cached;
       }
+
+      final storage = config.storage;
+      final currentCodec = codec;
+      if (storage != null && currentCodec != null) {
+        final raw = await storage.read(qKey.storageKey);
+        if (raw != null) {
+          try {
+            final envelope = StorageEnvelope.tryDecode(raw);
+            if (envelope == null) {
+              storage.delete(qKey.storageKey).ignore();
+            } else if (envelope.isExpired) {
+              if (config.stalePolicy == StalePolicy.keepStaleWhileRevalidate) {
+                final restoredData = currentCodec.decode(envelope.payload);
+                final restoredEntry = CacheEntry<T>(
+                  restoredData,
+                  createdAt: envelope.createdAt,
+                  expiresAt: envelope.expiresAt,
+                  timeToLive: envelope.timeToLive,
+                  source: DataSource.storage,
+                );
+                cache.putEntry(qKey, restoredEntry);
+                stream.emitRefreshing(
+                  key,
+                  restoredData,
+                  metadata: restoredEntry.metadata,
+                );
+              } else {
+                storage.delete(qKey.storageKey).ignore();
+              }
+            } else {
+              final restoredData = currentCodec.decode(envelope.payload);
+              final restoredEntry = CacheEntry<T>(
+                restoredData,
+                createdAt: envelope.createdAt,
+                expiresAt: envelope.expiresAt,
+                timeToLive: envelope.timeToLive,
+                source: DataSource.storage,
+              );
+              cache.putEntry(qKey, restoredEntry);
+              stream.emitData(
+                key,
+                restoredData,
+                metadata: restoredEntry.metadata,
+              );
+              return restoredData;
+            }
+          } catch (_) {
+            storage.delete(qKey.storageKey).ignore();
+          }
+        }
+      }
     }
 
     final keyStream = stream.streamOf(key);
@@ -412,6 +558,27 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
     if (telemetry.hasListeners) {
       telemetry.emit(DataSetEvent(qKey, source: DataSource.local));
     }
+
+    final storage = config.storage;
+    final currentCodec = codec;
+    if (storage != null && currentCodec != null) {
+      try {
+        final serialized = currentCodec.encode(data);
+        final now = DateTime.now();
+        final envelope = StorageEnvelope(
+          payload: serialized,
+          createdAt: now,
+          expiresAt: config.hasCache ? now.add(config.timeToLive) : null,
+          timeToLiveMillis: config.hasCache
+              ? config.timeToLive.inMilliseconds
+              : null,
+        );
+        storage.write(qKey.storageKey, envelope.encode()).ignore();
+      } catch (_) {
+        // Non-critical persistence failure
+      }
+    }
+
     runSideEffect(() => sideEffects?.onData?.call(key, data, parameter));
     return data;
   }

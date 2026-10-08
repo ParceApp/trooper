@@ -31,6 +31,7 @@ export 'src/storage/cache_entry.dart';
 export 'src/storage/cache_store.dart';
 export 'src/storage/invalidatable.dart';
 export 'src/storage/storage_backend.dart';
+export 'src/storage/storage_envelope.dart';
 export 'src/stream/keyed_stateful_stream.dart';
 export 'src/stream/stateful_stream.dart';
 export 'src/stream/stateful_stream_controller.dart';

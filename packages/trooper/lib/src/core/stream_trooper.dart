@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'package:trooper/src/storage/cache_store.dart';
+import 'package:trooper/src/storage/cache_entry.dart';
+import 'package:trooper/src/storage/storage_envelope.dart';
+import 'package:trooper/src/codec/trooper_codec.dart';
 import 'package:trooper/src/concurrency/cancel_token.dart';
 import 'package:trooper/src/concurrency/query_queue.dart';
 import 'package:trooper/src/config/stale_policy.dart';
@@ -55,6 +58,7 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
   StreamTrooper({
     required super.namespace,
     required this.streamFactory,
+    this.codec,
     this.onConnect,
     this.onRefresh,
     this.onDisconnect,
@@ -81,6 +85,7 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
   static StreamTrooper<T, ()> fromStream<T>({
     required String namespace,
     required FutureOr<Stream<T>> Function() stream,
+    TrooperCodec<T>? codec,
     FutureOr<void> Function(TrooperCancelToken cancelToken)? onConnect,
     FutureOr<void> Function()? onRefresh,
     FutureOr<void> Function()? onDisconnect,
@@ -95,6 +100,7 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
   }) => StreamTrooper<T, ()>(
     namespace: namespace,
     streamFactory: (_, _) => stream(),
+    codec: codec,
     onConnect: onConnect != null ? (_, token) => onConnect(token) : null,
     onRefresh: onRefresh != null ? (_) => onRefresh() : null,
     onDisconnect: onDisconnect,
@@ -110,6 +116,9 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
 
   /// Factory creating the upstream [Stream].
   final StreamFactory<T, P> streamFactory;
+
+  /// Optional codec for L2 storage serialization and hydration.
+  final TrooperCodec<T>? codec;
 
   /// Optional hook invoked when connecting to the upstream stream.
   ///
@@ -173,6 +182,60 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
     if (current != null &&
         config.stalePolicy == StalePolicy.keepStaleWhileRevalidate) {
       streamController.emitRefreshing(current);
+    } else if (current == null &&
+        config.hasCache &&
+        config.storage != null &&
+        codec != null) {
+      final storage = config.storage!;
+      final currentCodec = codec!;
+      try {
+        final raw = await storage.read(qKey.storageKey);
+        if (raw != null) {
+          final envelope = StorageEnvelope.tryDecode(raw);
+          if (envelope == null) {
+            storage.delete(qKey.storageKey).ignore();
+            streamController.emitLoading();
+          } else if (envelope.isExpired) {
+            if (config.stalePolicy == StalePolicy.keepStaleWhileRevalidate) {
+              final restoredData = currentCodec.decode(envelope.payload);
+              final restoredEntry = CacheEntry<T>(
+                restoredData,
+                createdAt: envelope.createdAt,
+                expiresAt: envelope.expiresAt,
+                timeToLive: envelope.timeToLive,
+                source: DataSource.storage,
+              );
+              cache.putEntry(qKey, restoredEntry);
+              streamController.emitRefreshing(
+                restoredData,
+                metadata: restoredEntry.metadata,
+              );
+            } else {
+              storage.delete(qKey.storageKey).ignore();
+              streamController.emitLoading();
+            }
+          } else {
+            final restoredData = currentCodec.decode(envelope.payload);
+            final restoredEntry = CacheEntry<T>(
+              restoredData,
+              createdAt: envelope.createdAt,
+              expiresAt: envelope.expiresAt,
+              timeToLive: envelope.timeToLive,
+              source: DataSource.storage,
+            );
+            cache.putEntry(qKey, restoredEntry);
+            streamController.emitData(
+              restoredData,
+              metadata: restoredEntry.metadata,
+            );
+          }
+        } else {
+          streamController.emitLoading();
+        }
+      } catch (_) {
+        storage.delete(qKey.storageKey).ignore();
+        streamController.emitLoading();
+      }
     } else {
       streamController.emitLoading();
     }
@@ -244,6 +307,36 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
         }
         final entry = config.hasCache ? cache.getEntry<T>(qKey) : null;
         streamController.emitData(data, metadata: entry?.metadata);
+
+        // Persist to L2 storage asynchronously if configured
+        final storage = config.storage;
+        final currentCodec = codec;
+        if (storage != null && currentCodec != null) {
+          try {
+            final serialized = currentCodec.encode(data);
+            final now = DateTime.now();
+            final envelope = StorageEnvelope(
+              payload: serialized,
+              createdAt: now,
+              expiresAt: config.hasCache ? now.add(config.timeToLive) : null,
+              timeToLiveMillis: config.hasCache
+                  ? config.timeToLive.inMilliseconds
+                  : null,
+            );
+            storage.write(qKey.storageKey, envelope.encode()).ignore();
+          } catch (error, stacktrace) {
+            if (telemetry.hasListeners) {
+              telemetry.emit(
+                PersistenceErrorEvent(
+                  qKey,
+                  error: error,
+                  duration: Duration.zero,
+                  stackTrace: stacktrace,
+                ),
+              );
+            }
+          }
+        }
 
         if (telemetry.hasListeners) {
           telemetry.emit(
@@ -343,6 +436,55 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
       if (cached != null && !cache.isStale(qKey)) {
         return cached;
       }
+
+      final storage = config.storage;
+      final currentCodec = codec;
+      if (storage != null && currentCodec != null) {
+        final raw = await storage.read(qKey.storageKey);
+        if (raw != null) {
+          try {
+            final envelope = StorageEnvelope.tryDecode(raw);
+            if (envelope == null) {
+              storage.delete(qKey.storageKey).ignore();
+            } else if (envelope.isExpired) {
+              if (config.stalePolicy == StalePolicy.keepStaleWhileRevalidate) {
+                final restoredData = currentCodec.decode(envelope.payload);
+                final restoredEntry = CacheEntry<T>(
+                  restoredData,
+                  createdAt: envelope.createdAt,
+                  expiresAt: envelope.expiresAt,
+                  timeToLive: envelope.timeToLive,
+                  source: DataSource.storage,
+                );
+                cache.putEntry(qKey, restoredEntry);
+                streamController.emitRefreshing(
+                  restoredData,
+                  metadata: restoredEntry.metadata,
+                );
+              } else {
+                storage.delete(qKey.storageKey).ignore();
+              }
+            } else {
+              final restoredData = currentCodec.decode(envelope.payload);
+              final restoredEntry = CacheEntry<T>(
+                restoredData,
+                createdAt: envelope.createdAt,
+                expiresAt: envelope.expiresAt,
+                timeToLive: envelope.timeToLive,
+                source: DataSource.storage,
+              );
+              cache.putEntry(qKey, restoredEntry);
+              streamController.emitData(
+                restoredData,
+                metadata: restoredEntry.metadata,
+              );
+              return restoredData;
+            }
+          } catch (_) {
+            storage.delete(qKey.storageKey).ignore();
+          }
+        }
+      }
     }
 
     final streamToAwait = forceRefresh
@@ -388,6 +530,32 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
 
   @override
   Future<T> refresh(P parameter) => get(parameter, forceRefresh: true);
+
+  @override
+  T set(T data, P parameter) {
+    super.set(data, parameter);
+    final storage = config.storage;
+    final currentCodec = codec;
+    if (storage != null && currentCodec != null) {
+      try {
+        final qKey = buildQueryKey(parameter);
+        final serialized = currentCodec.encode(data);
+        final now = DateTime.now();
+        final envelope = StorageEnvelope(
+          payload: serialized,
+          createdAt: now,
+          expiresAt: config.hasCache ? now.add(config.timeToLive) : null,
+          timeToLiveMillis: config.hasCache
+              ? config.timeToLive.inMilliseconds
+              : null,
+        );
+        storage.write(qKey.storageKey, envelope.encode()).ignore();
+      } catch (_) {
+        // Non-critical persistence failure
+      }
+    }
+    return data;
+  }
 
   /// Invalidates cache, disconnects upstream, clears persistent storage, and resets state to [DataInitial].
   @override

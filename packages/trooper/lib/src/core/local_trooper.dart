@@ -7,6 +7,8 @@ import 'package:trooper/src/state/data_metadata.dart';
 import 'package:trooper/src/state/stateful_data.dart';
 import 'package:trooper/src/stream/stateful_stream.dart';
 import 'package:trooper/src/stream/stateful_stream_controller.dart';
+import 'package:trooper/src/storage/cache_entry.dart';
+import 'package:trooper/src/storage/storage_envelope.dart';
 import 'package:trooper/src/telemetry/trooper_event.dart';
 import 'package:trooper/types/parameter.dart';
 
@@ -118,7 +120,16 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
     if (storage != null && currentCodec != null) {
       try {
         final serialized = currentCodec.encode(value);
-        storage.write(key.storageKey, serialized).ignore();
+        final now = DateTime.now();
+        final envelope = StorageEnvelope(
+          payload: serialized,
+          createdAt: now,
+          expiresAt: config.hasCache ? now.add(config.timeToLive) : null,
+          timeToLiveMillis: config.hasCache
+              ? config.timeToLive.inMilliseconds
+              : null,
+        );
+        storage.write(key.storageKey, envelope.encode()).ignore();
       } catch (_) {
         // Non-critical persistence failure
       }
@@ -169,18 +180,26 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
       try {
         final serialized = await storage.read(key.storageKey);
         if (serialized != null) {
-          final decoded = currentCodec.decode(serialized);
-          cache.put(
-            key,
-            decoded,
-            timeToLive: config.timeToLive,
-            source: DataSource.storage,
-          );
-          final entry = cache.getEntry<T>(key);
-          streamController.emitData(decoded, metadata: entry?.metadata);
-          runSideEffect(() => sideEffects?.onData?.call(decoded, parameter));
-          _isHydrated = true;
-          return decoded;
+          final envelope = StorageEnvelope.tryDecode(serialized);
+          if (envelope == null) {
+            storage.delete(key.storageKey).ignore();
+          } else if (envelope.isExpired) {
+            storage.delete(key.storageKey).ignore();
+          } else {
+            final decoded = currentCodec.decode(envelope.payload);
+            final entry = CacheEntry<T>(
+              decoded,
+              createdAt: envelope.createdAt,
+              expiresAt: envelope.expiresAt,
+              timeToLive: envelope.timeToLive,
+              source: DataSource.storage,
+            );
+            cache.putEntry(key, entry);
+            streamController.emitData(decoded, metadata: entry.metadata);
+            runSideEffect(() => sideEffects?.onData?.call(decoded, parameter));
+            _isHydrated = true;
+            return decoded;
+          }
         }
       } catch (_) {
         // Corrupted storage entry

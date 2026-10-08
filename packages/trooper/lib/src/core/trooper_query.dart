@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'package:trooper/src/storage/cache_entry.dart';
 import 'package:trooper/src/storage/cache_store.dart';
+import 'package:trooper/src/storage/storage_envelope.dart';
 import 'package:trooper/src/codec/trooper_codec.dart';
 import 'package:trooper/src/concurrency/cancel_token.dart';
 import 'package:trooper/src/concurrency/query_queue.dart';
@@ -135,28 +137,76 @@ class TrooperQuery<T, P extends Parameter> extends Trooper<T, P> {
           final serialized = await storage.read(key.storageKey);
           if (serialized != null) {
             try {
-              final restoredData = currentCodec.decode(serialized);
-              cache.put(
-                key,
-                restoredData,
-                timeToLive: config.timeToLive,
-                source: DataSource.storage,
-              );
-              final restoredEntry = cache.getEntry<T>(key);
-              if (telemetry.hasListeners) {
-                telemetry.emit(
-                  CacheHitEvent(
-                    key,
-                    isFresh: true,
-                    metadata: restoredEntry?.metadata,
-                  ),
+              final envelope = StorageEnvelope.tryDecode(serialized);
+              if (envelope == null) {
+                storage.delete(key.storageKey).ignore();
+              } else if (envelope.isExpired) {
+                if (config.stalePolicy ==
+                    StalePolicy.keepStaleWhileRevalidate) {
+                  final restoredData = currentCodec.decode(envelope.payload);
+                  final restoredEntry = CacheEntry<T>(
+                    restoredData,
+                    createdAt: envelope.createdAt,
+                    expiresAt: envelope.expiresAt,
+                    timeToLive: envelope.timeToLive,
+                    source: DataSource.storage,
+                  );
+                  cache.putEntry(key, restoredEntry);
+
+                  if (telemetry.hasListeners) {
+                    telemetry.emit(
+                      CacheHitEvent(
+                        key,
+                        isFresh: false,
+                        metadata: restoredEntry.metadata,
+                      ),
+                    );
+                    telemetry.emit(SWRTriggeredEvent(key));
+                  }
+
+                  streamController.emitRefreshing(
+                    restoredData,
+                    metadata: restoredEntry.metadata,
+                  );
+
+                  _executeFetch(
+                    key: key,
+                    param: parameter,
+                    forceRefresh: false,
+                    staleData: restoredData,
+                  ).ignore();
+
+                  return restoredData;
+                } else {
+                  storage.delete(key.storageKey).ignore();
+                }
+              } else {
+                final restoredData = currentCodec.decode(envelope.payload);
+                final restoredEntry = CacheEntry<T>(
+                  restoredData,
+                  createdAt: envelope.createdAt,
+                  expiresAt: envelope.expiresAt,
+                  timeToLive: envelope.timeToLive,
+                  source: DataSource.storage,
                 );
+                cache.putEntry(key, restoredEntry);
+
+                if (telemetry.hasListeners) {
+                  telemetry.emit(
+                    CacheHitEvent(
+                      key,
+                      isFresh: true,
+                      metadata: restoredEntry.metadata,
+                    ),
+                  );
+                }
+
+                streamController.emitData(
+                  restoredData,
+                  metadata: restoredEntry.metadata,
+                );
+                return restoredData;
               }
-              streamController.emitData(
-                restoredData,
-                metadata: restoredEntry?.metadata,
-              );
-              return restoredData;
             } catch (_) {
               storage.delete(key.storageKey).ignore();
             }
@@ -181,6 +231,32 @@ class TrooperQuery<T, P extends Parameter> extends Trooper<T, P> {
       forceRefresh: forceRefresh,
       staleData: staleData,
     );
+  }
+
+  @override
+  T set(T data, P parameter) {
+    super.set(data, parameter);
+    final storage = config.storage;
+    final currentCodec = codec;
+    if (storage != null && currentCodec != null) {
+      try {
+        final key = buildQueryKey(parameter);
+        final serialized = currentCodec.encode(data);
+        final now = DateTime.now();
+        final envelope = StorageEnvelope(
+          payload: serialized,
+          createdAt: now,
+          expiresAt: config.hasCache ? now.add(config.timeToLive) : null,
+          timeToLiveMillis: config.hasCache
+              ? config.timeToLive.inMilliseconds
+              : null,
+        );
+        storage.write(key.storageKey, envelope.encode()).ignore();
+      } catch (_) {
+        // Non-critical persistence failure
+      }
+    }
+    return data;
   }
 
   Future<T> _executeFetch({
@@ -232,7 +308,16 @@ class TrooperQuery<T, P extends Parameter> extends Trooper<T, P> {
       if (storage != null && currentCodec != null) {
         try {
           final serialized = currentCodec.encode(result);
-          storage.write(key.storageKey, serialized).ignore();
+          final now = DateTime.now();
+          final envelope = StorageEnvelope(
+            payload: serialized,
+            createdAt: now,
+            expiresAt: config.hasCache ? now.add(config.timeToLive) : null,
+            timeToLiveMillis: config.hasCache
+                ? config.timeToLive.inMilliseconds
+                : null,
+          );
+          storage.write(key.storageKey, envelope.encode()).ignore();
         } catch (error, stacktrace) {
           telemetry.emit(
             PersistenceErrorEvent(

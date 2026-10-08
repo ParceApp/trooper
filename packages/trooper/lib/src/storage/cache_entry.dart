@@ -21,11 +21,14 @@ class CacheEntry<T> {
     this.timeToLive,
     this.source = DataSource.cache,
     DateTime? createdAt,
+    DateTime? expiresAt,
     this.isManuallyInvalidated = false,
   }) : createdAt = createdAt ?? DateTime.now(),
-       expiresAt = timeToLive != null
-           ? (createdAt ?? DateTime.now()).add(timeToLive)
-           : null;
+       expiresAt =
+           expiresAt ??
+           (timeToLive != null
+               ? (createdAt ?? DateTime.now()).add(timeToLive)
+               : null);
 
   /// The cached data payload.
   final T data;
@@ -79,12 +82,14 @@ class CacheEntry<T> {
     Duration? timeToLive,
     DataSource? source,
     DateTime? createdAt,
+    DateTime? expiresAt,
     bool? isManuallyInvalidated,
   }) => CacheEntry<T>(
     data ?? this.data,
     timeToLive: timeToLive ?? this.timeToLive,
     source: source ?? this.source,
     createdAt: createdAt ?? this.createdAt,
+    expiresAt: expiresAt ?? this.expiresAt,
     isManuallyInvalidated: isManuallyInvalidated ?? this.isManuallyInvalidated,
   );
 
