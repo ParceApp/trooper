@@ -31,8 +31,8 @@ If you know TanStack Query from the web, Trooper follows a similar mental model:
 
 In growing codebases, data handling often fragments when every feature invents its own way of caching, reloading, and tracking state. Trooper introduces a clean, unified architectural standard:
 
-- **Zero-Flicker SWR (Stale-While-Revalidate)**: `DataRefreshing<T>` extends `DataLoaded<T>`. When data refreshes in the background, your UI keeps showing the existing content. No layout jumps, no unnecessary loading spinners.
 - **Automatic Request Deduplication**: When multiple components request the same resource concurrently, Trooper executes only one fetch and shares the in-flight Future with all callers.
+- **Zero-Flicker SWR (Stale-While-Revalidate)**: `DataRefreshing<T>` extends `DataLoaded<T>`. When data refreshes in the background, your UI keeps showing the existing content. No layout jumps, no unnecessary loading spinners.
 - **Declarative Retries & Timeouts**: Configure automatic exponential backoff with `RetryPolicy` and granular request timeouts with `TrooperConfig(timeout: ...)`.
 - **Composition Over Inheritance**: Instead of writing dozens of boilerplate classes for every endpoint, you assemble queries, mutations, streams, and local state directly inside a feature controller (`TrooperController`).
 - **Type-Safe Records**: Query keys and parameters use native Dart 3 records like `({int id})` or `(String query, int page)`. Everything is strictly typed without generating extra model classes.
@@ -155,23 +155,6 @@ Trooper provides seven specialized building blocks depending on what kind of dat
 | **`KeyedStreamTrooper<K, T, P>`** | `keyedStream(...)` | Multi-channel push streams partitioned by key (e.g. chat rooms, live sensors). |
 | **`TrooperMutation<T, P>`** | `mutation(...)` | Command operations with sequential execution queuing and declarative cache invalidation. |
 
-## Batch Operations for Keyed Troopers
-
-All keyed troopers (`KeyedTrooperQuery`, `KeyedLocalTrooper`, `KeyedStreamTrooper`, and `KeyedAccessor`) support first-class batch operations:
-
-```dart
-// Read multiple items concurrently
-final batch = await controller.orders.getAll([101, 102, 103], const ());
-
-// Refresh multiple items concurrently bypassing cache
-final refreshed = await controller.orders.refreshKeys([101, 102], const ());
-
-// Invalidate multiple items at once
-controller.orders.invalidateKeys([101, 102]);
-
-// Batch mutate and persist local state
-await drafts.setAllAsync({'doc1': 'Draft 1', 'doc2': 'Draft 2'}, const ());
-```
 
 ## The State Model: StatefulData
 
@@ -228,6 +211,24 @@ token.cancel('User navigated away');
 
 ### Sequential Mutation Queuing
 When users click an "Add to Cart" or "Save" button rapidly, mutations are placed in a FIFO `TrooperMutationQueue`. Each mutation awaits the completion of the previous one, preventing race conditions on shared backend state.
+
+## Batch Operations for Keyed Troopers
+
+All keyed troopers (`KeyedTrooperQuery`, `KeyedLocalTrooper`, `KeyedStreamTrooper`, and `KeyedAccessor`) support first-class batch operations:
+
+```dart
+// Read multiple items concurrently
+final batch = await controller.orders.getAll([101, 102, 103], const ());
+
+// Refresh multiple items concurrently bypassing cache
+final refreshed = await controller.orders.refreshKeys([101, 102], const ());
+
+// Invalidate multiple items at once
+controller.orders.invalidateKeys([101, 102]);
+
+// Batch mutate and persist local state
+await drafts.setAllAsync({'doc1': 'Draft 1', 'doc2': 'Draft 2'}, const ());
+```
 
 ## Retry Policies & Timeouts
 
