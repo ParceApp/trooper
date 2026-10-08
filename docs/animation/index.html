@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trooper Architecture Flow Animation</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container" id="app">
+    <!-- Header -->
+    <header class="header">
+      <div class="brand">
+        <div class="logo-badge">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M2 17L12 22L22 17" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M2 12L12 17L22 12" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="brand-title">Trooper Architecture Flow</h1>
+          <p class="brand-subtitle">High-Performance Reactive Data Flow & SWR Engine</p>
+        </div>
+      </div>
+
+      <!-- Scenario Badge / Indicator -->
+      <div class="scenario-indicator">
+        <span class="pulse-indicator"></span>
+        <span class="scenario-title" id="scenarioTitle">Phase 1: Cold Start & Cache Miss</span>
+        <span class="step-badge" id="stepBadge">Step 1 / 4</span>
+      </div>
+
+      <!-- Controls -->
+      <div class="controls">
+        <button class="btn btn-outline" id="prevBtn" title="Previous Phase">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>
+        <button class="btn btn-primary" id="playPauseBtn" title="Play / Pause">
+          <svg id="playIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          <svg id="pauseIcon" class="hidden" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+        </button>
+        <button class="btn btn-outline" id="nextBtn" title="Next Phase">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+        <button class="btn btn-outline" id="speedBtn" title="Playback Speed">1.0x</button>
+        <button class="btn btn-outline" id="resetBtn" title="Restart Flow">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Canvas / SVG Connection Plane -->
+    <div class="flow-stage" id="flowStage">
+      <svg class="connections-svg" id="connectionsSvg">
+        <defs>
+          <!-- Gradient for request paths -->
+          <linearGradient id="grad-req" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#6366f1"/>
+            <stop offset="100%" stop-color="#3b82f6"/>
+          </linearGradient>
+          <!-- Gradient for cache hit -->
+          <linearGradient id="grad-hit" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#10b981"/>
+            <stop offset="100%" stop-color="#34d399"/>
+          </linearGradient>
+          <!-- Gradient for SWR revalidation -->
+          <linearGradient id="grad-swr" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#f59e0b"/>
+            <stop offset="100%" stop-color="#fbbf24"/>
+          </linearGradient>
+          <!-- Filter for glow -->
+          <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+          </filter>
+        </defs>
+        <!-- Static background guide lines -->
+        <g id="guideLines" opacity="0.18"></g>
+        <!-- Active animated connection paths -->
+        <g id="activePaths"></g>
+        <!-- Flying pulse particles -->
+        <g id="particles"></g>
+      </svg>
+
+      <!-- Architecture Nodes Grid -->
+      <div class="nodes-grid">
+        <!-- NODE 1: Inbound UI Port (Presentation) -->
+        <div class="node-card node-ui" id="nodeUi">
+          <div class="node-header">
+            <span class="node-tag port-tag">INBOUND PORT</span>
+            <span class="node-status-pill" id="uiStatusPill">Idle</span>
+          </div>
+          <div class="node-title-row">
+            <div class="node-icon icon-ui">📱</div>
+            <div>
+              <h3 class="node-name">Flutter UI</h3>
+              <p class="node-detail">Widgets / watchStream()</p>
+            </div>
+          </div>
+          <!-- Live Simulated UI Widget Component -->
+          <div class="live-widget" id="liveWidget">
+            <div class="widget-header">
+              <div class="user-avatar" id="widgetAvatar">👤</div>
+              <div class="user-meta">
+                <div class="skeleton-line title-line" id="widgetName">Alice Vance</div>
+                <div class="skeleton-line subtitle-line" id="widgetRole">Staff Dart Architect</div>
+              </div>
+            </div>
+            <div class="widget-badge-row">
+              <span class="widget-badge" id="widgetStateBadge">DataInitial()</span>
+              <span class="widget-timer" id="widgetLatency">0ms</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- NODE 2: Application Layer (TrooperController) -->
+        <div class="node-card node-controller" id="nodeController">
+          <div class="node-header">
+            <span class="node-tag controller-tag">APPLICATION LAYER</span>
+            <span class="node-status-pill" id="controllerStatusPill">Ready</span>
+          </div>
+          <div class="node-title-row">
+            <div class="node-icon icon-controller">🎛️</div>
+            <div>
+              <h3 class="node-name">TrooperController</h3>
+              <p class="node-detail">Lifecycle & Scope Root</p>
+            </div>
+          </div>
+          <div class="controller-items">
+            <div class="feature-item active" id="featQuery">
+              <span class="feat-dot"></span>
+              <span class="feat-name">userProfile</span>
+              <span class="feat-type">query</span>
+            </div>
+            <div class="feature-item" id="featKeyed">
+              <span class="feat-dot"></span>
+              <span class="feat-name">orders</span>
+              <span class="feat-type">keyedQuery</span>
+            </div>
+            <div class="feature-item" id="featMutation">
+              <span class="feat-dot"></span>
+              <span class="feat-name">updateBio</span>
+              <span class="feat-type">mutation</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- NODE 3: Concurrency Engine (TrooperQueryQueue) -->
+        <div class="node-card node-queue" id="nodeQueue">
+          <div class="node-header">
+            <span class="node-tag engine-tag">CONCURRENCY ENGINE</span>
+            <span class="node-status-pill" id="queueStatusPill">Coalescing</span>
+          </div>
+          <div class="node-title-row">
+            <div class="node-icon icon-queue">⚡</div>
+            <div>
+              <h3 class="node-name">TrooperQueryQueue</h3>
+              <p class="node-detail">Stampede Deduplication</p>
+            </div>
+          </div>
+          <div class="queue-monitor">
+            <div class="queue-stat">
+              <span class="stat-label">In-Flight:</span>
+              <span class="stat-val" id="queueInFlight">0</span>
+            </div>
+            <div class="queue-stat">
+              <span class="stat-label">Coalesced Callers:</span>
+              <span class="stat-val highlight" id="queueCallers">1</span>
+            </div>
+            <div class="queue-stat">
+              <span class="stat-label">Conflict:</span>
+              <span class="stat-val" id="queuePolicy">forward</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- NODE 4: Multi-Tier Cache (CacheStore L1) -->
+        <div class="node-card node-cache" id="nodeCache">
+          <div class="node-header">
+            <span class="node-tag cache-tag">L1 MEMORY CACHE</span>
+            <span class="node-status-pill" id="cacheStatusPill">Empty</span>
+          </div>
+          <div class="node-title-row">
+            <div class="node-icon icon-cache">💾</div>
+            <div>
+              <h3 class="node-name">CacheStore (L1)</h3>
+              <p class="node-detail">TTL & SWR Evaluator</p>
+            </div>
+          </div>
+          <div class="cache-entry" id="cacheEntry">
+            <div class="cache-entry-header">
+              <span class="cache-key">user_profile:(id:42)</span>
+              <span class="cache-ttl-badge" id="cacheTtlBadge">TTL: 5m</span>
+            </div>
+            <div class="ttl-progress-bar">
+              <div class="ttl-fill" id="ttlFill"></div>
+            </div>
+            <div class="cache-meta">
+              <span id="cacheFreshness">Status: Empty</span>
+              <span id="cacheAge">Age: 0s</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- NODE 5: Persistence (StorageBackend L2) -->
+        <div class="node-card node-storage" id="nodeStorage">
+          <div class="node-header">
+            <span class="node-tag storage-tag">L2 PERSISTENCE</span>
+            <span class="node-status-pill" id="storageStatusPill">Sync</span>
+          </div>
+          <div class="node-title-row">
+            <div class="node-icon icon-storage">🗄️</div>
+            <div>
+              <h3 class="node-name">StorageBackend</h3>
+              <p class="node-detail">StorageEnvelope JSON</p>
+            </div>
+          </div>
+          <div class="storage-preview">
+            <div class="envelope-badge">StorageEnvelope v1</div>
+            <div class="storage-code" id="storageCode">{"version":1,"cachedAt":null}</div>
+          </div>
+        </div>
+
+        <!-- NODE 6: Outbound Adapter (Backend API) -->
+        <div class="node-card node-api" id="nodeApi">
+          <div class="node-header">
+            <span class="node-tag api-tag">OUTBOUND ADAPTER</span>
+            <span class="node-status-pill" id="apiStatusPill">Idle</span>
+          </div>
+          <div class="node-title-row">
+            <div class="node-icon icon-api">🌐</div>
+            <div>
+              <h3 class="node-name">Backend REST API</h3>
+              <p class="node-detail">GET /api/v1/users/42</p>
+            </div>
+          </div>
+          <div class="api-monitor">
+            <div class="api-activity-light" id="apiActivity"></div>
+            <div class="api-status-text" id="apiStatusText">Awaiting Request</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Telemetry / Event Hub Footer -->
+    <footer class="telemetry-bar">
+      <div class="telemetry-header">
+        <span class="telemetry-icon">📡</span>
+        <span class="telemetry-label">TelemetryHub Live Stream:</span>
+      </div>
+      <div class="telemetry-ticker" id="telemetryTicker">
+        <span class="ticker-entry" id="tickerEntry">System initialized. Awaiting user actions...</span>
+      </div>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
