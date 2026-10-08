@@ -3,12 +3,12 @@ const path = require('path');
 const { spawn } = require('child_process');
 const fs = require('fs');
 
-async function renderAnimation() {
+async function renderMinimalAnimation() {
   const outputDir = path.resolve(__dirname);
   const mp4Path = path.join(outputDir, 'trooper_architecture_flow.mp4');
   const gifPath = path.join(outputDir, 'trooper_architecture_flow.gif');
 
-  console.log('🚀 Launching Headless Chrome for rendering...');
+  console.log('🚀 Launching Headless Chrome for minimalist flow render...');
   const browser = await puppeteer.launch({
     executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
     headless: true,
@@ -21,7 +21,8 @@ async function renderAnimation() {
   });
 
   const page = await browser.newPage();
-  await page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 1 });
+  // 860x280 is the clean banner aspect ratio
+  await page.setViewport({ width: 880, height: 280, deviceScaleFactor: 1 });
 
   const htmlUrl = 'file://' + path.join(__dirname, 'index.html');
   console.log(`📄 Loading animation stage: ${htmlUrl}`);
@@ -55,13 +56,14 @@ async function renderAnimation() {
   await client.send('Page.startScreencast', {
     format: 'jpeg',
     quality: 95,
-    maxWidth: 1280,
-    maxHeight: 720,
+    maxWidth: 880,
+    maxHeight: 280,
     everyNthFrame: 1
   });
 
-  const recordingDurationSec = 16.5;
-  console.log(`⏳ Recording full 4-phase architecture flow (${recordingDurationSec} seconds)...`);
+  // Exactly one full cohesive 3-phase cycle
+  const recordingDurationSec = 9.8;
+  console.log(`⏳ Recording minimal 3-phase architecture flow (${recordingDurationSec}s)...`);
   await new Promise(r => setTimeout(r, recordingDurationSec * 1000));
 
   console.log('⏹️ Stopping screencast and finalizing MP4...');
@@ -81,20 +83,20 @@ async function renderAnimation() {
     });
   });
 
-  // Now convert to optimized GIF using two-pass palette generation
+  // Generate crisp, lightweight GIF
   console.log('🎨 Generating optimized animated GIF via FFmpeg palettegen/paletteuse...');
   await new Promise((resolve, reject) => {
     const gifFfmpeg = spawn('/opt/homebrew/bin/ffmpeg', [
       '-y',
       '-i', mp4Path,
-      '-vf', 'fps=15,scale=960:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=128:stats_mode=diff[p];[s1][p]paletteuse=dither=bayer:bayer_scale=3',
+      '-vf', 'fps=20,scale=880:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=96:stats_mode=diff[p];[s1][p]paletteuse=dither=bayer:bayer_scale=3',
       gifPath
     ]);
 
     gifFfmpeg.on('close', code => {
       if (code === 0) {
         const stats = fs.statSync(gifPath);
-        console.log(`✅ GIF generated successfully: ${gifPath} (${(stats.size / (1024 * 1024)).toFixed(2)} MB)`);
+        console.log(`✅ GIF generated successfully: ${gifPath} (${(stats.size / 1024).toFixed(1)} KB)`);
         resolve();
       } else {
         reject(new Error(`GIF generation failed with code ${code}`));
@@ -102,10 +104,10 @@ async function renderAnimation() {
     });
   });
 
-  console.log('🎉 All assets rendered and ready!');
+  console.log('🎉 Minimalist Trooper Flow animation rendered successfully!');
 }
 
-renderAnimation().catch(err => {
+renderMinimalAnimation().catch(err => {
   console.error('❌ Render failed:', err);
   process.exit(1);
 });
