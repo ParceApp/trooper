@@ -9,6 +9,7 @@ import 'package:trooper/src/config/stale_policy.dart';
 import 'package:trooper/src/config/trooper_config.dart';
 import 'package:trooper/src/core/trooper.dart';
 import 'package:trooper/src/effects/trooper_side_effects.dart';
+import 'package:trooper/src/error/trooper_exception.dart';
 import 'package:trooper/src/key/query_key.dart';
 import 'package:trooper/src/state/data_metadata.dart';
 import 'package:trooper/src/state/stateful_data.dart';
@@ -388,7 +389,7 @@ class TrooperQuery<T, P extends Parameter> extends Trooper<T, P> {
         );
       }
 
-      if (!isParamChanged(param)) {
+      if (error is! TrooperCancelledException && !isParamChanged(param)) {
         streamController.emitError(
           error,
           stackTrace: stackTrace,

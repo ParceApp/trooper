@@ -7,6 +7,7 @@ import 'package:trooper/src/config/trooper_config.dart';
 import 'package:trooper/src/core/accessor.dart';
 import 'package:trooper/src/core/keyed_trooper.dart';
 import 'package:trooper/src/effects/trooper_keyed_side_effects.dart';
+import 'package:trooper/src/error/trooper_exception.dart';
 import 'package:trooper/src/key/query_key.dart';
 import 'package:trooper/src/state/data_metadata.dart';
 import 'package:trooper/src/state/stateful_data.dart';
@@ -226,13 +227,14 @@ class KeyedTrooperQuery<K extends Object, T, P extends Parameter>
       }
     }
 
-    // 3. Stale policy discarded or no cache hit -> Fetch
-    T? staleData;
-    if (config.hasCache) {
-      final existing = cache.getEntry<T>(qKey);
-      if (existing != null) {
-        staleData = existing.data;
-      }
+    // 3. Fall through to network fetch
+    final staleData = cache.get<T>(qKey) ?? stream.dataOf(key);
+    if (forceRefresh &&
+        staleData != null &&
+        config.stalePolicy == StalePolicy.keepStaleWhileRevalidate) {
+      stream.emitRefreshing(key, staleData);
+    } else {
+      stream.emitLoading(key);
     }
 
     return await _executeFetch(
@@ -486,7 +488,7 @@ class KeyedTrooperQuery<K extends Object, T, P extends Parameter>
         () => sideEffects?.onError?.call(key, error, stackTrace, param),
       );
 
-      if (!isParamChanged(key, param)) {
+      if (error is! TrooperCancelledException && !isParamChanged(key, param)) {
         stream.emitError(
           key,
           error,

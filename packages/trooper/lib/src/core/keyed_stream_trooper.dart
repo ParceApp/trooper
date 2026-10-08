@@ -404,6 +404,9 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
     return StatefulStream<T>(
       Stream.multi((controller) {
         _activeWatchers[key] = (_activeWatchers[key] ?? 0) + 1;
+        if (!isConnectedKey(key)) {
+          connectKey(key, parameter).ignore();
+        }
         final sub = keyStream.listen(
           controller.add,
           onError: controller.addError,

@@ -167,5 +167,29 @@ void main() {
         throwsA(isA<StateError>()),
       );
     });
+
+    test('cancellable mutation respects TrooperCancelToken and emits DataError on cancel', () async {
+      final token = TrooperCancelToken();
+      final mutation = TrooperMutation<String, ({String data})>.cancellable(
+        namespace: 'cancellable_mut',
+        action: (p, cancelToken) async {
+          await Future<void>.delayed(const Duration(milliseconds: 30));
+          cancelToken.throwIfCancelled();
+          return 'Result: ${p.data}';
+        },
+      );
+
+      final future = mutation.execute((data: 'Important'), cancelToken: token);
+      // Cancel mid-execution
+      token.cancel('User cancelled mutation');
+
+      expect(future, throwsA(isA<TrooperCancelledException>()));
+      await Future<void>.delayed(const Duration(milliseconds: 40));
+
+      expect(mutation.stream.isError, isTrue);
+      expect(mutation.currentState.errorOrNull, isA<TrooperCancelledException>());
+
+      mutation.dispose();
+    });
   });
 }

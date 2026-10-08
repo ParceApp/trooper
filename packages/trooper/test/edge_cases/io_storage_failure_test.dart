@@ -58,5 +58,95 @@ void main() {
 
       query.dispose();
     });
+
+    test('LocalTrooper handles disk write failure, updates in-memory and emits PersistenceErrorEvent',
+        () async {
+      final storage = MockStorageBackend(failOnWrite: true);
+      final events = <TrooperEvent>[];
+      final hub = TelemetryHub.isolated();
+      final sub = hub.events.listen(events.add);
+
+      final local = LocalTrooper<String, ()>(
+        namespace: 'local_storage_fail',
+        initialValue: 'Default',
+        codec: TrooperCodec.string,
+        telemetry: hub,
+        config: TrooperConfig(
+          storage: storage,
+          timeToLive: const Duration(minutes: 5),
+        ),
+      );
+
+      final updated = local.set('New Value', const ());
+      expect(updated, 'New Value');
+      expect(local.currentData(const ()), 'New Value');
+
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(events.any((e) => e is PersistenceErrorEvent), isTrue);
+
+      await sub.cancel();
+      hub.dispose();
+      local.dispose();
+    });
+
+    test('KeyedLocalTrooper handles disk write failure, updates in-memory and emits PersistenceErrorEvent',
+        () async {
+      final storage = MockStorageBackend(failOnWrite: true);
+      final events = <TrooperEvent>[];
+      final hub = TelemetryHub.isolated();
+      final sub = hub.events.listen(events.add);
+
+      final keyedLocal = KeyedLocalTrooper<int, String, ()>(
+        namespace: 'keyed_local_storage_fail',
+        initialValue: 'Default',
+        codec: TrooperCodec.string,
+        telemetry: hub,
+        config: TrooperConfig(
+          storage: storage,
+          timeToLive: const Duration(minutes: 5),
+        ),
+      );
+
+      final updated = keyedLocal.setKey(10, 'Updated 10', const ());
+      expect(updated, 'Updated 10');
+      expect(keyedLocal.currentKeyData(10), 'Updated 10');
+
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(events.any((e) => e is PersistenceErrorEvent), isTrue);
+
+      await sub.cancel();
+      hub.dispose();
+      keyedLocal.dispose();
+    });
+
+    test('recovers gracefully when envelope payload cannot be decoded by codec',
+        () async {
+      final storage = InMemoryStorageBackend();
+      // Write valid envelope with corrupt string payload that int codec cannot parse
+      const key = QueryKey('corrupt_codec', ());
+      final envelope = StorageEnvelope(
+        payload: 'not_an_int',
+        createdAt: DateTime.now(),
+        expiresAt: DateTime.now().add(const Duration(minutes: 5)),
+      );
+      await storage.write(key.storageKey, envelope.encode());
+
+      final query = TrooperQuery<int, ()>(
+        namespace: 'corrupt_codec',
+        fetch: (_) async => 999,
+        codec: TrooperCodec.integer,
+        config: TrooperConfig(
+          storage: storage,
+          timeToLive: const Duration(minutes: 5),
+        ),
+      );
+
+      // Decoding 'not_an_int' as int fails gracefully in hydrate, falling back to fetch
+      final result = await query.get(const ());
+      expect(result, 999);
+      expect(query.currentData(const ()), 999);
+
+      query.dispose();
+    });
   });
 }

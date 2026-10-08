@@ -406,6 +406,9 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
     return StatefulStream<T>(
       Stream<StatefulData<T>>.multi((listener) {
         _activeWatchers++;
+        if (!isConnected) {
+          connect(parameter).ignore();
+        }
         final sub = streamController.stream.listen(
           listener.addSync,
           onError: listener.addError,
