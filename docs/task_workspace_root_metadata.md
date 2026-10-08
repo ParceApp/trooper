@@ -1,6 +1,6 @@
 # Aufgabe: Repository-Root Metadaten & Workspace-Dokumentation
 
-### Status: Offen
+### Status: Umgesetzt und abgeschlossen
 
 ---
 
@@ -18,27 +18,27 @@ Ziel dieser Aufgabe ist die Aufwertung des Repository-Roots zu einer professione
 ## 2. Detaillierter Maßnahmenkatalog
 
 ### A. Root-Dokumentation ([`README.md`](file:///Users/hannes/Developer/trooper/README.md))
-- [ ] **Monorepo-Überblick**:
+- [x] **Monorepo-Überblick**:
   - Erklärung der Workspace-Architektur und Vision von Trooper.
   - Verlinkung auf das Core-Package [`packages/trooper`](file:///Users/hannes/Developer/trooper/packages/trooper).
   - Ausblick auf geplante Ökosystem-Packages (`trooper_flutter`, `trooper_bloc`).
-- [ ] **Entwickler-Workflow (Workspace-Befehle)**:
+- [x] **Entwickler-Workflow (Workspace-Befehle)**:
   - Workspace-Dependencies auflösen: `dart pub get`
   - Workspace-weite statische Analyse: `dart analyze`
   - Alle Tests ausführen: `dart test`
   - Code formatieren: `dart format .`
-- [ ] **Architektur-Diagramm**:
+- [x] **Architektur-Diagramm**:
   - Visuelle Darstellung der Schichten: Inbound Ports -> Application Layer (`TrooperController`) -> Trooper Engine (`TrooperQuery`, `LocalTrooper`, `StreamTrooper`, `MutationQueue`, `CacheStore`).
-- [ ] **Beitrags- & Lizenzhinweise**:
+- [x] **Beitrags- & Lizenzhinweise**:
   - Contributing-Richtlinien und Link zur [`LICENSE`](file:///Users/hannes/Developer/trooper/LICENSE).
 
 ### B. Root-Changelog ([`CHANGELOG.md`](file:///Users/hannes/Developer/trooper/CHANGELOG.md))
-- [ ] Umwandlung in ein klares Monorepo-Changelog, das Workspace-Updates und die Veröffentlichung der enthaltenen Packages versioniert dokumentiert.
+- [x] Umwandlung in ein klares Monorepo-Changelog, das Workspace-Updates und die Veröffentlichung der enthaltenen Packages versioniert dokumentiert.
 
 ### C. Workspace-Konfiguration & Hygiene
-- [ ] [`pubspec.yaml`](file:///Users/hannes/Developer/trooper/pubspec.yaml) im Root prüfen: Workspace-Members und SDK-Constraints verifizieren.
-- [ ] [`analysis_options.yaml`](file:///Users/hannes/Developer/trooper/analysis_options.yaml) im Root prüfen: Saubere Linter-Regeln für alle Workspace-Pakete sicherstellen.
-- [ ] [`.gitignore`](file:///Users/hannes/Developer/trooper/.gitignore) prüfen: Ausschluss von `.dart_tool`, `.packages`, IDE-Caches und temporären Build-Artefakten.
+- [x] [`pubspec.yaml`](file:///Users/hannes/Developer/trooper/pubspec.yaml) im Root prüfen: Workspace-Members und SDK-Constraints verifizieren.
+- [x] [`analysis_options.yaml`](file:///Users/hannes/Developer/trooper/analysis_options.yaml) im Root prüfen: Saubere Linter-Regeln für alle Workspace-Pakete sicherstellen.
+- [x] [`.gitignore`](file:///Users/hannes/Developer/trooper/.gitignore) prüfen: Ausschluss von `.dart_tool`, `.packages`, IDE-Caches und temporären Build-Artefakten.
 
 ---
 
