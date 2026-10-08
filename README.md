@@ -8,6 +8,10 @@
 
 An architectural blueprint and high-performance reactive data-flow framework for Dart, providing multi-tier caching, Stale-While-Revalidate (SWR) background updates, request deduplication, push streams, and deterministic state management.
 
+<p align="center">
+  <img src="docs/animation/trooper_architecture_flow.gif" alt="Trooper Architecture Flow" width="880"/>
+</p>
+
 ```text
        ┌─────────────────────────────────────────────────────────────┐
        │                       INBOUND PORTS                         │

@@ -40,6 +40,10 @@ In growing codebases, data handling often fragments when every feature invents i
 
 ## Architecture at a Glance
 
+<p align="center">
+  <img src="doc/trooper_architecture_flow.gif" alt="Trooper Architecture Flow" width="880"/>
+</p>
+
 Trooper separates concerns into three clear layers:
 
 ```text
