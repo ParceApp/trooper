@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:trooper/types/parameter.dart';
 
 /// Side-effect callbacks for TrooperMutation commands.
 ///
@@ -13,7 +14,7 @@ import 'dart:async';
 ///   ),
 /// );
 /// ```
-class TrooperMutationSideEffects<T, P extends Record> {
+class TrooperMutationSideEffects<T, P extends Parameter> {
   /// Creates a [TrooperMutationSideEffects] bundle.
   const TrooperMutationSideEffects({
     this.onSuccess,

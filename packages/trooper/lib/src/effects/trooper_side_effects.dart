@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:trooper/types/parameter.dart';
 
 /// Side-effect callbacks for single Trooper queries and local state.
 ///
@@ -16,13 +17,13 @@ import 'dart:async';
 ///   ),
 /// );
 /// ```
-class TrooperSideEffects<T, P extends Record> {
+class TrooperSideEffects<T, P extends Parameter> {
   /// Creates a [TrooperSideEffects] bundle.
   const TrooperSideEffects({
     this.onData,
     this.onError,
     this.onRequestStarted,
-    this.onRequestCompleted,
+    this.transformRequestResult,
     this.onSocketDataReceived,
     this.onCacheExpired,
     this.notifyBeforeCacheExpired = const <Duration>[],
@@ -33,7 +34,7 @@ class TrooperSideEffects<T, P extends Record> {
        );
 
   /// Invoked when fresh data is loaded, set, or revalidated.
-  final FutureOr<void> Function(T data, P param, bool isLatest)? onData;
+  final FutureOr<void> Function(T data, P param)? onData;
 
   /// Invoked when an asynchronous operation fails with an error.
   final FutureOr<void> Function(Object error, StackTrace stackTrace, P param)?
@@ -42,10 +43,10 @@ class TrooperSideEffects<T, P extends Record> {
   /// Invoked when an asynchronous request or fetch begins.
   final FutureOr<void> Function(P param)? onRequestStarted;
 
-  /// Invoked after a request has been successfully completed.
-  /// Can be used to perform actions after the data is received and processed.
-  /// An optional return value can be provided if you want to override or transform the result of the request with a different value.
-  final FutureOr<T?> Function(T data, P param)? onRequestCompleted;
+  /// Invoked after a request has been successfully completed or a stream deliver data.
+  /// Can be used to perform transformation directly after the data is received.
+  /// This hook can be provided if you want to transform the result with a different value.
+  final FutureOr<T> Function(T data, P param)? transformRequestResult;
 
   /// Invoked when cached data has expired and needs to be refreshed.
   /// Can be used to monitor cache expiration and take appropriate actions.

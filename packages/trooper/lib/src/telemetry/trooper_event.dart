@@ -83,6 +83,26 @@ final class RequestErrorEvent extends TrooperEvent {
       'RequestErrorEvent(${key.describe()}, error: $error, duration: ${duration.inMilliseconds}ms)';
 }
 
+/// Emitted when an error occurs during a persistence operation, such as saving or loading data from local storage.
+final class PersistenceErrorEvent extends TrooperEvent {
+  PersistenceErrorEvent(
+    this.key, {
+    required this.error,
+    required this.duration,
+    this.stackTrace,
+    super.timestamp,
+  });
+
+  final QueryKey key;
+  final Object error;
+  final Duration duration;
+  final StackTrace? stackTrace;
+
+  @override
+  String toString() =>
+      'PersistenceErrorEvent(${key.describe()}, error: $error, duration: ${duration.inMilliseconds}ms)';
+}
+
 /// Emitted when a cache entry or query namespace is invalidated.
 final class CacheInvalidatedEvent extends TrooperEvent {
   CacheInvalidatedEvent(this.key, {super.timestamp});
@@ -90,4 +110,15 @@ final class CacheInvalidatedEvent extends TrooperEvent {
 
   @override
   String toString() => 'CacheInvalidatedEvent(${key.describe()})';
+}
+
+/// Emitted when data is manually set or updated in a Trooper.
+final class DataSetEvent extends TrooperEvent {
+  DataSetEvent(this.key, {this.source = DataSource.local, super.timestamp});
+
+  final QueryKey key;
+  final DataSource source;
+
+  @override
+  String toString() => 'DataSetEvent(${key.describe()}, source: $source)';
 }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:trooper/types/parameter.dart';
 
 /// Side-effect callbacks for keyed KeyedTrooperQuery collections.
 ///
@@ -15,13 +16,13 @@ import 'dart:async';
 ///   ),
 /// );
 /// ```
-class KeyedTrooperSideEffects<K, T, P extends Record> {
+class KeyedTrooperSideEffects<K, T, P extends Parameter> {
   /// Creates a [KeyedTrooperSideEffects] bundle.
   const KeyedTrooperSideEffects({
     this.onData,
     this.onError,
     this.onRequestStarted,
-    this.onRequestCompleted,
+    this.transformRequestResult,
     this.onSocketDataReceived,
     this.onCacheExpired,
     this.notifyBeforeCacheExpired = const <Duration>[],
@@ -43,8 +44,10 @@ class KeyedTrooperSideEffects<K, T, P extends Record> {
   /// Invoked when an asynchronous request for the entity key begins.
   final FutureOr<void> Function(K key, P param)? onRequestStarted;
 
-  /// Invoked when an asynchronous request for the entity key completes successfully.
-  final FutureOr<void> Function(K key, T data, P param)? onRequestCompleted;
+  /// Invoked after a request for the entity key has been successfully completed or a stream deliver data.
+  /// Can be used to perform transformation directly after the data is received.
+  /// This hook can be provided if you want to transform the result with a different value.
+  final FutureOr<T> Function(K key, T data, P param)? transformRequestResult;
 
   /// Invoked when cached data for the entity key has expired and needs to be refreshed.
   /// Can be used to monitor cache expiration and take appropriate actions.
