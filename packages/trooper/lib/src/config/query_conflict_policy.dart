@@ -44,8 +44,8 @@ enum QueryConflictPolicy {
   /// ```dart
   /// // First query cancelled; second query completes normally:
   /// try {
-  ///   final f1 = query.read(parameter: (search: 'flutt'));
-  ///   final f2 = query.read(parameter: (search: 'flutter'));
+  ///   final f1 = query.get((search: 'flutt'));
+  ///   final f2 = query.get((search: 'flutter'));
   ///   await f1; // Throws TrooperCancelledException!
   /// } on TrooperCancelledException {
   ///   // Handle cancelled search
@@ -73,8 +73,8 @@ enum QueryConflictPolicy {
   ///
   /// ```dart
   /// // Screen 1 requests filter A; Screen 2 quickly switches to filter B:
-  /// final f1 = query.read(parameter: (filter: 'active'));
-  /// final f2 = query.read(parameter: (filter: 'archived'));
+  /// final f1 = query.get((filter: 'active'));
+  /// final f2 = query.get((filter: 'archived'));
   ///
   /// // Both callers seamlessly resolve with the 'archived' data:
   /// final r1 = await f1; // 'archived' result
@@ -87,7 +87,7 @@ enum QueryConflictPolicy {
   /// ### Behavior:
   /// - **Network**: All requests execute concurrently until completion. No `TrooperCancelToken`
   ///   is cancelled.
-  /// - **Individual Callers**: Every caller awaiting `read()` receives its own specific result.
+  /// - **Individual Callers**: Every caller awaiting `get()` receives its own specific result.
   /// - **Stream and Cache Protection**: A sequence-ID guard ensures that only chronologically
   ///   newer requests update the reactive stream and cache. If an older request completes
   ///   after a newer one (out-of-order arrival), its result is returned to its direct caller
@@ -99,8 +99,8 @@ enum QueryConflictPolicy {
   ///
   /// ```dart
   /// // Two parallel export jobs run simultaneously:
-  /// final pdfFuture = exportQuery.read(parameter: (format: 'pdf'));
-  /// final csvFuture = exportQuery.read(parameter: (format: 'csv'));
+  /// final pdfFuture = exportQuery.get((format: 'pdf'));
+  /// final csvFuture = exportQuery.get((format: 'csv'));
   ///
   /// final (pdf, csv) = await (pdfFuture, csvFuture).wait;
   /// ```

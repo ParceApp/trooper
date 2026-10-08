@@ -17,7 +17,7 @@ import 'package:trooper/src/storage/invalidatable.dart';
 /// ```dart
 /// final cache = CacheStore();
 ///
-/// const key = QueryKey.keyed('lecture', 'math-101');
+/// const key = QueryKey.keyed('lecture', parameter: (), key: 'math-101');
 /// cache.put(key, lecture, timeToLive: const Duration(minutes: 10));
 ///
 /// // Later, when fresh:

@@ -8,7 +8,7 @@ import 'package:trooper/types/parameter.dart';
 /// ### Example:
 /// ```dart
 /// final lectureQuery = KeyedTrooperQuery<String, Lecture, ()>(
-///   name: 'lecture',
+///   namespace: 'lecture',
 ///   fetch: (id, _) => api.getLecture(id),
 ///   sideEffects: KeyedTrooperSideEffects(
 ///     onData: (id, lecture, _) => print('Lecture $id loaded: ${lecture.title}'),

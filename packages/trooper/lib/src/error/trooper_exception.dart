@@ -33,7 +33,7 @@ sealed class TrooperException implements Exception {
 /// Thrown when an asynchronous operation is explicitly cancelled.
 ///
 /// This occurs when a `TrooperCancelToken` is cancelled or when a newer
-/// request supersedes a pending request under `ConcurrencyStrategy.replaceOngoing`.
+/// request supersedes a pending request under [QueryConflictPolicy.cancel].
 final class TrooperCancelledException extends TrooperException {
   /// Creates a [TrooperCancelledException].
   const TrooperCancelledException({

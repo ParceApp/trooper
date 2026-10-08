@@ -9,10 +9,10 @@ import 'package:trooper/types/parameter.dart';
 /// ### Example:
 /// ```dart
 /// final userQuery = TrooperQuery<User, ({int id})>(
-///   name: 'user',
+///   namespace: 'user',
 ///   fetch: (param) => api.getUser(param.id),
 ///   sideEffects: TrooperSideEffects(
-///     onData: (user, param, isLatest) => analytics.logUserLoaded(user.id),
+///     onData: (user, param) => analytics.logUserLoaded(user.id),
 ///     onError: (error, stack, param) => crashlytics.report(error, stack),
 ///   ),
 /// );

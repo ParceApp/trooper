@@ -25,7 +25,7 @@ import 'package:trooper/types/parameter.dart';
 /// ### Example:
 /// ```dart
 /// final themeTrooper = LocalTrooper<String, ()>(
-///   name: 'app_theme',
+///   namespace: 'app_theme',
 ///   initialValue: 'system',
 ///   codec: TrooperCodec.string,
 /// );

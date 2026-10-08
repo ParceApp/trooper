@@ -26,7 +26,7 @@ import 'package:trooper/types/parameter.dart';
 /// ### Example:
 /// ```dart
 /// final createLecture = TrooperMutation<Lecture, ({String title})>(
-///   name: 'createLecture',
+///   namespace: 'createLecture',
 ///   action: (param) => api.createLecture(param.title),
 ///   invalidateOnSuccess: [lectureQuery],
 /// );

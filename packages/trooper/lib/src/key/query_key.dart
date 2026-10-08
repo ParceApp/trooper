@@ -9,13 +9,13 @@ import 'package:trooper/types/parameter.dart';
 /// ### Example:
 /// ```dart
 /// // Unkeyed query:
-/// const key1 = QueryKey('user_profile');
+/// const key1 = QueryKey('user_profile', ());
 ///
 /// // Keyed query for specific entity:
-/// const key2 = QueryKey.keyed('lecture', key: 42);
+/// const key2 = QueryKey.keyed('lecture', parameter: (), key: 42);
 ///
 /// // Native value equality:
-/// assert(key2 == QueryKey.keyed('lecture', key: 42));
+/// assert(key2 == QueryKey.keyed('lecture', parameter: (), key: 42));
 /// ```
 extension type const QueryKey._(
   (String name, Parameter parameter, Object? key) _value

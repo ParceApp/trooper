@@ -29,7 +29,7 @@ import 'package:trooper/types/parameter.dart';
 /// ### Example:
 /// ```dart
 /// final userQuery = TrooperQuery<User, ({int id})>(
-///   name: 'user',
+///   namespace: 'user',
 ///   fetch: (param) => fetchUserFromApi(param.id),
 ///   config: const TrooperConfig(timeToLive: Duration(minutes: 10)),
 /// );

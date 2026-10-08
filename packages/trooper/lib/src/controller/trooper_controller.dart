@@ -48,14 +48,14 @@ import 'package:trooper/src/effects/trooper_mutation_side_effects.dart';
 ///
 ///   // Directly declared as attributes with `late final` (lazy, zero-boilerplate):
 ///   late final courses = query<List<String>, ()>(
-///     name: 'courses',
+///     namespace: 'courses',
 ///     fetch: (param) => api.getCourses(),
 ///   );
 ///
 ///   late final addCourse = mutation<String, ({String title})>(
-///     name: 'addCourse',
+///     namespace: 'addCourse',
 ///     action: (param) => api.createCourse(param.title),
-///     invalidateOnSuccess: \[this\], // invalidates all troopers in this controller
+///     invalidateOnSuccess: [this], // invalidates all troopers in this controller
 ///   );
 /// }
 /// ```
@@ -229,14 +229,14 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
 
   /// Creates and registers a new [TrooperQuery] managed by this controller.
   ///
-  /// Shares [defaultCache], [defaultOrchestrator], and [defaultTelemetry] with the controller
+  /// Shares [defaultCache], [defaultQueryQueue], and [defaultTelemetry] with the controller
   /// unless explicitly overridden. Disposing the query individually will not dispose
   /// shared controller services.
   ///
   /// ```dart
   /// class UserController extends TrooperController {
   ///   late final user = query<String, ({String id})>(
-  ///     name: 'user',
+  ///     namespace: 'user',
   ///     fetch: (param) async => 'User ${param.id}',
   ///   );
   /// }
@@ -286,13 +286,13 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
 
   /// Creates and registers a new [KeyedTrooperQuery] managed by this controller.
   ///
-  /// Partitioned by entity key [K]. Shares [defaultCache], [defaultOrchestrator],
+  /// Partitioned by entity key [K]. Shares [defaultCache], [defaultQueryQueue],
   /// and [defaultTelemetry] with the controller unless overridden.
   ///
   /// ```dart
   /// class PostController extends TrooperController {
   ///   late final post = keyedQuery<int, String, ()>(
-  ///     name: 'post',
+  ///     namespace: 'post',
   ///     fetch: (id, _) async => 'Post #$id',
   ///   );
   /// }
@@ -348,7 +348,7 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
   /// ```dart
   /// class SettingsController extends TrooperController {
   ///   late final theme = local<String, ()>(
-  ///     name: 'theme',
+  ///     namespace: 'theme',
   ///     initialValue: 'system',
   ///   );
   /// }
@@ -385,7 +385,7 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
   /// ```dart
   /// class ChatController extends TrooperController {
   ///   late final drafts = keyedLocal<String, String, ()>(
-  ///     name: 'drafts',
+  ///     namespace: 'drafts',
   ///     initialValue: '',
   ///   );
   /// }
@@ -440,7 +440,7 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
   /// ```dart
   /// class PriceController extends TrooperController {
   ///   late final btcPrice = stream<double, ()>(
-  ///     name: 'btc_price',
+  ///     namespace: 'btc_price',
   ///     streamFactory: (_, _) => Stream.periodic(
   ///       const Duration(seconds: 1),
   ///       (i) => 50000.0 + i,
@@ -489,7 +489,7 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
   /// ```dart
   /// class RoomController extends TrooperController {
   ///   late final roomChat = keyedStream<String, String, ()>(
-  ///     name: 'room_chat',
+  ///     namespace: 'room_chat',
   ///     streamFactory: (roomId, _, _) => Stream.value('Joined $roomId'),
   ///   );
   /// }
@@ -534,9 +534,9 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
   /// ```dart
   /// class ArticleController extends TrooperController {
   ///   late final createArticle = mutation<String, ({String title})>(
-  ///     name: 'createArticle',
+  ///     namespace: 'createArticle',
   ///     action: (param) async => 'Created ${param.title}',
-  ///     invalidateOnSuccess: \[this\],
+  ///     invalidateOnSuccess: [this],
   ///   );
   /// }
   /// ```

@@ -36,14 +36,14 @@ typedef StreamFactory<T, P extends Parameter> =
 ///   and disconnects when the last listener unsubscribes (unless [keepAlive] is true).
 /// - **Stateful Replay**: New subscribers immediately receive the latest emitted state.
 /// - **L1 Cache Integration**: Incoming data updates [cache], accessible synchronously via [currentData].
-/// - **Async Read**: [read] returns the latest data immediately or awaits the next stream event.
+/// - **Async Get**: [get] returns the latest data immediately or awaits the next stream event.
 /// - **Bi-Directional Support**: Optional [onConnect] and [onRefresh] hooks to send commands over the stream.
 /// - **Comprehensive SideEffects**: Lifecycle callbacks on connection, data, error, and completion.
 ///
 /// ### Example:
 /// ```dart
 /// final cryptoTicker = StreamTrooper<double, (String symbol,)>(
-///   name: 'crypto_ticker',
+///   namespace: 'crypto_ticker',
 ///   streamFactory: (param, cancelToken) => webSocket.subscribeToTicker(param.$1),
 ///   onRefresh: (param) => webSocket.send({'cmd': 'poll', 'symbol': param.$1}),
 /// );

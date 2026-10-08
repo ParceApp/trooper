@@ -9,7 +9,7 @@ import 'package:trooper/src/lifecycle/lifecycle_aware.dart';
 ///
 /// ### Example:
 /// ```dart
-/// final queue = MutationQueue();
+/// final queue = TrooperMutationQueue();
 ///
 /// // These execute strictly sequentially:
 /// queue.add(() => updateProfile(name: 'Alice'));
@@ -36,7 +36,7 @@ class TrooperMutationQueue with LifecycleAware {
   /// in the queue still execute normally.
   Future<T> add<T>(Future<T> Function() task) {
     if (_isDisposed) {
-      throw StateError('Cannot enqueue task to a disposed MutationQueue');
+      throw StateError('Cannot enqueue task to a disposed TrooperMutationQueue');
     }
 
     _pending++;

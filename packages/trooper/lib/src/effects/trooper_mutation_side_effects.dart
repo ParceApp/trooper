@@ -6,7 +6,7 @@ import 'package:trooper/types/parameter.dart';
 /// ### Example:
 /// ```dart
 /// final createTodo = TrooperMutation<Todo, ({String title})>(
-///   name: 'createTodo',
+///   namespace: 'createTodo',
 ///   action: (param) => api.createTodo(param.title),
 ///   sideEffects: TrooperMutationSideEffects(
 ///     onSuccess: (todo, param) => showToast('Created ${todo.title}'),
