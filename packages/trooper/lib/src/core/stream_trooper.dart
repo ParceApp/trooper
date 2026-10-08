@@ -492,7 +492,8 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
         : streamController.stream;
 
     final stateFuture = streamToAwait.firstWhere(
-      (s) => s is DataLoaded<T> || s is DataError<T>,
+      (s) =>
+          (s is DataLoaded<T> && s is! DataRefreshing<T>) || s is DataError<T>,
       orElse: () => throw const TrooperCancelledException(
         message: 'Stream closed before data was received',
       ),

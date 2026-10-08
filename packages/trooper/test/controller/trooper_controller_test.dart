@@ -143,7 +143,130 @@ void main() {
 
       await controller.dispose();
     });
+
+    test('controller factory methods create and manage all Trooper types', () async {
+      final controller = _FullFactoryController();
+
+      await controller.initialize();
+      expect(controller.initCalled, isTrue);
+
+      // Local & KeyedLocal
+      expect(controller.theme.current(const ()).dataOrNull, 'dark');
+      controller.theme.set('light', const ());
+      expect(controller.theme.current(const ()).dataOrNull, 'light');
+
+      controller.featureFlags.setKey('beta', true, const ());
+      expect(controller.featureFlags.currentKeyData('beta'), isTrue);
+
+      // Mutation
+      final mutationResult = await controller.createPost.execute((title: 'Hello world'));
+      expect(mutationResult, 'Created: Hello world');
+
+      // Hooks
+      controller.pause();
+      expect(controller.pauseCalled, isTrue);
+
+      controller.resume();
+      expect(controller.resumeCalled, isTrue);
+
+      controller.recover();
+      expect(controller.recoverCalled, isTrue);
+
+      controller.didChangeDependencies();
+      expect(controller.depsCalled, isTrue);
+
+      // Manage and unregister
+      final dummyInvalidatable = _TestInvalidatable(() {});
+      controller.manageAll([dummyInvalidatable]);
+      expect(controller.unregister(dummyInvalidatable), isTrue);
+
+      await controller.dispose();
+      expect(controller.disposeCalled, isTrue);
+
+      // Attempting to manage after disposal throws StateError
+      expect(
+        () => controller.manage(_TestInvalidatable(() {})),
+        throwsA(isA<StateError>()),
+      );
+    });
+
+    test('controller cancellable query factory, defaultStorage, and extraLifecycleChildren', () async {
+      final storage = InMemoryStorageBackend();
+      final externalService = _TestLifecycleService();
+
+      final controller = _FullFeaturedController(
+        storage: storage,
+        externalLifecycle: externalService,
+      );
+
+      // Access late fields so they are instantiated and managed
+      controller.cancellableQ;
+      controller.cancellableKQ;
+
+      expect(controller.managedCount, greaterThan(0));
+      expect(controller.managedChildren.isNotEmpty, isTrue);
+      expect(controller.managedInvalidatables.isNotEmpty, isTrue);
+
+      await controller.initialize();
+      expect(externalService.initCalled, isTrue);
+
+      final queryResult = await controller.cancellableQ.get(const ());
+      expect(queryResult, 'Cancellable OK');
+
+      final keyedResult = await controller.cancellableKQ.getKey(1, const ());
+      expect(keyedResult, 'Keyed 1 OK');
+
+      await controller.pause();
+      expect(externalService.pauseCalled, isTrue);
+
+      await controller.resume();
+      expect(externalService.resumeCalled, isTrue);
+
+      await controller.dispose();
+      expect(externalService.disposeCalled, isTrue);
+    });
   });
+}
+
+class _TestLifecycleService with LifecycleAware {
+  bool initCalled = false;
+  bool pauseCalled = false;
+  bool resumeCalled = false;
+  bool disposeCalled = false;
+
+  @override
+  void initialize() => initCalled = true;
+
+  @override
+  void pause() => pauseCalled = true;
+
+  @override
+  void resume() => resumeCalled = true;
+
+  @override
+  void dispose() => disposeCalled = true;
+}
+
+class _FullFeaturedController extends TrooperController {
+  _FullFeaturedController({
+    required StorageBackend storage,
+    required this.externalLifecycle,
+  }) : super(defaultStorage: storage);
+
+  final _TestLifecycleService externalLifecycle;
+
+  late final cancellableQ = query<String, ()>(
+    namespace: 'cancellable_q',
+    cancellableFetch: (_, token) async => 'Cancellable OK',
+  );
+
+  late final cancellableKQ = keyedQuery<int, String, ()>(
+    namespace: 'cancellable_kq',
+    cancellableFetch: (id, _, token) async => 'Keyed $id OK',
+  );
+
+  @override
+  List<LifecycleAware> get extraLifecycleChildren => [externalLifecycle];
 }
 
 class _TestInvalidatable implements Invalidatable {
@@ -165,4 +288,59 @@ class _CascadingController extends TrooperController {
 
   @override
   List<Invalidatable> get extraInvalidatables => [extra];
+}
+
+class _FullFactoryController extends TrooperController {
+  bool initCalled = false;
+  bool pauseCalled = false;
+  bool resumeCalled = false;
+  bool recoverCalled = false;
+  bool depsCalled = false;
+  bool disposeCalled = false;
+
+  late final theme = local<String, ()>(
+    namespace: 'theme_local',
+    initialValue: 'dark',
+  );
+
+  late final featureFlags = keyedLocal<String, bool, ()>(
+    namespace: 'flags_local',
+    initialValue: false,
+  );
+
+  late final clock = stream<DateTime, ()>(
+    namespace: 'clock_stream',
+    streamFactory: (_, _) => Stream.periodic(
+      const Duration(hours: 1),
+      (_) => DateTime.now(),
+    ),
+  );
+
+  late final liveRoom = keyedStream<String, String, ()>(
+    namespace: 'rooms_stream',
+    streamFactory: (r, _, _) => Stream.value('welcome to $r'),
+  );
+
+  late final createPost = mutation<String, ({String title})>(
+    namespace: 'create_post',
+    action: (p) async => 'Created: ${p.title}',
+  );
+
+  @override
+  void onInit() => initCalled = true;
+
+  @override
+  void onPause() => pauseCalled = true;
+
+  @override
+  void onResume() => resumeCalled = true;
+
+  @override
+  void onRecover() => recoverCalled = true;
+
+  @override
+  void onDependenciesChanged() => depsCalled = true;
+
+  @override
+  void onDispose() => disposeCalled = true;
 }

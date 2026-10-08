@@ -77,5 +77,26 @@ void main() {
       trooper.dispose();
       restored.dispose();
     });
+
+    test('lifecycle hooks and sideEffects in LocalTrooper', () async {
+      var dataSetCalled = false;
+      final trooper = LocalTrooper<String, ()>(
+        namespace: 'app_lang',
+        initialValue: 'en',
+        sideEffects: TrooperSideEffects(
+          onData: (_, _) => dataSetCalled = true,
+        ),
+      );
+
+      trooper.set('de', const ());
+      expect(dataSetCalled, isTrue);
+
+      trooper.pause();
+      trooper.resume();
+      trooper.recover();
+      trooper.didChangeDependencies();
+
+      trooper.dispose();
+    });
   });
 }

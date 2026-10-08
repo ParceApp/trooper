@@ -305,6 +305,108 @@ void main() {
       final errState = query.current(const ());
       expect(errState, isA<DataError<String>>());
       expect((errState as DataError<String>).staleData, 'Valid Data');
+
+      // Test recover
+      shouldFail = false;
+      query.recover();
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(query.currentData(const ()), 'Valid Data');
+
+      query.dispose();
+    });
+
+    test('trigger background fetch and lifecycle hooks', () async {
+      var fetchCount = 0;
+      final query = TrooperQuery<String, ()>(
+        namespace: 'trigger_ns',
+        fetch: (_) async {
+          fetchCount++;
+          return 'Result $fetchCount';
+        },
+      );
+
+      query.trigger(const ());
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(fetchCount, 1);
+      expect(query.currentData(const ()), 'Result 1');
+
+      query.pause();
+      query.resume();
+      query.didChangeDependencies();
+
+      query.dispose();
+    });
+
+    test('sideEffects callbacks execute during query lifecycle', () async {
+      var started = false;
+      var transformed = false;
+      var dataCallback = false;
+
+      final query = TrooperQuery<String, ()>(
+        namespace: 'callbacks_ns',
+        fetch: (_) async => 'Callback Payload',
+        sideEffects: TrooperSideEffects(
+          onRequestStarted: (_) => started = true,
+          transformRequestResult: (data, _) {
+            transformed = true;
+            return '$data (transformed)';
+          },
+          onData: (_, _) => dataCallback = true,
+        ),
+      );
+
+      final result = await query.get(const ());
+      expect(result, 'Callback Payload');
+      expect(started, isTrue);
+      expect(transformed, isTrue);
+      expect(dataCallback, isTrue);
+
+      query.dispose();
+    });
+
+    test('conflict policy parallel allows simultaneous execution', () async {
+      final query = TrooperQuery<String, ({int delay})>(
+        namespace: 'parallel_ns',
+        fetch: (p) async {
+          await Future<void>.delayed(Duration(milliseconds: p.delay));
+          return 'Done ${p.delay}';
+        },
+        config: const TrooperConfig(
+          conflictPolicy: QueryConflictPolicy.parallel,
+          deduplicate: false,
+        ),
+      );
+
+      final f1 = query.get((delay: 20));
+      final f2 = query.get((delay: 5));
+
+      final results = await Future.wait([f1, f2]);
+      expect(results, ['Done 20', 'Done 5']);
+
+      query.dispose();
+    });
+
+    test('TrooperQuery.set persists to L2 storage', () async {
+      final storage = InMemoryStorageBackend();
+      final codec = TrooperCodec.string;
+
+      final query = TrooperQuery<String, ()>(
+        namespace: 'set_storage_ns',
+        fetch: (_) async => 'Network',
+        codec: codec,
+        config: TrooperConfig(storage: storage),
+      );
+
+      final returned = query.set('Manual Value', const ());
+      expect(returned, 'Manual Value');
+      expect(query.currentData(const ()), 'Manual Value');
+
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      const key = QueryKey('set_storage_ns', ());
+      final raw = await storage.read(key.storageKey);
+      expect(raw, isNotNull);
+
+      query.dispose();
     });
   });
 }

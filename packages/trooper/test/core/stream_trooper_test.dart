@@ -143,5 +143,166 @@ void main() {
       trooper.dispose();
       restoredTrooper.dispose();
     });
+
+    test('set updates in-memory state and persists to storage', () async {
+      final trooper = StreamTrooper<String, ()>(
+        namespace: 'chat_state',
+        streamFactory: (_, _) => source.stream,
+        codec: TrooperCodec.string,
+        config: TrooperConfig(storage: storage),
+      );
+
+      final returned = trooper.set('pinned_message', const ());
+      expect(returned, 'pinned_message');
+      expect(trooper.currentData(const ()), 'pinned_message');
+
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(storage.writeCount, 1);
+
+      trooper.dispose();
+    });
+
+    test('error propagation and recover on StreamTrooper', () async {
+      var errorCaptured = false;
+      final trooper = StreamTrooper<String, ()>(
+        namespace: 'crypto_feed',
+        streamFactory: (_, _) => source.stream,
+        sideEffects: TrooperSideEffects(
+          onError: (e, s, p) => errorCaptured = true,
+        ),
+      );
+
+      final sub = trooper.watch(const ()).listen((_) {});
+      await Future<void>.delayed(Duration.zero);
+      expect(trooper.isConnected, isTrue);
+
+      source.emitError(StateError('Socket disconnect'));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      expect(trooper.stream.isError, isTrue);
+      expect(errorCaptured, isTrue);
+
+      // Reconnect / recover
+      trooper.recover();
+      await Future<void>.delayed(Duration.zero);
+
+      await sub.cancel();
+      trooper.dispose();
+    });
+
+    test('pause, resume, and didChangeDependencies on StreamTrooper', () async {
+      final trooper = StreamTrooper<String, ()>(
+        namespace: 'lifecycle_feed',
+        streamFactory: (_, _) => source.stream,
+      );
+
+      final sub = trooper.watch(const ()).listen((_) {});
+      await Future<void>.delayed(Duration.zero);
+      expect(trooper.isConnected, isTrue);
+
+      trooper.pause();
+      trooper.resume();
+      await sub.cancel();
+      trooper.dispose();
+    });
+
+    test('StreamTrooper.fromStream and autoConnect', () async {
+      final s = StreamController<String>.broadcast();
+      final trooper = StreamTrooper.fromStream<String>(
+        namespace: 'from_stream_ns',
+        stream: () => s.stream,
+        autoConnect: true,
+      );
+
+      expect(trooper.isConnected, isTrue);
+
+      s.add('Hello from factory');
+      await Future<void>.delayed(Duration.zero);
+      expect(trooper.currentData(const ()), 'Hello from factory');
+
+      await trooper.disconnect();
+      expect(trooper.isConnected, isFalse);
+
+      await ParameterlessStreamTrooper(trooper).connect();
+      expect(trooper.isConnected, isTrue);
+
+      await trooper.dispose();
+      await s.close();
+    });
+
+    test('StreamTrooper query-like get and refresh semantics', () async {
+      var refreshed = false;
+      var disconnected = false;
+      final s = StreamController<String>.broadcast();
+
+      final trooper = StreamTrooper<String, ()>(
+        namespace: 'query_stream',
+        streamFactory: (_, _) => s.stream,
+        onRefresh: (_) => refreshed = true,
+        onDisconnect: () => disconnected = true,
+      );
+
+      // get() should connect, wait for first loaded event, and return the value
+      final getFuture = trooper.get(const ());
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      s.add('First Frame');
+
+      final val = await getFuture;
+      expect(val, 'First Frame');
+
+      // Now refresh() invokes onRefresh hook
+      final refreshFuture = trooper.refresh(const ());
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      s.add('Second Frame');
+
+      final refreshedVal = await refreshFuture;
+      expect(refreshedVal, 'Second Frame');
+      expect(refreshed, isTrue);
+
+      await trooper.dispose();
+      expect(disconnected, isTrue);
+      await s.close();
+    });
+
+    test('StreamTrooper L2 storage persistence and hydration', () async {
+      final storage = InMemoryStorageBackend();
+      final codec = TrooperCodec.string;
+      final s = StreamController<String>.broadcast();
+
+      final trooper1 = StreamTrooper<String, ()>(
+        namespace: 'persisted_stream',
+        streamFactory: (_, _) => s.stream,
+        codec: codec,
+        config: TrooperConfig(
+          storage: storage,
+          timeToLive: const Duration(milliseconds: 50),
+          stalePolicy: StalePolicy.keepStaleWhileRevalidate,
+        ),
+      );
+
+      await trooper1.connect(const ());
+      s.add('Frame 1');
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(trooper1.currentData(const ()), 'Frame 1');
+      await trooper1.dispose();
+
+      // Instance 2 should hydrate immediately from storage on get or connect
+      final trooper2 = StreamTrooper<String, ()>(
+        namespace: 'persisted_stream',
+        streamFactory: (_, _) => s.stream,
+        codec: codec,
+        config: TrooperConfig(
+          storage: storage,
+          timeToLive: const Duration(milliseconds: 50),
+          stalePolicy: StalePolicy.keepStaleWhileRevalidate,
+        ),
+      );
+
+      final hydrated = await trooper2.get(const ());
+      expect(hydrated, 'Frame 1');
+
+      await trooper2.dispose();
+      await s.close();
+    });
   });
 }

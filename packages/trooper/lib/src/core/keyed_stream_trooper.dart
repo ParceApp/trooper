@@ -494,7 +494,8 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
     final streamToAwait = forceRefresh ? keyStream.skipCurrent() : keyStream;
 
     final stateFuture = streamToAwait.firstWhere(
-      (s) => s is DataLoaded<T> || s is DataError<T>,
+      (s) =>
+          (s is DataLoaded<T> && s is! DataRefreshing<T>) || s is DataError<T>,
       orElse: () => throw const TrooperCancelledException(
         message: 'Stream closed before data was received',
       ),

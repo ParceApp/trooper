@@ -90,5 +90,82 @@ void main() {
 
       mutation.dispose();
     });
+
+    test('sideEffects, stream states and reset on TrooperMutation', () async {
+      var started = false;
+      var completed = false;
+      var failed = false;
+
+      final mutation = TrooperMutation<String, ({String name})>(
+        namespace: 'profile_update',
+        action: (p) async {
+          if (p.name == 'invalid') throw ArgumentError('Bad name');
+          return 'Saved: ${p.name}';
+        },
+        sideEffects: TrooperMutationSideEffects(
+          onStarted: (_) => started = true,
+          onSuccess: (_, _) => completed = true,
+          onError: (_, _, _) => failed = true,
+        ),
+      );
+
+      final stateHistory = <StatefulData<String>>[];
+      final sub = mutation.stream.listen(stateHistory.add);
+
+      final successResult = await mutation((name: 'Bob'));
+      expect(successResult, 'Saved: Bob');
+      expect(started, isTrue);
+      expect(completed, isTrue);
+
+      try {
+        await mutation((name: 'invalid'));
+      } catch (_) {}
+      expect(failed, isTrue);
+      expect(mutation.stream.isError, isTrue);
+
+      mutation.reset();
+      expect(mutation.stream.isInitial, isTrue);
+
+      await sub.cancel();
+      mutation.dispose();
+    });
+
+    test('parameterless mutation, isLoading, didChangeDependencies, and disposed error', () async {
+      var executed = false;
+      final paramless = TrooperMutation<String, ()>(
+        namespace: 'paramless_mut',
+        action: (_) async {
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+          executed = true;
+          return 'Done';
+        },
+      );
+
+      final callFuture = ParameterlessTrooperMutation(paramless)();
+      await Future<void>.delayed(Duration.zero);
+      expect(paramless.isLoading, isTrue);
+
+      final result = await callFuture;
+      expect(result, 'Done');
+      expect(executed, isTrue);
+      expect(paramless.isLoading, isFalse);
+
+      final execResult = await ParameterlessTrooperMutation(paramless).execute();
+      expect(execResult, 'Done');
+
+      paramless.didChangeDependencies();
+      expect(paramless.currentState, isA<DataInitial<String>>());
+
+      paramless.invalidate();
+      expect(paramless.currentState, isA<DataInitial<String>>());
+
+      await paramless.dispose();
+      await paramless.dispose(); // Double dispose should be safe
+
+      expect(
+        () => paramless.execute(const ()),
+        throwsA(isA<StateError>()),
+      );
+    });
   });
 }
