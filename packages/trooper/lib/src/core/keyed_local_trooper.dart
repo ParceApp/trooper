@@ -1,37 +1,25 @@
 import 'dart:async';
-import 'package:meta/meta.dart';
-import 'package:trooper/src/core/keyed_accessor.dart';
-import 'package:trooper/src/storage/cache_store.dart';
-import 'package:trooper/src/storage/invalidatable.dart';
 import 'package:trooper/src/codec/trooper_codec.dart';
-import 'package:trooper/src/concurrency/query_queue.dart';
-import 'package:trooper/src/config/trooper_config.dart';
 import 'package:trooper/src/core/accessor.dart';
-import 'package:trooper/src/key/query_key.dart';
-import 'package:trooper/src/lifecycle/lifecycle_aware.dart';
+import 'package:trooper/src/core/keyed_trooper.dart';
 import 'package:trooper/src/state/data_metadata.dart';
 import 'package:trooper/src/state/stateful_data.dart';
-import 'package:trooper/src/stream/keyed_stateful_stream.dart';
 import 'package:trooper/src/stream/stateful_stream.dart';
-import 'package:trooper/src/telemetry/telemetry_hub.dart';
 import 'package:trooper/src/telemetry/trooper_event.dart';
-import 'package:trooper/src/effects/trooper_keyed_side_effects.dart';
 import 'package:trooper/types/parameter.dart';
 
-/// A Trooper managing dynamic collections of in-memory mutable local state partitioned by key [K].
+/// A [KeyedTrooper] managing in-memory mutable local application or UI state per key.
 ///
-/// Use subscript `operator []` or `.key(key)` to acquire a bound [Accessor] for a specific key.
-///
-/// Features:
-/// - **Synchronous Per-Key Updates**: Mutate state via [setKey], [updateKey], [resetKey].
-/// - **Bound Accessors**: Access single entries as standard [Accessor] instances.
-/// - **Collection Streams**: Observe all entries via [watchAll], [watchKeys], and [currentDataMap].
-/// - **Optional L2 Persistence**: Hydrates from and persists to [TrooperConfig.storage] via [codec].
+/// Designed for keyed collections of client-side state, drafts, input forms, or dynamic filters.
+/// Provides:
+/// - In-memory state tracking per entity [K].
+/// - Optional asynchronous persistence and hydration via [codec] and [StorageBackend].
+/// - Fine-grained reactive streams per key as well as aggregate collection watching.
 ///
 /// ### Example:
 /// ```dart
 /// final drafts = KeyedLocalTrooper<String, String, ()>(
-///   name: 'chat_drafts',
+///   namespace: 'chat_drafts',
 ///   initialValue: '',
 ///   codec: TrooperCodec.string,
 /// );
@@ -51,52 +39,32 @@ import 'package:trooper/types/parameter.dart';
 /// });
 /// ```
 class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
-    with LifecycleAware
-    implements Invalidatable, KeyedAccessor<K, T, P> {
+    extends KeyedTrooper<K, T, P> {
   /// Creates a [KeyedLocalTrooper] with a static [initialValue] for all keys.
   KeyedLocalTrooper({
-    required this.namespace,
+    required super.namespace,
     required T initialValue,
-    TrooperConfig? config,
-    CacheStore? cache,
-    this.sideEffects,
+    super.config,
+    super.cache,
+    super.sideEffects,
     this.codec,
-    TrooperQueryQueue? queryQueue,
-    TelemetryHub? telemetry,
-    KeyedStatefulStream<K, T>? stream,
-  }) : config = config ?? TrooperConfig.defaultConfig,
-       _ownsCache = cache == null,
-       _ownsQueryQueue = queryQueue == null,
-       initialValueFactory = ((_) => initialValue),
-       cache = cache ?? CacheStore(),
-       queryQueue = queryQueue ?? TrooperQueryQueue(),
-       telemetry = telemetry ?? TelemetryHub.global,
-       stream = stream ?? KeyedStatefulStream<K, T>();
+    super.queryQueue,
+    super.telemetry,
+    super.stream,
+  }) : initialValueFactory = ((_) => initialValue);
 
   /// Creates a [KeyedLocalTrooper] using a dynamic [initialValueFactory] per key.
   KeyedLocalTrooper.builder({
-    required this.namespace,
+    required super.namespace,
     required this.initialValueFactory,
-    TrooperConfig? config,
-    CacheStore? cache,
-    this.sideEffects,
+    super.config,
+    super.cache,
+    super.sideEffects,
     this.codec,
-    TrooperQueryQueue? queryQueue,
-    TelemetryHub? telemetry,
-    KeyedStatefulStream<K, T>? stream,
-  }) : config = config ?? TrooperConfig.defaultConfig,
-       _ownsCache = cache == null,
-       _ownsQueryQueue = queryQueue == null,
-       cache = cache ?? CacheStore(),
-       queryQueue = queryQueue ?? TrooperQueryQueue(),
-       telemetry = telemetry ?? TelemetryHub.global,
-       stream = stream ?? KeyedStatefulStream<K, T>();
-
-  final bool _ownsCache;
-  final bool _ownsQueryQueue;
-
-  /// Logical family name for this collection of local state entries.
-  final String namespace;
+    super.queryQueue,
+    super.telemetry,
+    super.stream,
+  });
 
   /// Function generating baseline initial value for any given key.
   final T Function(K key) initialValueFactory;
@@ -104,38 +72,10 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
   /// Optional codec for persistent L2 storage synchronization.
   final TrooperCodec<T>? codec;
 
-  /// Optional side-effect callbacks for lifecycle hooks.
-  final KeyedTrooperSideEffects<K, T, P>? sideEffects;
-
-  /// Configuration defining TTL and storage backend.
-  final TrooperConfig config;
-
-  /// In-memory cache store.
-  final CacheStore cache;
-
-  /// Concurrency queryQueue.
-  final TrooperQueryQueue queryQueue;
-
-  /// Telemetry hub.
-  final TelemetryHub telemetry;
-
-  /// Replay-enabled keyed stream manager.
-  final KeyedStatefulStream<K, T> stream;
-
   final Set<K> _hydratedKeys = {};
-  final Map<K, P> _lastParams = {};
-  bool _isDisposed = false;
 
   /// Whether [key] has been hydrated from L2 storage.
   bool isHydratedKey(K key) => _hydratedKeys.contains(key);
-
-  /// Returns a read-only [KeyedAccessor] facade over this keyed trooper.
-  late final KeyedAccessor<K, T, P> accessor = KeyedTrooperAccessor<K, T, P>(
-    accessorFactory: (k) => this[k],
-    stream: stream,
-    onInvalidate: invalidate,
-    onInvalidateKey: invalidateKey,
-  );
 
   /// Returns the baseline initial value for [key].
   T initialValueOf(K key) => initialValueFactory(key);
@@ -144,64 +84,6 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
   @override
   Accessor<T, P> operator [](K key) =>
       _KeyedLocalBoundAccessor<K, T, P>(this, key);
-
-  /// Returns a bound read-only [Accessor] scoped to entity [key].
-  @override
-  Accessor<T, P> key(K key) => this[key];
-
-  /// Synchronously returns all current key states.
-  @override
-  Map<K, StatefulData<T>> get currentStates => stream.currentStates;
-
-  @override
-  StatefulStream<Map<K, T>> watch(() parameter, {bool eager = true}) =>
-      accessor.watch(parameter, eager: eager);
-
-  @override
-  Future<Map<K, T>> get(() parameter, {bool forceRefresh = false}) =>
-      accessor.get(parameter, forceRefresh: forceRefresh);
-
-  @override
-  void trigger(() parameter, {bool forceRefresh = false}) =>
-      accessor.trigger(parameter, forceRefresh: forceRefresh);
-
-  @override
-  Future<Map<K, T>> refresh(() parameter) =>
-      accessor.refresh(parameter);
-
-  @override
-  StatefulData<Map<K, T>> current(() parameter) =>
-      accessor.current(parameter);
-
-  @override
-  Map<K, T>? currentData(() parameter) =>
-      accessor.currentData(parameter);
-
-  /// Returns the most recent parameter used for [key], or `null` if none.
-  P? lastParamOf(K key) => _lastParams[key];
-
-  /// Builds a [QueryKey] targeting [key].
-  @protected
-  QueryKey buildQueryKey(K key, P parameter) {
-    _lastParams[key] = parameter;
-    return QueryKey.keyed(
-      namespace,
-      key: key as Object,
-      parameter: parameter,
-    );
-  }
-
-  void _runSideEffect(FutureOr<void> Function()? callback) {
-    if (callback == null) return;
-    try {
-      final result = callback();
-      if (result is Future) {
-        result.ignore();
-      }
-    } catch (_) {
-      // Non-critical side-effect failure
-    }
-  }
 
   /// Updates the local state for [key] to [value] and returns the updated value.
   ///
@@ -221,16 +103,10 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
     stream.emitData(key, value, metadata: entry?.metadata);
 
     if (telemetry.hasListeners) {
-      telemetry.emit(
-        RequestCompletedEvent(
-          qKey,
-          duration: Duration.zero,
-          source: DataSource.local,
-        ),
-      );
+      telemetry.emit(DataSetEvent(qKey, source: DataSource.local));
     }
 
-    _runSideEffect(() => sideEffects?.onData?.call(key, value, parameter));
+    runSideEffect(() => sideEffects?.onData?.call(key, value, parameter));
 
     final storage = config.storage;
     final currentCodec = codec;
@@ -271,7 +147,7 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
   /// Resets all currently tracked keys back to their initial values.
   void resetAll() {
     for (final key in activeKeys) {
-      final param = _lastParams[key] ?? (const () is P ? const () as P : null);
+      final param = lastParamOf(key);
       if (param != null) {
         resetKey(key, param);
       }
@@ -283,8 +159,8 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
   Future<T> getKey(K key, P parameter, {bool forceRefresh = false}) async {
     final qKey = buildQueryKey(key, parameter);
 
-    // 1. Check L1 Memory Cache
-    if (!forceRefresh && config.hasCache) {
+    // 1. Check L1 Memory Cache (local state is always kept in memory)
+    if (!forceRefresh) {
       final entry = cache.getEntry<T>(qKey);
       if (entry != null && entry.isFresh) {
         if (telemetry.hasListeners) {
@@ -321,7 +197,9 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
             );
           }
           stream.emitData(key, decoded, metadata: entry?.metadata);
-          _runSideEffect(() => sideEffects?.onData?.call(key, decoded, parameter));
+          runSideEffect(
+            () => sideEffects?.onData?.call(key, decoded, parameter),
+          );
           _hydratedKeys.add(key);
           return decoded;
         }
@@ -394,101 +272,33 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
     );
   }
 
-  /// Returns the unwrapped data payload for [key] if available.
+  @override
   T? currentKeyData(K key) => stream.containsKey(key)
       ? stream.stateOf(key).dataOrNull
       : initialValueFactory(key);
 
-  /// Watches aggregate state updates across all tracked entity keys.
   @override
-  Stream<Map<K, StatefulData<T>>> watchAll() => stream.watchAll();
-
-  /// Watches updates to the set of currently tracked keys.
-  @override
-  Stream<Set<K>> watchKeys() => stream.watchKeys();
-
-  /// Returns an unmodifiable map of all currently loaded data payloads.
-  @override
-  Map<K, T> get currentDataMap => stream.currentDataMap;
-
-  /// Returns the set of currently active keys.
-  @override
-  Set<K> get activeKeys => stream.activeKeys;
-
-  /// Returns the count of currently active keys.
-  @override
-  int get count => stream.count;
-
-  /// Removes [key] from the stream, cache, and persistent storage.
-  Future<void> removeKey(K key) async {
-    final param = _lastParams.remove(key) ?? (const () is P ? const () as P : null);
+  void invalidateKey(K key, [P? parameter]) {
+    super.invalidateKey(key, parameter);
     _hydratedKeys.remove(key);
-    cache.removeWhere(
-      (k) => k.matchesNameAndKey(name: namespace, entityKey: key),
-    );
-    await stream.removeKey(key);
-
-    if (param != null) {
-      final storage = config.storage;
-      if (storage != null) {
-        final qKey = QueryKey.keyed(namespace, key: key, parameter: param);
-        storage.delete(qKey.storageKey).ignore();
-      }
-    }
   }
 
-  /// Clears all keys from the stream and cache.
-  Future<void> clearAll() async {
-    _lastParams.clear();
-    _hydratedKeys.clear();
-    cache.removeName(namespace);
-    await stream.clearAll();
-  }
-
-  /// Invalidates cached data, clears persistent storage, and resets state to [DataInitial] for [key].
-  @override
-  void invalidateKey(K key) {
-    final param = _lastParams.remove(key) ?? (const () is P ? const () as P : null);
-    if (param != null) {
-      final qKey = QueryKey.keyed(namespace, key: key, parameter: param);
-      cache.remove(qKey);
-      final storage = config.storage;
-      if (storage != null) {
-        storage.delete(qKey.storageKey).ignore();
-      }
-      if (telemetry.hasListeners) {
-        telemetry.emit(CacheInvalidatedEvent(qKey));
-      }
-    } else {
-      cache.removeWhere(
-        (k) => k.matchesNameAndKey(name: namespace, entityKey: key),
-      );
-    }
-    _hydratedKeys.remove(key);
-    stream.emitInitial(key);
-  }
-
-  /// Invalidates all keys belonging to this query family. Implements [Invalidatable].
   @override
   void invalidate() {
-    final storage = config.storage;
-    for (final key in stream.activeKeys) {
-      final param = _lastParams[key] ?? (const () is P ? const () as P : null);
-      if (param != null) {
-        final qKey = QueryKey.keyed(namespace, key: key, parameter: param);
-        cache.remove(qKey);
-        if (storage != null) {
-          storage.delete(qKey.storageKey).ignore();
-        }
-      }
-      stream.emitInitial(key);
-    }
-    _lastParams.clear();
+    super.invalidate();
     _hydratedKeys.clear();
-    cache.removeName(namespace);
-    if (telemetry.hasListeners) {
-      telemetry.emit(CacheInvalidatedEvent(QueryKey(namespace, const ())));
-    }
+  }
+
+  @override
+  Future<void> removeKey(K key, [P? parameter]) async {
+    _hydratedKeys.remove(key);
+    await super.removeKey(key, parameter);
+  }
+
+  @override
+  Future<void> clearAll() async {
+    _hydratedKeys.clear();
+    await super.clearAll();
   }
 
   /// Purges cache and resets all active keys back to baseline via [initialValueFactory].
@@ -502,17 +312,8 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
 
   @override
   Future<void> dispose() async {
-    if (_isDisposed) return;
-    _isDisposed = true;
-    _lastParams.clear();
     _hydratedKeys.clear();
-    await stream.dispose();
-    if (_ownsQueryQueue) {
-      await queryQueue.dispose();
-    }
-    if (_ownsCache) {
-      await cache.dispose();
-    }
+    await super.dispose();
   }
 }
 
@@ -535,8 +336,7 @@ class _KeyedLocalBoundAccessor<K extends Object, T, P extends Parameter>
       _parent.triggerKey(_key, parameter, forceRefresh: forceRefresh);
 
   @override
-  Future<T> refresh(P parameter) =>
-      _parent.refreshKey(_key, parameter);
+  Future<T> refresh(P parameter) => _parent.refreshKey(_key, parameter);
 
   @override
   StatefulData<T> current(P parameter) => _parent.currentKeyState(_key);

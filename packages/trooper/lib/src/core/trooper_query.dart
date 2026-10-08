@@ -223,7 +223,7 @@ class TrooperQuery<T, P extends Parameter> extends Trooper<T, P> {
         );
       }
 
-      final entry = cache.getEntry<T>(key);
+      final entry = config.hasCache ? cache.getEntry<T>(key) : null;
       streamController.emitData(result, metadata: entry?.metadata);
 
       // Persist to L2 storage asynchronously if configured

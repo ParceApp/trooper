@@ -52,6 +52,11 @@ class TrooperConfig {
   QueryConflictPolicy get queryConflictPolicy => conflictPolicy;
 
   /// Whether caching is enabled (TTL > zero).
+  ///
+  /// When `false` (e.g. [TrooperConfig.noCache]):
+  /// - Queries ([TrooperQuery], [KeyedTrooperQuery]): strictly bypasses L1 cache on reads and writes; fetches directly from the data source.
+  /// - Streams ([StreamTrooper], [KeyedStreamTrooper]): incoming frames update the stream controller directly without writing to L1 cache.
+  /// - Local state ([LocalTrooper], [KeyedLocalTrooper]): in-memory state is maintained in memory as the primary source of truth.
   bool get hasCache => timeToLive > Duration.zero;
 
   /// Global default configuration used when no custom config is specified.

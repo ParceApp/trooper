@@ -12,6 +12,7 @@ export 'src/core/accessor.dart';
 export 'src/core/keyed_accessor.dart';
 export 'src/core/keyed_local_trooper.dart';
 export 'src/core/keyed_stream_trooper.dart';
+export 'src/core/keyed_trooper.dart';
 export 'src/core/keyed_trooper_query.dart';
 export 'src/core/local_trooper.dart';
 export 'src/core/stream_trooper.dart';

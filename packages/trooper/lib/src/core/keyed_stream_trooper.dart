@@ -1,37 +1,31 @@
 import 'dart:async';
-import 'package:meta/meta.dart';
-import 'package:trooper/src/storage/cache_store.dart';
-import 'package:trooper/src/storage/invalidatable.dart';
 import 'package:trooper/src/concurrency/cancel_token.dart';
 import 'package:trooper/src/concurrency/query_queue.dart';
 import 'package:trooper/src/config/stale_policy.dart';
 import 'package:trooper/src/config/trooper_config.dart';
 import 'package:trooper/src/core/accessor.dart';
-import 'package:trooper/src/core/keyed_accessor.dart';
+import 'package:trooper/src/core/keyed_trooper.dart';
 import 'package:trooper/src/effects/trooper_keyed_side_effects.dart';
 import 'package:trooper/src/error/trooper_exception.dart';
 import 'package:trooper/src/key/query_key.dart';
-import 'package:trooper/src/lifecycle/lifecycle_aware.dart';
 import 'package:trooper/src/state/data_metadata.dart';
 import 'package:trooper/src/state/stateful_data.dart';
+import 'package:trooper/src/storage/cache_store.dart';
 import 'package:trooper/src/stream/keyed_stateful_stream.dart';
 import 'package:trooper/src/stream/stateful_stream.dart';
 import 'package:trooper/src/telemetry/telemetry_hub.dart';
 import 'package:trooper/src/telemetry/trooper_event.dart';
 import 'package:trooper/types/parameter.dart';
 
-/// Function signature for creating an upstream push stream for a specific entity [key].
-///
-/// Can return a [Stream] directly or a [Future] completing with a [Stream]
-/// for asynchronous connection setup, authentication, or room joining.
-typedef KeyedStreamFactory<K, T, P extends Parameter> =
+/// Factory signature for creating an upstream [Stream] for entity [key].
+typedef KeyedStreamFactory<K, T, P> =
     FutureOr<Stream<T>> Function(
       K key,
       P parameter,
       TrooperCancelToken cancelToken,
     );
 
-/// A Trooper managing dynamic collections of reactive, push-based data streams partitioned by key [K].
+/// A [KeyedTrooper] managing dynamic collections of reactive, push-based data streams partitioned by key [K].
 ///
 /// Use subscript `operator []` or `.key(key)` to acquire a bound [Accessor] for a specific entity.
 ///
@@ -47,7 +41,7 @@ typedef KeyedStreamFactory<K, T, P extends Parameter> =
 /// ### Example:
 /// ```dart
 /// final roomChat = KeyedStreamTrooper<String, ChatMessage, ()>(
-///   name: 'chat_rooms',
+///   namespace: 'chat_rooms',
 ///   streamFactory: (roomId, _, cancelToken) => webSocket.joinRoom(roomId),
 ///   onRefresh: (roomId, _) => webSocket.send({'cmd': 'history', 'room': roomId}),
 /// );
@@ -64,29 +58,22 @@ typedef KeyedStreamFactory<K, T, P extends Parameter> =
 /// });
 /// ```
 class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
-    with LifecycleAware
-    implements Invalidatable, KeyedAccessor<K, T, P> {
+    extends KeyedTrooper<K, T, P> {
   /// Creates a [KeyedStreamTrooper] with the specified [streamFactory].
   KeyedStreamTrooper({
-    required this.namespace,
+    required super.namespace,
     required this.streamFactory,
     this.onConnect,
     this.onRefresh,
     this.onDisconnect,
-    TrooperConfig? config,
-    this.sideEffects,
+    super.config,
+    super.sideEffects,
     this.keepAlive = false,
-    CacheStore? cache,
-    TrooperQueryQueue? queryQueue,
-    TelemetryHub? telemetry,
-    KeyedStatefulStream<K, T>? stream,
-  }) : _ownsCache = cache == null,
-       _ownsQueryQueue = queryQueue == null,
-       config = config ?? .defaultConfig,
-       cache = cache ?? CacheStore(),
-       queryQueue = queryQueue ?? TrooperQueryQueue(),
-       telemetry = telemetry ?? TelemetryHub.global,
-       stream = stream ?? KeyedStatefulStream<K, T>();
+    super.cache,
+    super.queryQueue,
+    super.telemetry,
+    super.stream,
+  });
 
   /// Factory method for parameterless keyed streams.
   static KeyedStreamTrooper<K, T, ()> fromStream<K extends Object, T>({
@@ -109,6 +96,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
         ? (key, _, token) => onConnect(key, token)
         : null,
     onRefresh: onRefresh != null ? (key, _) => onRefresh(key) : null,
+    onDisconnect: onDisconnect,
     config: config,
     sideEffects: sideEffects,
     keepAlive: keepAlive,
@@ -118,18 +106,10 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
     stream: streamManager,
   );
 
-  final bool _ownsCache;
-  final bool _ownsQueryQueue;
-
-  /// Logical family name for this collection of stream resources.
-  final String namespace;
-
   /// Factory creating the upstream [Stream] for a given key.
   final KeyedStreamFactory<K, T, P> streamFactory;
 
   /// Optional hook invoked when connecting to the upstream stream for an entity key.
-  ///
-  /// Useful for sending initial subscription frames, authentication, or joining rooms.
   final FutureOr<void> Function(
     K key,
     P parameter,
@@ -138,157 +118,76 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
   onConnect;
 
   /// Optional hook invoked when refreshing data for an entity key via [refreshKey] or [getKey].
-  ///
-  /// Useful for requesting immediate snapshots or polling fresh data over an active socket.
   final FutureOr<void> Function(K key, P parameter)? onRefresh;
 
-  /// Optional hook invoked when the upstream stream for an entity key is disconnected via [disconnect].
-  ///
-  /// Useful for sending unsubscribe frames or cleaning up resources on the server side.
+  /// Optional hook invoked when the upstream stream is disconnected via [disconnectKey].
   final FutureOr<void> Function(K key)? onDisconnect;
 
-  /// Configuration defining TTL and stale policy.
-  final TrooperConfig config;
-
-  /// Optional side-effect callbacks for lifecycle hooks.
-  final KeyedTrooperSideEffects<K, T, P>? sideEffects;
-
-  /// In-memory L1 cache store.
-  final CacheStore cache;
-
-  /// Concurrency and request queryQueue.
-  final TrooperQueryQueue queryQueue;
-
-  /// Telemetry hub for diagnostic events.
-  final TelemetryHub telemetry;
-
-  /// Replay-enabled keyed stream manager.
-  final KeyedStatefulStream<K, T> stream;
-
-  /// If `true`, per-key upstream subscriptions stay active even when no watchers remain.
-  /// If `false` (default), subscriptions cancel when the last watcher for that key cancels.
+  /// If `true`, the upstream subscription stays active even when no active listeners remain.
   final bool keepAlive;
 
   final Map<K, StreamSubscription<T>> _subscriptions = {};
   final Map<K, TrooperCancelToken> _cancelTokens = {};
-  final Map<K, P> _currentParams = {};
-  final Map<K, T> _lastLoadedData = {};
   final Map<K, int> _activeWatchers = {};
+  final Map<K, T> _lastLoadedData = {};
   final Set<K> _pausedKeys = {};
   final Set<K> _connectingKeys = {};
-  bool _isDisposed = false;
-
-  /// Returns a read-only [KeyedAccessor] facade over this keyed stream trooper.
-  late final KeyedAccessor<K, T, P> accessor = KeyedTrooperAccessor<K, T, P>(
-    accessorFactory: (k) => this[k],
-    stream: stream,
-    onInvalidate: invalidate,
-    onInvalidateKey: invalidateKey,
-  );
-
-  /// Convenient subscript operator to acquire a bound [Accessor] for [key].
-  @override
-  Accessor<T, P> operator [](K key) =>
-      _KeyedStreamBoundAccessor<K, T, P>(this, key);
-
-  /// Key-specific bound accessor alias.
-  @override
-  Accessor<T, P> key(K key) => this[key];
-
-  /// Synchronously returns all current key states.
-  @override
-  Map<K, StatefulData<T>> get currentStates => stream.currentStates;
-
-  @override
-  StatefulStream<Map<K, T>> watch(() parameter, {bool eager = true}) =>
-      accessor.watch(parameter, eager: eager);
-
-  @override
-  Future<Map<K, T>> get(() parameter, {bool forceRefresh = false}) =>
-      accessor.get(parameter, forceRefresh: forceRefresh);
-
-  @override
-  void trigger(() parameter, {bool forceRefresh = false}) =>
-      accessor.trigger(parameter, forceRefresh: forceRefresh);
-
-  @override
-  Future<Map<K, T>> refresh(() parameter) => accessor.refresh(parameter);
-
-  @override
-  StatefulData<Map<K, T>> current(() parameter) => accessor.current(parameter);
-
-  @override
-  Map<K, T>? currentData(() parameter) => accessor.currentData(parameter);
-
-  /// Builds a [QueryKey] targeting [key].
-  @protected
-  QueryKey buildQueryKey(K key, P parameter) {
-    _currentParams[key] = parameter;
-    return QueryKey.keyed(namespace, key: key as Object, parameter: parameter);
-  }
-
-  /// Safely executes an asynchronous side-effect callback without letting exceptions escape.
-  @protected
-  void runSideEffect(FutureOr<void> Function()? callback) {
-    if (callback == null) return;
-    try {
-      final result = callback();
-      if (result is Future) {
-        result.ignore();
-      }
-    } catch (_) {
-      // Non-critical side-effect failure
-    }
-  }
 
   /// Whether an upstream subscription is currently active or connecting for [key].
   bool isConnectedKey(K key) =>
       _subscriptions.containsKey(key) || _connectingKeys.contains(key);
 
+  /// Subscript operator to acquire a bound [Accessor] targeting [key].
+  @override
+  Accessor<T, P> operator [](K key) =>
+      _KeyedStreamBoundAccessor<K, T, P>(this, key);
+
   /// Manually connects to the upstream stream for [key] using [parameter].
   Future<void> connectKey(K key, P parameter) async {
-    // If already connected or connecting with identical parameter, keep existing connection
-    if ((_subscriptions.containsKey(key) || _connectingKeys.contains(key)) &&
-        _currentParams[key] == parameter) {
+    final param = parameter;
+    final currentParam = lastParamOf(key);
+
+    // If already connected or connecting with the same parameter, keep existing connection
+    if (isConnectedKey(key) && currentParam == param) {
       return;
     }
 
     _cleanupKey(key);
-    _currentParams[key] = parameter;
 
     final token = TrooperCancelToken();
     _cancelTokens[key] = token;
-    final qKey = buildQueryKey(key, parameter);
+    _connectingKeys.add(key);
 
-    // Emit loading if no current data or if stale policy discards stale data,
-    // otherwise emit refreshing (SWR).
-    final current = currentKeyData(key);
-    if (current != null &&
-        config.stalePolicy == StalePolicy.keepStaleWhileRevalidate) {
-      stream.emitRefreshing(key, current);
-    } else {
+    final qKey = buildQueryKey(key, param);
+
+    // Emit loading/refreshing according to stale policy
+    final currentKeyDataVal = currentKeyData(key);
+    if (currentKeyDataVal == null ||
+        config.stalePolicy == StalePolicy.discardStaleOnRefresh) {
       stream.emitLoading(key);
+    } else {
+      final entry = cache.getEntry<T>(qKey);
+      stream.emitRefreshing(key, currentKeyDataVal, metadata: entry?.metadata);
     }
 
     if (telemetry.hasListeners) {
       telemetry.emit(RequestStartedEvent(qKey));
     }
-    runSideEffect(() => sideEffects?.onRequestStarted?.call(key, parameter));
+    runSideEffect(() => sideEffects?.onRequestStarted?.call(key, param));
 
     try {
-      _connectingKeys.add(key);
       if (onConnect != null) {
-        final connectResult = onConnect!(key, parameter, token);
+        final connectResult = onConnect!(key, param, token);
         if (connectResult is Future) {
           await connectResult;
         }
         if (token.isCancelled) return;
       }
 
-      await _resolveAndSubscribeKeyUpstream(key, parameter, token, qKey);
+      await _resolveAndSubscribeKeyUpstream(key, param, token, qKey);
     } catch (error, stackTrace) {
       if (!token.isCancelled) {
-        _handleKeyUpstreamError(key, error, stackTrace, qKey, parameter);
+        _handleKeyUpstreamError(key, error, stackTrace, qKey, param);
       }
     } finally {
       if (_cancelTokens[key] == token) {
@@ -322,25 +221,16 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
   ) {
     _subscriptions[key] = upstream.listen(
       (data) {
-        if (sideEffects != null &&
-            sideEffects?.transformRequestResult != null) {
-          runSideEffect(() async {
-            T transformation = await sideEffects!.transformRequestResult!.call(
-              key,
-              data,
-              param,
-            );
-            data = transformation;
-          });
-        }
         _lastLoadedData[key] = data;
-        cache.put(
-          qKey,
-          data,
-          timeToLive: config.timeToLive,
-          source: DataSource.network,
-        );
-        final entry = cache.getEntry<T>(qKey);
+        if (config.hasCache) {
+          cache.put(
+            qKey,
+            data,
+            timeToLive: config.timeToLive,
+            source: DataSource.network,
+          );
+        }
+        final entry = config.hasCache ? cache.getEntry<T>(qKey) : null;
         stream.emitData(key, data, metadata: entry?.metadata);
 
         if (telemetry.hasListeners) {
@@ -408,7 +298,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
     await sub?.cancel();
   }
 
-  /// Watches state updates for a single [key].
+  /// Watches state updates for a single [key], managing automatic connection.
   StatefulStream<T> watchKey(K key, P parameter, {bool eager = true}) {
     if (eager && !isConnectedKey(key)) {
       connectKey(key, parameter).ignore();
@@ -417,33 +307,33 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
     final keyStream = stream.streamOf(key);
 
     return StatefulStream<T>(
-      Stream<StatefulData<T>>.multi((listener) {
+      Stream.multi((controller) {
         _activeWatchers[key] = (_activeWatchers[key] ?? 0) + 1;
         final sub = keyStream.listen(
-          listener.addSync,
-          onError: listener.addError,
-          onDone: listener.close,
+          controller.add,
+          onError: controller.addError,
+          onDone: controller.close,
         );
 
-        listener.onCancel = () async {
-          await sub.cancel();
+        controller.onCancel = () {
+          sub.cancel();
           final count = (_activeWatchers[key] ?? 1) - 1;
           if (count <= 0) {
             _activeWatchers.remove(key);
             if (!keepAlive) {
-              await disconnectKey(key);
+              disconnectKey(key).ignore();
             }
           } else {
             _activeWatchers[key] = count;
           }
         };
-      }, isBroadcast: true),
-      currentStateProvider: () => currentKey(key),
-      rawBroadcastStream: keyStream.rawBroadcastStream,
+      }),
+      currentStateProvider: () => stream.stateOf(key),
     );
   }
 
-  /// Reads the value for [key], awaiting the stream if not yet cached.
+  /// Reads the value for [key], returning immediately from cache if fresh,
+  /// or waiting for the next upstream stream event.
   Future<T> getKey(K key, P parameter, {bool forceRefresh = false}) async {
     final qKey = buildQueryKey(key, parameter);
 
@@ -504,158 +394,81 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
   Future<T> refreshKey(K key, P parameter) =>
       getKey(key, parameter, forceRefresh: true);
 
-  /// Returns the current state for [key] synchronously.
-  StatefulData<T> currentKey(K key) => stream.stateOf(key);
-
-  /// Returns the unwrapped data payload for [key] if available.
-  T? currentKeyData(K key) => stream.dataOf(key);
-
   /// Manually sets data for [key] in cache and stream, returning the set [data].
   T setKey(K key, T data, P parameter) {
     final qKey = buildQueryKey(key, parameter);
 
-    cache.put(
-      qKey,
-      data,
-      timeToLive: config.timeToLive,
-      source: DataSource.local,
-    );
+    if (config.hasCache) {
+      cache.put(
+        qKey,
+        data,
+        timeToLive: config.timeToLive,
+        source: DataSource.local,
+      );
+    }
 
-    final entry = cache.getEntry<T>(qKey);
+    final entry = config.hasCache ? cache.getEntry<T>(qKey) : null;
     stream.emitData(key, data, metadata: entry?.metadata);
+    if (telemetry.hasListeners) {
+      telemetry.emit(DataSetEvent(qKey, source: DataSource.local));
+    }
+    runSideEffect(() => sideEffects?.onData?.call(key, data, parameter));
     return data;
   }
 
-  /// Watches aggregate state updates across all tracked entity keys.
   @override
-  Stream<Map<K, StatefulData<T>>> watchAll() => stream.watchAll();
+  void invalidateKey(K key, [P? parameter]) {
+    disconnectKey(key).ignore();
+    super.invalidateKey(key, parameter);
+  }
 
-  /// Watches updates to the set of currently tracked keys.
   @override
-  Stream<Set<K>> watchKeys() => stream.watchKeys();
+  void invalidate() {
+    for (final key in stream.activeKeys) {
+      disconnectKey(key).ignore();
+    }
+    super.invalidate();
+  }
 
-  /// Returns an unmodifiable map of all currently loaded data payloads.
   @override
-  Map<K, T> get currentDataMap => stream.currentDataMap;
-
-  /// Returns the set of currently active keys.
-  @override
-  Set<K> get activeKeys => stream.activeKeys;
-
-  /// Returns the count of currently active keys.
-  @override
-  int get count => stream.count;
-
-  /// Removes [key] from the stream, cache, and disconnects its upstream.
-  Future<void> removeKey(K key) async {
-    final param =
-        _currentParams.remove(key) ?? (const () is P ? const () as P : null);
-
+  Future<void> removeKey(K key, [P? parameter]) async {
     await disconnectKey(key);
     _lastLoadedData.remove(key);
     _activeWatchers.remove(key);
     _pausedKeys.remove(key);
     _connectingKeys.remove(key);
-    if (param != null) {
-      final qKey = QueryKey.keyed(namespace, key: key, parameter: param);
-      cache.remove(qKey);
-    } else {
-      cache.removeWhere(
-        (k) => k.matchesNameAndKey(name: namespace, entityKey: key),
-      );
-    }
-    await stream.removeKey(key);
+    await super.removeKey(key, parameter);
   }
 
-  /// Disconnects all active key subscriptions.
-  Future<void> disconnectAll() async {
-    final keys = {..._subscriptions.keys, ..._connectingKeys};
-    for (final key in keys) {
+  @override
+  Future<void> clearAll() async {
+    for (final key in List<K>.of(_subscriptions.keys)) {
       await disconnectKey(key);
     }
-  }
-
-  /// Clears all keys from the stream and cache.
-  Future<void> clearAll() async {
-    await disconnectAll();
     _lastLoadedData.clear();
     _activeWatchers.clear();
-    _currentParams.clear();
     _pausedKeys.clear();
     _connectingKeys.clear();
-    cache.removeName(namespace);
-    await stream.clearAll();
+    await super.clearAll();
   }
 
-  /// Invalidates cached data, disconnects upstream, clears persistent storage, and resets state to [DataInitial] for [key].
   @override
-  void invalidateKey(K key) {
-    disconnectKey(key).ignore();
-    final param =
-        _currentParams.remove(key) ?? (const () is P ? const () as P : null);
-    if (param != null) {
-      final qKey = QueryKey.keyed(namespace, key: key, parameter: param);
-      cache.remove(qKey);
-      final storage = config.storage;
-      if (storage != null) {
-        storage.delete(qKey.storageKey).ignore();
-      }
-      if (telemetry.hasListeners) {
-        telemetry.emit(CacheInvalidatedEvent(qKey));
-      }
-    } else {
-      cache.removeWhere(
-        (k) => k.matchesNameAndKey(name: namespace, entityKey: key),
-      );
-    }
-    stream.emitInitial(key);
-  }
-
-  /// Invalidates all keys belonging to this query family. Implements [Invalidatable].
-  @override
-  void invalidate() {
-    final storage = config.storage;
-    for (final key in stream.activeKeys) {
+  void pause() {
+    super.pause();
+    _pausedKeys.addAll(_subscriptions.keys);
+    for (final key in List<K>.of(_subscriptions.keys)) {
       disconnectKey(key).ignore();
-      final param =
-          _currentParams[key] ?? (const () is P ? const () as P : null);
-      if (param != null) {
-        final qKey = QueryKey.keyed(namespace, key: key, parameter: param);
-        cache.remove(qKey);
-        if (storage != null) {
-          storage.delete(qKey.storageKey).ignore();
-        }
-      }
-      stream.emitInitial(key);
-    }
-    _currentParams.clear();
-    cache.removeName(namespace);
-    if (telemetry.hasListeners) {
-      telemetry.emit(CacheInvalidatedEvent(QueryKey(namespace, const ())));
     }
   }
 
-  /// Temporarily disconnects active upstreams across all keys (e.g. app in background).
-  @override
-  Future<void> pause() async {
-    cache.pause();
-    final connected = _subscriptions.keys.toList();
-    _pausedKeys.addAll(connected);
-    for (final key in connected) {
-      await disconnectKey(key);
-    }
-  }
-
-  /// Reconnects previously paused keys if they have active watchers or keepAlive.
   @override
   FutureOr<void> resume() {
-    cache.resume();
-    final keysToResume = _pausedKeys.toList();
+    super.resume();
+    final keysToResume = Set<K>.of(_pausedKeys);
     _pausedKeys.clear();
     for (final key in keysToResume) {
       if ((_activeWatchers[key] ?? 0) > 0 || keepAlive) {
-        final param =
-            _currentParams[key] ?? (const () is P ? const () as P : null);
+        final param = lastParamOf(key);
         if (param != null) {
           connectKey(key, param).ignore();
         }
@@ -663,15 +476,13 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
     }
   }
 
-  /// Reconnects disconnected or errored keys that have active watchers or keepAlive.
   @override
   FutureOr<void> recover() {
     for (final key in stream.activeKeys) {
       final hasWatchers = (_activeWatchers[key] ?? 0) > 0 || keepAlive;
       final isErrored = stream.stateOf(key).isError;
       if ((!isConnectedKey(key) && hasWatchers) || isErrored) {
-        final param =
-            _currentParams[key] ?? (const () is P ? const () as P : null);
+        final param = lastParamOf(key);
         if (param != null) {
           connectKey(key, param).ignore();
         }
@@ -679,13 +490,12 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
     }
   }
 
-  /// Purges cache and reconnects all actively watched keys.
   @override
   FutureOr<void> didChangeDependencies() {
     final keysToReconnect = {
       for (final key in stream.activeKeys)
         if (isConnectedKey(key) || (_activeWatchers[key] ?? 0) > 0 || keepAlive)
-          key: _currentParams[key] ?? (const () is P ? const () as P : null),
+          key: lastParamOf(key),
     };
     invalidate();
     if (config.refreshAfterChangeDependencies) {
@@ -699,23 +509,19 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
 
   @override
   Future<void> dispose() async {
-    if (_isDisposed) return;
-    _isDisposed = true;
-    await disconnectAll();
-    _lastLoadedData.clear();
-    _activeWatchers.clear();
-    _currentParams.clear();
-    _pausedKeys.clear();
-    _connectingKeys.clear();
+    for (final token in _cancelTokens.values) {
+      token.cancel('KeyedStreamTrooper disposed');
+    }
+    for (final sub in _subscriptions.values) {
+      await sub.cancel();
+    }
     _cancelTokens.clear();
     _subscriptions.clear();
-    await stream.dispose();
-    if (_ownsQueryQueue) {
-      await queryQueue.dispose();
-    }
-    if (_ownsCache) {
-      await cache.dispose();
-    }
+    _lastLoadedData.clear();
+    _activeWatchers.clear();
+    _pausedKeys.clear();
+    _connectingKeys.clear();
+    await super.dispose();
   }
 }
 

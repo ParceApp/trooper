@@ -205,10 +205,9 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
   @override
   Future<void> initialize() async {
     if (!_isHydrated && config.storage != null && codec != null) {
-      if (const () is P) {
-        await get(const () as P);
-      } else if (lastParam != null) {
-        await get(lastParam!);
+      final param = lastParam;
+      if (param != null) {
+        await get(param);
       }
     }
   }
@@ -229,10 +228,9 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
   FutureOr<void> didChangeDependencies() {
     invalidate();
     if (config.refreshAfterChangeDependencies) {
-      if (const () is P) {
-        reset(const () as P);
-      } else if (lastParam != null) {
-        reset(lastParam!);
+      final param = lastParam;
+      if (param != null) {
+        reset(param);
       }
     }
   }
@@ -241,8 +239,7 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
 /// Convenience extension for parameterless [LocalTrooper] instances where `P` is `()`.
 extension ParameterlessLocalTrooper<T> on LocalTrooper<T, ()> {
   /// Updates the local state by applying [transform] without requiring an explicit `()` parameter.
-  T update(T Function(T current) transform) =>
-      this.update(transform, const ());
+  T update(T Function(T current) transform) => this.update(transform, const ());
 
   /// Resets the state back to [initialValue] without requiring an explicit `()` parameter.
   T reset() => this.reset(const ());

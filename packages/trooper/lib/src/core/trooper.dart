@@ -148,13 +148,15 @@ abstract class Trooper<T, P extends Parameter>
     recordParam(parameter);
     final key = buildQueryKey(parameter);
 
-    cache.put(
-      key,
-      data,
-      timeToLive: config.timeToLive,
-      source: DataSource.local,
-    );
-    final entry = cache.getEntry<T>(key);
+    if (config.hasCache) {
+      cache.put(
+        key,
+        data,
+        timeToLive: config.timeToLive,
+        source: DataSource.local,
+      );
+    }
+    final entry = config.hasCache ? cache.getEntry<T>(key) : null;
     streamController.emitData(data, metadata: entry?.metadata);
 
     if (telemetry.hasListeners) {
@@ -167,7 +169,7 @@ abstract class Trooper<T, P extends Parameter>
 
   @override
   void invalidate() {
-    final param = _lastParam ?? (const () is P ? const () as P : null);
+    final param = _lastParam;
     if (param != null) {
       final key = buildQueryKey(param);
       cache.remove(key);
@@ -206,7 +208,7 @@ abstract class Trooper<T, P extends Parameter>
   /// Recovers the trooper state by re-fetching if currently in an error state.
   @override
   FutureOr<void> recover() {
-    final param = _lastParam ?? (const () is P ? const () as P : null);
+    final param = _lastParam;
     if (streamController.isError && param != null) {
       refresh(param).ignore();
     }
@@ -216,7 +218,7 @@ abstract class Trooper<T, P extends Parameter>
   /// cancelling in-flight requests, and re-fetching if active listeners exist.
   @override
   FutureOr<void> didChangeDependencies() {
-    final param = _lastParam ?? (const () is P ? const () as P : null);
+    final param = _lastParam;
     queryQueue.cancelNamespace(namespace);
     invalidate();
     if (config.refreshAfterChangeDependencies &&

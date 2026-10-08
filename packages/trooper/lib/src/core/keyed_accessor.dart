@@ -43,7 +43,9 @@ abstract interface class KeyedAccessor<K extends Object, T, P extends Parameter>
   Accessor<T, P> key(K key);
 
   /// Invalidates the cache entry and state for [key].
-  void invalidateKey(K key);
+  ///
+  /// If [parameter] is specified, targets the exact parameter key in storage.
+  void invalidateKey(K key, [P? parameter]);
 
   /// Reactively observes the state of all keys as a Map of [StatefulData].
   Stream<Map<K, StatefulData<T>>> watchAll();
@@ -87,7 +89,7 @@ class KeyedTrooperAccessor<K extends Object, T, P extends Parameter>
   final void Function() onInvalidate;
 
   /// Optional callback to invalidate a single key.
-  final void Function(K key)? onInvalidateKey;
+  final void Function(K key, [P? parameter])? onInvalidateKey;
 
   /// Optional custom get handler for the entire map.
   final Future<Map<K, T>> Function()? onRead;
@@ -102,7 +104,8 @@ class KeyedTrooperAccessor<K extends Object, T, P extends Parameter>
   Accessor<T, P> key(K key) => accessorFactory(key);
 
   @override
-  void invalidateKey(K key) => onInvalidateKey?.call(key);
+  void invalidateKey(K key, [P? parameter]) =>
+      onInvalidateKey?.call(key, parameter);
 
   @override
   Map<K, T> get currentDataMap => stream.currentDataMap;

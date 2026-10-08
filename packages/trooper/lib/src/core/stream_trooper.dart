@@ -234,13 +234,15 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
           });
         }
         _lastLoadedData = data;
-        cache.put(
-          qKey,
-          data,
-          timeToLive: config.timeToLive,
-          source: DataSource.network,
-        );
-        final entry = cache.getEntry<T>(qKey);
+        if (config.hasCache) {
+          cache.put(
+            qKey,
+            data,
+            timeToLive: config.timeToLive,
+            source: DataSource.network,
+          );
+        }
+        final entry = config.hasCache ? cache.getEntry<T>(qKey) : null;
         streamController.emitData(data, metadata: entry?.metadata);
 
         if (telemetry.hasListeners) {
@@ -412,10 +414,9 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
     if (_isPaused) {
       _isPaused = false;
       if (_activeWatchers > 0 || keepAlive) {
-        if (const () is P) {
-          connect(const () as P).ignore();
-        } else if (lastParam != null) {
-          connect(lastParam!).ignore();
+        final param = lastParam;
+        if (param != null) {
+          connect(param).ignore();
         }
       }
     }
@@ -426,10 +427,9 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
   FutureOr<void> recover() {
     if ((!isConnected && (_activeWatchers > 0 || keepAlive)) ||
         streamController.isError) {
-      if (const () is P) {
-        connect(const () as P).ignore();
-      } else if (lastParam != null) {
-        connect(lastParam!).ignore();
+      final param = lastParam;
+      if (param != null) {
+        connect(param).ignore();
       }
     }
   }
@@ -440,10 +440,9 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
     final shouldReconnect = isConnected || _activeWatchers > 0 || keepAlive;
     invalidate();
     if (config.refreshAfterChangeDependencies && shouldReconnect) {
-      if (const () is P) {
-        connect(const () as P).ignore();
-      } else if (lastParam != null) {
-        connect(lastParam!).ignore();
+      final param = lastParam;
+      if (param != null) {
+        connect(param).ignore();
       }
     }
   }
