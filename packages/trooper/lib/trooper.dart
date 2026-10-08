@@ -8,6 +8,7 @@ export 'src/concurrency/query_queue.dart';
 export 'src/config/query_conflict_policy.dart';
 export 'src/config/stale_policy.dart';
 export 'src/config/trooper_config.dart';
+export 'src/controller/trooper_controller.dart';
 export 'src/core/accessor.dart';
 export 'src/core/keyed_accessor.dart';
 export 'src/core/keyed_local_trooper.dart';
