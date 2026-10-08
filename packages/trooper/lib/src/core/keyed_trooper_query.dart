@@ -142,9 +142,9 @@ class KeyedTrooperQuery<K extends Object, T, P extends Parameter>
         final storage = config.storage;
         final currentCodec = codec;
         if (storage != null && currentCodec != null) {
-          final serialized = await storage.read(qKey.storageKey);
-          if (serialized != null) {
-            try {
+          try {
+            final serialized = await storage.read(qKey.storageKey);
+            if (serialized != null) {
               final envelope = StorageEnvelope.tryDecode(serialized);
               if (envelope == null) {
                 storage.delete(qKey.storageKey).ignore();
@@ -218,9 +218,9 @@ class KeyedTrooperQuery<K extends Object, T, P extends Parameter>
                 );
                 return restoredData;
               }
-            } catch (_) {
-              storage.delete(qKey.storageKey).ignore();
             }
+          } catch (_) {
+            storage.delete(qKey.storageKey).ignore();
           }
         }
       }
@@ -318,9 +318,27 @@ class KeyedTrooperQuery<K extends Object, T, P extends Parameter>
               ? config.timeToLive.inMilliseconds
               : null,
         );
-        storage.write(qKey.storageKey, envelope.encode()).ignore();
-      } catch (_) {
-        // Non-critical persistence failure
+        storage
+            .write(qKey.storageKey, envelope.encode())
+            .catchError((Object error, StackTrace stacktrace) {
+          telemetry.emit(
+            PersistenceErrorEvent(
+              qKey,
+              error: error,
+              duration: Duration.zero,
+              stackTrace: stacktrace,
+            ),
+          );
+        });
+      } catch (error, stacktrace) {
+        telemetry.emit(
+          PersistenceErrorEvent(
+            qKey,
+            error: error,
+            duration: Duration.zero,
+            stackTrace: stacktrace,
+          ),
+        );
       }
     }
 
@@ -408,8 +426,27 @@ class KeyedTrooperQuery<K extends Object, T, P extends Parameter>
                 ? config.timeToLive.inMilliseconds
                 : null,
           );
-          storage.write(qKey.storageKey, envelope.encode()).ignore();
-        } catch (_) {
+          storage
+              .write(qKey.storageKey, envelope.encode())
+              .catchError((Object error, StackTrace stacktrace) {
+            telemetry.emit(
+              PersistenceErrorEvent(
+                qKey,
+                error: error,
+                duration: stopwatch.elapsed,
+                stackTrace: stacktrace,
+              ),
+            );
+          });
+        } catch (error, stacktrace) {
+          telemetry.emit(
+            PersistenceErrorEvent(
+              qKey,
+              error: error,
+              duration: stopwatch.elapsed,
+              stackTrace: stacktrace,
+            ),
+          );
           // Non-critical persistence failure
         }
       }
