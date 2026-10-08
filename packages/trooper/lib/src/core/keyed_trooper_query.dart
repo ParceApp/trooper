@@ -255,6 +255,34 @@ class KeyedTrooperQuery<K extends Object, T, P extends Parameter>
     getKey(key, parameter, forceRefresh: forceRefresh).ignore();
   }
 
+  @override
+  Future<Map<K, T>> getAll(
+    Iterable<K> keys,
+    P parameter, {
+    bool forceRefresh = false,
+  }) async {
+    final keyList = keys.toList();
+    final results = await Future.wait(
+      keyList.map((key) => getKey(key, parameter, forceRefresh: forceRefresh)),
+    );
+    return Map<K, T>.fromIterables(keyList, results);
+  }
+
+  @override
+  Future<Map<K, T>> refreshKeys(Iterable<K> keys, P parameter) =>
+      getAll(keys, parameter, forceRefresh: true);
+
+  @override
+  void triggerKeys(
+    Iterable<K> keys,
+    P parameter, {
+    bool forceRefresh = false,
+  }) {
+    for (final key in keys) {
+      triggerKey(key, parameter, forceRefresh: forceRefresh);
+    }
+  }
+
   /// Reads multiple keys concurrently and returns a map of their states.
   Future<Map<K, StatefulData<T>>> getMany(
     List<K> keys,
@@ -558,6 +586,20 @@ extension ParameterlessKeyedTrooperQuery<K extends Object, T>
     List<K> keys, {
     bool forceRefresh = false,
   }) => this.getMany(keys, const (), forceRefresh: forceRefresh);
+
+  /// Reads values for multiple [keys] concurrently without requiring an explicit `()` parameter.
+  Future<Map<K, T>> getAll(
+    Iterable<K> keys, {
+    bool forceRefresh = false,
+  }) => this.getAll(keys, const (), forceRefresh: forceRefresh);
+
+  /// Refreshes values for multiple [keys] concurrently without requiring an explicit `()` parameter.
+  Future<Map<K, T>> refreshKeys(Iterable<K> keys) =>
+      this.refreshKeys(keys, const ());
+
+  /// Triggers background fetches for multiple [keys] without requiring an explicit `()` parameter.
+  void triggerKeys(Iterable<K> keys, {bool forceRefresh = false}) =>
+      this.triggerKeys(keys, const (), forceRefresh: forceRefresh);
 
   /// Manually sets data for [key] in cache and stream without requiring an explicit `()` parameter.
   T setKey(K key, T data) => this.setKey(key, data, const ());

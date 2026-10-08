@@ -393,6 +393,14 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
     await sub?.cancel();
   }
 
+  /// Connects to the upstream stream for multiple [keys] using [parameter].
+  Future<void> connectKeys(Iterable<K> keys, P parameter) =>
+      Future.wait(keys.map((k) => connectKey(k, parameter)));
+
+  /// Disconnects the upstream stream subscriptions for multiple [keys].
+  Future<void> disconnectKeys(Iterable<K> keys) =>
+      Future.wait(keys.map(disconnectKey));
+
   /// Watches state updates for a single [key], managing automatic connection.
   StatefulStream<T> watchKey(K key, P parameter, {bool eager = true}) {
     if (eager && !isConnectedKey(key)) {
@@ -543,6 +551,34 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
   /// Refreshes the value for [key] by reconnecting and awaiting the next fresh event.
   Future<T> refreshKey(K key, P parameter) =>
       getKey(key, parameter, forceRefresh: true);
+
+  @override
+  Future<Map<K, T>> getAll(
+    Iterable<K> keys,
+    P parameter, {
+    bool forceRefresh = false,
+  }) async {
+    final keyList = keys.toList();
+    final results = await Future.wait(
+      keyList.map((k) => getKey(k, parameter, forceRefresh: forceRefresh)),
+    );
+    return Map<K, T>.fromIterables(keyList, results);
+  }
+
+  @override
+  Future<Map<K, T>> refreshKeys(Iterable<K> keys, P parameter) =>
+      getAll(keys, parameter, forceRefresh: true);
+
+  @override
+  void triggerKeys(
+    Iterable<K> keys,
+    P parameter, {
+    bool forceRefresh = false,
+  }) {
+    for (final k in keys) {
+      triggerKey(k, parameter, forceRefresh: forceRefresh);
+    }
+  }
 
   /// Manually sets data for [key] in cache and stream, returning the set [data].
   T setKey(K key, T data, P parameter) {
@@ -744,7 +780,27 @@ extension ParameterlessKeyedStreamTrooper<K extends Object, T>
   void triggerKey(K key, {bool forceRefresh = false}) =>
       this.triggerKey(key, const (), forceRefresh: forceRefresh);
 
-  /// Watches state updates for [key] without requiring an explicit `()` parameter.
+  /// Connects to upstream streams for multiple [keys] without requiring an explicit `()` parameter.
+  Future<void> connectKeys(Iterable<K> keys) => this.connectKeys(keys, const ());
+
+  /// Disconnects upstream streams for multiple [keys] without requiring an explicit `()` parameter.
+  Future<void> disconnectKeys(Iterable<K> keys) => this.disconnectKeys(keys);
+
+  /// Reads values for multiple [keys] concurrently without requiring an explicit `()` parameter.
+  Future<Map<K, T>> getAll(
+    Iterable<K> keys, {
+    bool forceRefresh = false,
+  }) => this.getAll(keys, const (), forceRefresh: forceRefresh);
+
+  /// Refreshes values for multiple [keys] concurrently without requiring an explicit `()` parameter.
+  Future<Map<K, T>> refreshKeys(Iterable<K> keys) =>
+      this.refreshKeys(keys, const ());
+
+  /// Triggers fetches for multiple [keys] without requiring an explicit `()` parameter.
+  void triggerKeys(Iterable<K> keys, {bool forceRefresh = false}) =>
+      this.triggerKeys(keys, const (), forceRefresh: forceRefresh);
+
+  /// Watches state updates for a single [key] without requiring an explicit `()` parameter.
   StatefulStream<T> watchKey(K key, {bool eager = true}) =>
       this.watchKey(key, const (), eager: eager);
 

@@ -47,6 +47,26 @@ abstract interface class KeyedAccessor<K extends Object, T, P extends Parameter>
   /// If [parameter] is specified, targets the exact parameter key in storage.
   void invalidateKey(K key, [P? parameter]);
 
+  /// Invalidates the cache entries and states for multiple [keys].
+  void invalidateKeys(Iterable<K> keys, [P? parameter]);
+
+  /// Reads values for multiple [keys] concurrently, returning a Map of results.
+  Future<Map<K, T>> getAll(
+    Iterable<K> keys,
+    P parameter, {
+    bool forceRefresh = false,
+  });
+
+  /// Forces fresh data fetches for multiple [keys] concurrently, bypassing cache freshness.
+  Future<Map<K, T>> refreshKeys(Iterable<K> keys, P parameter);
+
+  /// Triggers background fetches for multiple [keys] without waiting for results.
+  void triggerKeys(
+    Iterable<K> keys,
+    P parameter, {
+    bool forceRefresh = false,
+  });
+
   /// Reactively observes the state of all keys as a Map of [StatefulData].
   Stream<Map<K, StatefulData<T>>> watchAll();
 
@@ -106,6 +126,46 @@ class KeyedTrooperAccessor<K extends Object, T, P extends Parameter>
   @override
   void invalidateKey(K key, [P? parameter]) =>
       onInvalidateKey?.call(key, parameter);
+
+  @override
+  void invalidateKeys(Iterable<K> keys, [P? parameter]) {
+    for (final k in keys) {
+      invalidateKey(k, parameter);
+    }
+  }
+
+  @override
+  Future<Map<K, T>> getAll(
+    Iterable<K> keys,
+    P parameter, {
+    bool forceRefresh = false,
+  }) async {
+    final keyList = keys.toList();
+    final results = await Future.wait(
+      keyList.map((k) => this[k].get(parameter, forceRefresh: forceRefresh)),
+    );
+    return Map<K, T>.fromIterables(keyList, results);
+  }
+
+  @override
+  Future<Map<K, T>> refreshKeys(Iterable<K> keys, P parameter) async {
+    final keyList = keys.toList();
+    final results = await Future.wait(
+      keyList.map((k) => this[k].refresh(parameter)),
+    );
+    return Map<K, T>.fromIterables(keyList, results);
+  }
+
+  @override
+  void triggerKeys(
+    Iterable<K> keys,
+    P parameter, {
+    bool forceRefresh = false,
+  }) {
+    for (final k in keys) {
+      this[k].trigger(parameter, forceRefresh: forceRefresh);
+    }
+  }
 
   @override
   Map<K, T> get currentDataMap => stream.currentDataMap;
@@ -177,4 +237,25 @@ class KeyedTrooperAccessor<K extends Object, T, P extends Parameter>
 
   @override
   void invalidate() => onInvalidate();
+}
+
+/// Convenience extension for parameterless [KeyedAccessor] instances where `P` is `()`.
+extension ParameterlessKeyedAccessor<K extends Object, T>
+    on KeyedAccessor<K, T, ()> {
+  /// Reads or hydrates data for multiple [keys] without requiring an explicit `()` parameter.
+  Future<Map<K, T>> getAll(
+    Iterable<K> keys, {
+    bool forceRefresh = false,
+  }) => this.getAll(keys, const (), forceRefresh: forceRefresh);
+
+  /// Forces fresh data fetches for multiple [keys] without requiring an explicit `()` parameter.
+  Future<Map<K, T>> refreshKeys(Iterable<K> keys) =>
+      this.refreshKeys(keys, const ());
+
+  /// Triggers background fetches for multiple [keys] without requiring an explicit `()` parameter.
+  void triggerKeys(Iterable<K> keys, {bool forceRefresh = false}) =>
+      this.triggerKeys(keys, const (), forceRefresh: forceRefresh);
+
+  /// Invalidates cache and state for multiple [keys] without requiring an explicit `()` parameter.
+  void invalidateKeys(Iterable<K> keys) => this.invalidateKeys(keys, const ());
 }

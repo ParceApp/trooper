@@ -242,6 +242,39 @@ abstract class KeyedTrooper<K extends Object, T, P extends Parameter>
     }
   }
 
+  @override
+  Future<Map<K, T>> getAll(
+    Iterable<K> keys,
+    P parameter, {
+    bool forceRefresh = false,
+  }) => accessor.getAll(keys, parameter, forceRefresh: forceRefresh);
+
+  @override
+  Future<Map<K, T>> refreshKeys(Iterable<K> keys, P parameter) =>
+      accessor.refreshKeys(keys, parameter);
+
+  @override
+  void triggerKeys(
+    Iterable<K> keys,
+    P parameter, {
+    bool forceRefresh = false,
+  }) => accessor.triggerKeys(keys, parameter, forceRefresh: forceRefresh);
+
+  /// Invalidates the cache entry and resets state to [DataInitial] for multiple [keys].
+  @override
+  void invalidateKeys(Iterable<K> keys, [P? parameter]) {
+    for (final key in keys) {
+      invalidateKey(key, parameter);
+    }
+  }
+
+  /// Removes multiple [keys] from the stream, cache, and optional persistent storage.
+  Future<void> removeKeys(Iterable<K> keys, [P? parameter]) async {
+    for (final key in keys) {
+      await removeKey(key, parameter);
+    }
+  }
+
   /// Removes [key] from the stream, cache, and optional persistent storage.
   Future<void> removeKey(K key, [P? parameter]) async {
     queryQueue.cancelWhere(

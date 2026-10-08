@@ -253,6 +253,70 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
     }
   }
 
+  /// Sets multiple key-value pairs in memory and fires asynchronous persistence for each.
+  Map<K, T> setAll(Map<K, T> entries, P parameter) {
+    entries.forEach((key, value) {
+      setKey(key, value, parameter);
+    });
+    return entries;
+  }
+
+  /// Sets multiple key-value pairs in memory and awaits asynchronous persistence for all of them.
+  ///
+  /// Throws a [TrooperStorageException] if writing to persistent storage fails for any entry.
+  Future<Map<K, T>> setAllAsync(Map<K, T> entries, P parameter) async {
+    await Future.wait(
+      entries.entries.map((e) => setKeyAsync(e.key, e.value, parameter)),
+    );
+    return entries;
+  }
+
+  /// Updates multiple keys using their corresponding [transforms] functions.
+  Map<K, T> updateAll(
+    Map<K, T Function(T current)> transforms,
+    P parameter,
+  ) {
+    final results = <K, T>{};
+    transforms.forEach((key, transform) {
+      results[key] = updateKey(key, transform, parameter);
+    });
+    return results;
+  }
+
+  /// Resets the specified [keys] back to their initial values, deletes persistent storage,
+  /// and returns a map of their initial values.
+  Map<K, T> resetKeys(Iterable<K> keys, P parameter) {
+    final results = <K, T>{};
+    for (final key in keys) {
+      results[key] = resetKey(key, parameter);
+    }
+    return results;
+  }
+
+  /// Resets the specified [keys] back to their initial values and awaits deletion from persistent storage.
+  ///
+  /// Throws a [TrooperStorageException] if storage deletion fails.
+  Future<Map<K, T>> resetKeysAsync(Iterable<K> keys, P parameter) async {
+    final keyList = keys.toList();
+    final results = await Future.wait(
+      keyList.map((k) => resetKeyAsync(k, parameter)),
+    );
+    return Map<K, T>.fromIterables(keyList, results);
+  }
+
+  @override
+  Future<Map<K, T>> getAll(
+    Iterable<K> keys,
+    P parameter, {
+    bool forceRefresh = false,
+  }) async {
+    final keyList = keys.toList();
+    final results = await Future.wait(
+      keyList.map((k) => getKey(k, parameter, forceRefresh: forceRefresh)),
+    );
+    return Map<K, T>.fromIterables(keyList, results);
+  }
+
   /// Reads the value for [key], returning cached data if fresh, hydrating from L2
   /// storage if configured, or falling back to [initialValueFactory].
   Future<T> getKey(K key, P parameter, {bool forceRefresh = false}) async {
@@ -484,6 +548,30 @@ extension ParameterlessKeyedLocalTrooper<K extends Object, T>
   /// Triggers reading or hydrating data for [key] without requiring an explicit `()` parameter.
   void triggerKey(K key, {bool forceRefresh = false}) =>
       this.triggerKey(key, const (), forceRefresh: forceRefresh);
+
+  /// Sets multiple key-value pairs without requiring an explicit `()` parameter.
+  Map<K, T> setAll(Map<K, T> entries) => this.setAll(entries, const ());
+
+  /// Sets multiple key-value pairs and awaits persistence without requiring an explicit `()` parameter.
+  Future<Map<K, T>> setAllAsync(Map<K, T> entries) =>
+      this.setAllAsync(entries, const ());
+
+  /// Updates multiple keys without requiring an explicit `()` parameter.
+  Map<K, T> updateAll(Map<K, T Function(T current)> transforms) =>
+      this.updateAll(transforms, const ());
+
+  /// Resets multiple keys without requiring an explicit `()` parameter.
+  Map<K, T> resetKeys(Iterable<K> keys) => this.resetKeys(keys, const ());
+
+  /// Resets multiple keys and awaits storage deletion without requiring an explicit `()` parameter.
+  Future<Map<K, T>> resetKeysAsync(Iterable<K> keys) =>
+      this.resetKeysAsync(keys, const ());
+
+  /// Reads or hydrates multiple keys without requiring an explicit `()` parameter.
+  Future<Map<K, T>> getAll(
+    Iterable<K> keys, {
+    bool forceRefresh = false,
+  }) => this.getAll(keys, const (), forceRefresh: forceRefresh);
 
   /// Watches state updates for a single [key] without requiring an explicit `()` parameter.
   StatefulStream<T> watchKey(K key, {bool eager = true}) =>
