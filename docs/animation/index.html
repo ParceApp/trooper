@@ -7,93 +7,131 @@
   <link rel="stylesheet" href="style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 </head>
 <body>
   <div class="canvas" id="canvas">
-    <!-- Top Pill: Current State / Action -->
-    <div class="flow-status" id="flowStatus">
-      <span class="status-dot"></span>
-      <span class="status-text" id="statusText">1. Cold Request: Cache Miss</span>
+    <!-- Top Context Header: Material 3 Assist Chip -->
+    <div class="header-chip" id="headerChip">
+      <div class="chip-indicator" id="chipIndicator"></div>
+      <span class="chip-phase" id="chipPhase">Phase 1</span>
+      <span class="chip-divider">/</span>
+      <span class="chip-label" id="chipLabel">Cold Request & Cache Miss</span>
     </div>
 
-    <!-- The 3 Core Blocks -->
-    <div class="flow-container">
+    <!-- The 3 Core Architectural Pillars -->
+    <div class="flow-track-container">
       <!-- 1. FLUTTER UI -->
-      <div class="card card-ui" id="cardUi">
-        <div class="card-icon">📱</div>
-        <div class="card-body">
-          <div class="card-title">Flutter UI</div>
-          <div class="card-subtitle">Presentation Layer</div>
+      <div class="node-card" id="nodeUi">
+        <div class="card-top">
+          <div class="icon-box icon-ui">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="5" y="2" width="14" height="20" rx="3" ry="3"/>
+              <line x1="12" y1="18" x2="12.01" y2="18"/>
+            </svg>
+          </div>
+          <span class="category-tag">Presentation</span>
         </div>
-        <div class="state-pill" id="uiStatePill">
-          <span class="pill-dot"></span>
-          <span class="pill-text" id="uiStateText">DataInitial()</span>
+        <div class="card-content">
+          <h2 class="node-title">Flutter UI</h2>
+          <p class="node-desc">Widget / watchStream()</p>
         </div>
-      </div>
-
-      <!-- Track 1: UI to Trooper -->
-      <div class="arrow-track" id="trackUiTrooper">
-        <!-- Top: Request -->
-        <div class="track-line track-top">
-          <span class="track-label label-req" id="labelReq">.get()</span>
-          <div class="track-arrow arrow-right">›</div>
-          <div class="particle particle-right" id="pReq"></div>
-        </div>
-        <!-- Bottom: State -->
-        <div class="track-line track-bottom">
-          <span class="track-label label-state" id="labelState">StatefulData</span>
-          <div class="track-arrow arrow-left">‹</div>
-          <div class="particle particle-left" id="pState"></div>
+        <div class="status-pill state-initial" id="uiStatusPill">
+          <span class="status-dot"></span>
+          <span class="status-code" id="uiStatusCode">DataInitial()</span>
         </div>
       </div>
 
-      <!-- 2. TROOPER (Core Engine) -->
-      <div class="card card-trooper" id="cardTrooper">
-        <div class="card-badge">ENGINE</div>
-        <div class="card-icon icon-trooper">⚡</div>
-        <div class="card-body">
-          <div class="card-title">Trooper</div>
-          <div class="card-subtitle">SWR & Multi-Tier Cache</div>
+      <!-- Connection 1: UI to Trooper -->
+      <div class="connector-lane">
+        <!-- Top Track: Request Out -->
+        <div class="lane-track track-outbound">
+          <span class="lane-badge" id="badgeReq">.get()</span>
+          <div class="lane-line">
+            <div class="lane-arrow arrow-right"></div>
+            <div class="particle" id="pReq"></div>
+          </div>
         </div>
-        <div class="trooper-pill" id="trooperPill">
-          <span id="trooperPillText">L1 Memory Cache</span>
+        <!-- Bottom Track: State In -->
+        <div class="lane-track track-inbound">
+          <span class="lane-badge" id="badgeState">StatefulData</span>
+          <div class="lane-line">
+            <div class="lane-arrow arrow-left"></div>
+            <div class="particle" id="pState"></div>
+          </div>
         </div>
       </div>
 
-      <!-- Track 2: Trooper to API -->
-      <div class="arrow-track" id="trackTrooperApi">
-        <!-- Top: Fetch -->
-        <div class="track-line track-top">
-          <span class="track-label label-fetch" id="labelFetch">fetch()</span>
-          <div class="track-arrow arrow-right">›</div>
-          <div class="particle particle-right" id="pFetch"></div>
+      <!-- 2. TROOPER CORE -->
+      <div class="node-card node-trooper" id="nodeTrooper">
+        <div class="card-top">
+          <div class="icon-box icon-trooper">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+              <path d="M2 17l10 5 10-5"/>
+              <path d="M2 12l10 5 10-5"/>
+            </svg>
+          </div>
+          <span class="category-tag tag-core">Core Engine</span>
         </div>
-        <!-- Bottom: Payload -->
-        <div class="track-line track-bottom">
-          <span class="track-label label-payload" id="labelPayload">200 OK</span>
-          <div class="track-arrow arrow-left">‹</div>
-          <div class="particle particle-left" id="pPayload"></div>
+        <div class="card-content">
+          <h2 class="node-title">Trooper</h2>
+          <p class="node-desc">SWR & Memory Cache</p>
+        </div>
+        <div class="cache-pill" id="cachePill">
+          <span class="cache-label" id="cacheStatusText">L1 Cache: Empty</span>
+        </div>
+      </div>
+
+      <!-- Connection 2: Trooper to Remote API -->
+      <div class="connector-lane">
+        <!-- Top Track: Fetch Out -->
+        <div class="lane-track track-outbound">
+          <span class="lane-badge" id="badgeFetch">fetch()</span>
+          <div class="lane-line">
+            <div class="lane-arrow arrow-right"></div>
+            <div class="particle" id="pFetch"></div>
+          </div>
+        </div>
+        <!-- Bottom Track: Response In -->
+        <div class="lane-track track-inbound">
+          <span class="lane-badge" id="badgeResponse">200 OK</span>
+          <div class="lane-line">
+            <div class="lane-arrow arrow-left"></div>
+            <div class="particle" id="pResponse"></div>
+          </div>
         </div>
       </div>
 
       <!-- 3. REMOTE API -->
-      <div class="card card-api" id="cardApi">
-        <div class="card-icon">🌐</div>
-        <div class="card-body">
-          <div class="card-title">Remote API</div>
-          <div class="card-subtitle">REST / GraphQL</div>
+      <div class="node-card" id="nodeApi">
+        <div class="card-top">
+          <div class="icon-box icon-api">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/>
+              <rect x="2" y="14" width="20" height="8" rx="2" ry="2"/>
+              <line x1="6" y1="6" x2="6.01" y2="6"/>
+              <line x1="6" y1="18" x2="6.01" y2="18"/>
+            </svg>
+          </div>
+          <span class="category-tag">Network</span>
         </div>
-        <div class="api-pill" id="apiPill">
-          <span class="api-dot" id="apiDot"></span>
-          <span id="apiPillText">Idle</span>
+        <div class="card-content">
+          <h2 class="node-title">Remote API</h2>
+          <p class="node-desc">REST / GraphQL</p>
+        </div>
+        <div class="network-pill" id="networkPill">
+          <span class="net-dot" id="netDot"></span>
+          <span class="net-text" id="netStatusText">Idle</span>
         </div>
       </div>
     </div>
 
-    <!-- Bottom Note / Value Proposition -->
-    <div class="flow-footer" id="flowFooter">
-      Zero-Flicker SWR Guarantee: <code>DataRefreshing</code> extends <code>DataLoaded</code>
+    <!-- Bottom Architectural Guarantee Footnote -->
+    <div class="footer-caption">
+      <span class="caption-label">Zero-Flicker Architecture</span>
+      <span class="caption-bullet">·</span>
+      <span class="caption-detail"><code>DataRefreshing&lt;T&gt;</code> extends <code>DataLoaded&lt;T&gt;</code></span>
     </div>
   </div>
 

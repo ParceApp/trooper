@@ -1,48 +1,49 @@
 /**
- * Trooper Minimalist Flow Animation
- * 3 Core Blocks: Flutter UI <---> Trooper (SWR Cache) <---> Remote API
+ * Trooper Minimalist Flow Animation Engine
+ * Clean Material 3 / Airbnb Design Standards
  */
 
-class MinimalFlowEngine {
+class CleanFlowEngine {
   constructor() {
-    this.statusText = document.getElementById('statusText');
-    this.cardUi = document.getElementById('cardUi');
-    this.cardTrooper = document.getElementById('cardTrooper');
-    this.cardApi = document.getElementById('cardApi');
+    this.chipIndicator = document.getElementById('chipIndicator');
+    this.chipPhase = document.getElementById('chipPhase');
+    this.chipLabel = document.getElementById('chipLabel');
 
-    this.uiStatePill = document.getElementById('uiStatePill');
-    this.uiStateText = document.getElementById('uiStateText');
+    this.nodeUi = document.getElementById('nodeUi');
+    this.nodeTrooper = document.getElementById('nodeTrooper');
+    this.nodeApi = document.getElementById('nodeApi');
 
-    this.trooperPill = document.getElementById('trooperPill');
-    this.trooperPillText = document.getElementById('trooperPillText');
+    this.uiStatusPill = document.getElementById('uiStatusPill');
+    this.uiStatusCode = document.getElementById('uiStatusCode');
 
-    this.apiPill = document.getElementById('apiPill');
-    this.apiPillText = document.getElementById('apiPillText');
+    this.cachePill = document.getElementById('cachePill');
+    this.cacheStatusText = document.getElementById('cacheStatusText');
 
-    // Labels
-    this.labelReq = document.getElementById('labelReq');
-    this.labelState = document.getElementById('labelState');
-    this.labelFetch = document.getElementById('labelFetch');
-    this.labelPayload = document.getElementById('labelPayload');
+    this.networkPill = document.getElementById('networkPill');
+    this.netStatusText = document.getElementById('netStatusText');
 
-    // Particles
+    this.badgeReq = document.getElementById('badgeReq');
+    this.badgeState = document.getElementById('badgeState');
+    this.badgeFetch = document.getElementById('badgeFetch');
+    this.badgeResponse = document.getElementById('badgeResponse');
+
     this.pReq = document.getElementById('pReq');
     this.pState = document.getElementById('pState');
     this.pFetch = document.getElementById('pFetch');
-    this.pPayload = document.getElementById('pPayload');
+    this.pResponse = document.getElementById('pResponse');
 
     this.startLoop();
   }
 
   resetCards() {
-    this.cardUi.className = 'card card-ui';
-    this.cardTrooper.className = 'card card-trooper';
-    this.cardApi.className = 'card card-api';
+    this.nodeUi.className = 'node-card';
+    this.nodeTrooper.className = 'node-card node-trooper';
+    this.nodeApi.className = 'node-card';
   }
 
   animateParticle(particle, direction, color, durationMs, callback) {
     particle.style.background = color;
-    particle.style.boxShadow = `0 0 10px ${color}`;
+    particle.style.boxShadow = `0 0 8px ${color}`;
     particle.style.opacity = '1';
     particle.style.transition = 'none';
 
@@ -55,11 +56,11 @@ class MinimalFlowEngine {
     // Force reflow
     particle.offsetHeight;
 
-    particle.style.transition = `all ${durationMs}ms cubic-bezier(0.4, 0, 0.2, 1)`;
+    particle.style.transition = `all ${durationMs}ms cubic-bezier(0.2, 0.0, 0, 1.0)`;
     if (direction === 'right') {
-      particle.style.left = '92%';
+      particle.style.left = '94%';
     } else {
-      particle.style.right = '92%';
+      particle.style.right = '94%';
     }
 
     setTimeout(() => {
@@ -68,68 +69,71 @@ class MinimalFlowEngine {
     }, durationMs);
   }
 
-  // --- PHASE 1: Cold Request & Cache Miss ---
+  // --- PHASE 1: Cold Start (Cache Miss & Initial Fetch) ---
   runPhase1() {
     this.resetCards();
-    this.statusText.textContent = '1. Cold Start: Cache Miss & Initial Fetch';
-    this.uiStateText.textContent = 'DataInitial()';
-    this.uiStatePill.className = 'state-pill';
-    this.trooperPillText.textContent = 'L1 Memory: Empty';
-    this.apiPillText.textContent = 'Idle';
-    this.apiPill.className = 'api-pill';
+    this.chipPhase.textContent = 'Phase 1';
+    this.chipLabel.textContent = 'Cold Request · Cache Miss';
+    this.chipIndicator.style.background = '#6366f1';
 
-    // Step 1: UI calls .get()
+    this.uiStatusCode.textContent = 'DataInitial()';
+    this.uiStatusPill.className = 'status-pill';
+    this.cacheStatusText.textContent = 'L1 Cache: Empty';
+    this.netStatusText.textContent = 'Idle';
+    this.networkPill.className = 'network-pill';
+
     setTimeout(() => {
-      this.cardUi.classList.add('active');
-      this.labelReq.style.color = '#818cf8';
-      this.animateParticle(this.pReq, 'right', '#6366f1', 500, () => {
-        this.labelReq.style.color = '';
-        this.cardTrooper.classList.add('active');
-        this.trooperPillText.textContent = 'L1 Cache: MISS';
+      // 1. UI calls .get()
+      this.nodeUi.classList.add('active');
+      this.badgeReq.style.color = '#818cf8';
+      this.animateParticle(this.pReq, 'right', '#6366f1', 450, () => {
+        this.badgeReq.style.color = '';
+        this.nodeTrooper.classList.add('active');
+        this.cacheStatusText.textContent = 'L1 Cache: MISS';
 
-        // Step 2: Trooper emits DataLoading() to UI
-        this.labelState.style.color = '#3b82f6';
-        this.animateParticle(this.pState, 'left', '#3b82f6', 450, () => {
-          this.labelState.style.color = '';
-          this.uiStateText.textContent = 'DataLoading()';
-          this.uiStatePill.className = 'state-pill loading';
+        // 2. Trooper emits DataLoading() to UI
+        this.badgeState.style.color = '#6366f1';
+        this.animateParticle(this.pState, 'left', '#6366f1', 420, () => {
+          this.badgeState.style.color = '';
+          this.uiStatusCode.textContent = 'DataLoading()';
+          this.uiStatusPill.className = 'status-pill loading';
 
-          // Step 3: Trooper fetches from Remote API
-          this.labelFetch.style.color = '#f43f5e';
-          this.animateParticle(this.pFetch, 'right', '#f43f5e', 500, () => {
-            this.labelFetch.style.color = '';
-            this.cardApi.classList.add('active');
-            this.apiPillText.textContent = 'Fetching...';
-            this.apiPill.className = 'api-pill fetching';
+          // 3. Trooper fetches from Remote API
+          this.badgeFetch.style.color = '#f43f5e';
+          this.animateParticle(this.pFetch, 'right', '#f43f5e', 480, () => {
+            this.badgeFetch.style.color = '';
+            this.nodeApi.classList.add('active');
+            this.netStatusText.textContent = 'Fetching...';
+            this.networkPill.className = 'network-pill fetching';
 
-            // Step 4: API returns 200 OK
+            // 4. Remote API delivers payload 200 OK
             setTimeout(() => {
-              this.apiPillText.textContent = '200 OK (280ms)';
-              this.labelPayload.style.color = '#10b981';
-              this.animateParticle(this.pPayload, 'left', '#10b981', 500, () => {
-                this.labelPayload.style.color = '';
-                this.cardApi.classList.remove('active');
-                this.apiPillText.textContent = 'Idle';
-                this.apiPill.className = 'api-pill';
+              this.netStatusText.textContent = '200 OK (260ms)';
+              this.badgeResponse.style.color = '#10b981';
+              this.animateParticle(this.pResponse, 'left', '#10b981', 480, () => {
+                this.badgeResponse.style.color = '';
+                this.nodeApi.classList.remove('active');
+                this.netStatusText.textContent = 'Idle';
+                this.networkPill.className = 'network-pill';
 
-                // Step 5: Trooper saves to cache and emits DataLoaded()
-                this.cardTrooper.classList.remove('active');
-                this.cardTrooper.classList.add('hit');
-                this.trooperPillText.textContent = 'L1 Cache: FRESH (TTL 5m)';
+                // 5. Trooper caches result & emits DataLoaded
+                this.nodeTrooper.classList.remove('active');
+                this.nodeTrooper.classList.add('hit');
+                this.cacheStatusText.textContent = 'L1 Cache: FRESH (5m)';
 
-                this.labelState.style.color = '#10b981';
-                this.animateParticle(this.pState, 'left', '#10b981', 500, () => {
-                  this.labelState.style.color = '';
-                  this.cardUi.classList.remove('active');
-                  this.cardUi.classList.add('active');
-                  this.uiStateText.textContent = 'DataLoaded(Data)';
-                  this.uiStatePill.className = 'state-pill loaded';
+                this.badgeState.style.color = '#10b981';
+                this.animateParticle(this.pState, 'left', '#10b981', 460, () => {
+                  this.badgeState.style.color = '';
+                  this.nodeUi.classList.remove('active');
+                  this.nodeUi.classList.add('hit');
+                  this.uiStatusCode.textContent = 'DataLoaded(Data)';
+                  this.uiStatusPill.className = 'status-pill loaded';
 
-                  // Move to Phase 2
-                  setTimeout(() => this.runPhase2(), 2200);
+                  // Advance to Phase 2
+                  setTimeout(() => this.runPhase2(), 2300);
                 });
               });
-            }, 400);
+            }, 350);
           });
         });
       });
@@ -139,26 +143,28 @@ class MinimalFlowEngine {
   // --- PHASE 2: Instant Cache Hit (0ms) ---
   runPhase2() {
     this.resetCards();
-    this.statusText.textContent = '2. Subsequent Request: Instant L1 Cache Hit (0ms)';
+    this.chipPhase.textContent = 'Phase 2';
+    this.chipLabel.textContent = 'Subsequent Request · Instant L1 Cache Hit';
+    this.chipIndicator.style.background = '#10b981';
 
     setTimeout(() => {
       // UI calls .get()
-      this.cardUi.classList.add('active');
-      this.labelReq.style.color = '#818cf8';
-      this.animateParticle(this.pReq, 'right', '#6366f1', 350, () => {
-        this.labelReq.style.color = '';
-        this.cardTrooper.classList.add('hit');
-        this.trooperPillText.textContent = '⚡ HIT! Served in 0ms';
+      this.nodeUi.classList.add('active');
+      this.badgeReq.style.color = '#818cf8';
+      this.animateParticle(this.pReq, 'right', '#6366f1', 340, () => {
+        this.badgeReq.style.color = '';
+        this.nodeTrooper.classList.add('hit');
+        this.cacheStatusText.textContent = '⚡ HIT · Served in 0ms';
 
-        // Trooper immediately returns DataLoaded (0 Network calls!)
-        this.labelState.style.color = '#10b981';
-        this.animateParticle(this.pState, 'left', '#10b981', 350, () => {
-          this.labelState.style.color = '';
-          this.uiStateText.textContent = 'DataLoaded (⚡ 0ms)';
-          this.uiStatePill.className = 'state-pill loaded';
+        // Instant return from memory (0 network calls)
+        this.badgeState.style.color = '#10b981';
+        this.animateParticle(this.pState, 'left', '#10b981', 340, () => {
+          this.badgeState.style.color = '';
+          this.uiStatusCode.textContent = 'DataLoaded(0ms)';
+          this.uiStatusPill.className = 'status-pill loaded';
 
-          // Move to Phase 3
-          setTimeout(() => this.runPhase3(), 2200);
+          // Advance to Phase 3
+          setTimeout(() => this.runPhase3(), 2300);
         });
       });
     }, 400);
@@ -167,63 +173,64 @@ class MinimalFlowEngine {
   // --- PHASE 3: Zero-Flicker SWR Revalidation ---
   runPhase3() {
     this.resetCards();
-    this.statusText.textContent = '3. Stale-While-Revalidate: Zero-Flicker Background Update';
-    this.cardTrooper.classList.add('swr');
-    this.trooperPillText.textContent = 'L1 Cache: STALE (TTL Expired)';
+    this.chipPhase.textContent = 'Phase 3';
+    this.chipLabel.textContent = 'Stale-While-Revalidate · Zero-Flicker Update';
+    this.chipIndicator.style.background = '#f59e0b';
+    this.nodeTrooper.classList.add('swr');
+    this.cacheStatusText.textContent = 'L1 Cache: STALE';
 
     setTimeout(() => {
       // UI calls .get()
-      this.cardUi.classList.add('active');
-      this.labelReq.style.color = '#818cf8';
-      this.animateParticle(this.pReq, 'right', '#6366f1', 400, () => {
-        this.labelReq.style.color = '';
+      this.nodeUi.classList.add('active');
+      this.badgeReq.style.color = '#818cf8';
+      this.animateParticle(this.pReq, 'right', '#6366f1', 380, () => {
+        this.badgeReq.style.color = '';
 
-        // SWR Magic: Trooper IMMEDIATELY returns DataRefreshing to UI!
-        // UI stays loaded, showing existing data without full-page spinner!
-        this.labelState.style.color = '#f59e0b';
-        this.animateParticle(this.pState, 'left', '#f59e0b', 400, () => {
-          this.labelState.style.color = '';
-          this.uiStateText.textContent = 'DataRefreshing(Data)';
-          this.uiStatePill.className = 'state-pill refreshing';
+        // SWR: Instant DataRefreshing emitted while keeping UI loaded
+        this.badgeState.style.color = '#f59e0b';
+        this.animateParticle(this.pState, 'left', '#f59e0b', 380, () => {
+          this.badgeState.style.color = '';
+          this.uiStatusCode.textContent = 'DataRefreshing(Data)';
+          this.uiStatusPill.className = 'status-pill refreshing';
 
-          // Background Fetch sent to API
-          this.labelFetch.style.color = '#f59e0b';
-          this.animateParticle(this.pFetch, 'right', '#f59e0b', 500, () => {
-            this.labelFetch.style.color = '';
-            this.cardApi.classList.add('active');
-            this.apiPillText.textContent = 'SWR Fetch...';
-            this.apiPill.className = 'api-pill fetching';
+          // Background Fetch dispatched
+          this.badgeFetch.style.color = '#f59e0b';
+          this.animateParticle(this.pFetch, 'right', '#f59e0b', 460, () => {
+            this.badgeFetch.style.color = '';
+            this.nodeApi.classList.add('active');
+            this.netStatusText.textContent = 'SWR Fetch...';
+            this.networkPill.className = 'network-pill fetching';
 
             setTimeout(() => {
-              this.apiPillText.textContent = '200 OK (Fresh)';
-              this.labelPayload.style.color = '#10b981';
-              this.animateParticle(this.pPayload, 'left', '#10b981', 500, () => {
-                this.labelPayload.style.color = '';
-                this.cardApi.classList.remove('active');
-                this.apiPillText.textContent = 'Idle';
-                this.apiPill.className = 'api-pill';
+              this.netStatusText.textContent = '200 OK (Fresh)';
+              this.badgeResponse.style.color = '#10b981';
+              this.animateParticle(this.pResponse, 'left', '#10b981', 460, () => {
+                this.badgeResponse.style.color = '';
+                this.nodeApi.classList.remove('active');
+                this.netStatusText.textContent = 'Idle';
+                this.networkPill.className = 'network-pill';
 
-                // L1 Cache updated
-                this.cardTrooper.classList.remove('swr');
-                this.cardTrooper.classList.add('hit');
-                this.trooperPillText.textContent = 'L1 Cache: FRESH v2';
+                // Cache updated
+                this.nodeTrooper.classList.remove('swr');
+                this.nodeTrooper.classList.add('hit');
+                this.cacheStatusText.textContent = 'L1 Cache: FRESH v2';
 
-                // Silent UI update to fresh DataLoaded
-                this.labelState.style.color = '#10b981';
-                this.animateParticle(this.pState, 'left', '#10b981', 450, () => {
-                  this.labelState.style.color = '';
-                  this.uiStateText.textContent = 'DataLoaded(Fresh v2)';
-                  this.uiStatePill.className = 'state-pill loaded';
+                // Silent UI update to fresh data
+                this.badgeState.style.color = '#10b981';
+                this.animateParticle(this.pState, 'left', '#10b981', 420, () => {
+                  this.badgeState.style.color = '';
+                  this.uiStatusCode.textContent = 'DataLoaded(Fresh v2)';
+                  this.uiStatusPill.className = 'status-pill loaded';
 
                   // Loop back to Phase 1
                   setTimeout(() => this.runPhase1(), 2600);
                 });
               });
-            }, 400);
+            }, 350);
           });
         });
       });
-    }, 600);
+    }, 500);
   }
 
   startLoop() {
@@ -232,5 +239,5 @@ class MinimalFlowEngine {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-  new MinimalFlowEngine();
+  new CleanFlowEngine();
 });
