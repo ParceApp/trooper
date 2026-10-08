@@ -169,6 +169,7 @@ abstract class Trooper<T, P extends Parameter>
 
   @override
   void invalidate() {
+    queryQueue.cancelNamespace(namespace);
     final param = _lastParam;
     if (param != null) {
       final key = buildQueryKey(param);

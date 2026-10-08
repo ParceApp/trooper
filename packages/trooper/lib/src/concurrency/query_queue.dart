@@ -180,6 +180,23 @@ class TrooperQueryQueue with LifecycleAware {
     }
   }
 
+  /// Cancels all active in-flight requests satisfying [predicate].
+  void cancelWhere(bool Function(QueryKey key) predicate, [String? reason]) {
+    if (_isDisposed) return;
+    final matching = _ongoingList.where((r) => predicate(r.key)).toList();
+    for (final ongoing in matching) {
+      _ongoingList.remove(ongoing);
+      ongoing.cancelToken.cancel(reason ?? 'Cancelled by query queue');
+      if (!ongoing.completer.isCompleted) {
+        ongoing.completer.completeError(
+          TrooperCancelledException(
+            message: reason ?? 'Cancelled by query queue',
+          ),
+        );
+      }
+    }
+  }
+
   /// Cancels all active in-flight requests.
   void cancelAll([String? reason]) {
     if (_isDisposed) return;

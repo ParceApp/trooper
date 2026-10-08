@@ -124,8 +124,27 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
               ? config.timeToLive.inMilliseconds
               : null,
         );
-        storage.write(qKey.storageKey, envelope.encode()).ignore();
-      } catch (_) {
+        storage.write(qKey.storageKey, envelope.encode()).catchError(
+          (Object error, StackTrace stackTrace) {
+            telemetry.emit(
+              PersistenceErrorEvent(
+                qKey,
+                error: error,
+                duration: Duration.zero,
+                stackTrace: stackTrace,
+              ),
+            );
+          },
+        );
+      } catch (error, stackTrace) {
+        telemetry.emit(
+          PersistenceErrorEvent(
+            qKey,
+            error: error,
+            duration: Duration.zero,
+            stackTrace: stackTrace,
+          ),
+        );
         // Non-critical persistence failure
       }
     }

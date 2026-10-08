@@ -694,6 +694,7 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
     if (resumeResult is Future) {
       await resumeResult;
     }
+    defaultCache?.resume();
 
     Object? firstError;
     StackTrace? firstStackTrace;

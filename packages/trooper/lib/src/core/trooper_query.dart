@@ -308,36 +308,47 @@ class TrooperQuery<T, P extends Parameter> extends Trooper<T, P> {
         });
       }
 
-      if (config.hasCache) {
-        cache.put(
-          key,
-          result,
-          timeToLive: config.timeToLive,
-          source: DataSource.network,
-        );
-      }
-
-      final entry = config.hasCache ? cache.getEntry<T>(key) : null;
-      streamController.emitData(result, metadata: entry?.metadata);
-
-      // Persist to L2 storage asynchronously if configured
-      final storage = config.storage;
-      final currentCodec = codec;
-      if (storage != null && currentCodec != null) {
-        try {
-          final serialized = currentCodec.encode(result);
-          final now = DateTime.now();
-          final envelope = StorageEnvelope(
-            payload: serialized,
-            createdAt: now,
-            expiresAt: config.hasCache ? now.add(config.timeToLive) : null,
-            timeToLiveMillis: config.hasCache
-                ? config.timeToLive.inMilliseconds
-                : null,
+      if (!isParamChanged(param)) {
+        if (config.hasCache) {
+          cache.put(
+            key,
+            result,
+            timeToLive: config.timeToLive,
+            source: DataSource.network,
           );
-          storage
-              .write(key.storageKey, envelope.encode())
-              .catchError((Object error, StackTrace stacktrace) {
+        }
+
+        final entry = config.hasCache ? cache.getEntry<T>(key) : null;
+        streamController.emitData(result, metadata: entry?.metadata);
+
+        // Persist to L2 storage asynchronously if configured
+        final storage = config.storage;
+        final currentCodec = codec;
+        if (storage != null && currentCodec != null) {
+          try {
+            final serialized = currentCodec.encode(result);
+            final now = DateTime.now();
+            final envelope = StorageEnvelope(
+              payload: serialized,
+              createdAt: now,
+              expiresAt: config.hasCache ? now.add(config.timeToLive) : null,
+              timeToLiveMillis: config.hasCache
+                  ? config.timeToLive.inMilliseconds
+                  : null,
+            );
+            storage
+                .write(key.storageKey, envelope.encode())
+                .catchError((Object error, StackTrace stacktrace) {
+              telemetry.emit(
+                PersistenceErrorEvent(
+                  key,
+                  error: error,
+                  duration: stopwatch.elapsed,
+                  stackTrace: stacktrace,
+                ),
+              );
+            });
+          } catch (error, stacktrace) {
             telemetry.emit(
               PersistenceErrorEvent(
                 key,
@@ -346,17 +357,8 @@ class TrooperQuery<T, P extends Parameter> extends Trooper<T, P> {
                 stackTrace: stacktrace,
               ),
             );
-          });
-        } catch (error, stacktrace) {
-          telemetry.emit(
-            PersistenceErrorEvent(
-              key,
-              error: error,
-              duration: stopwatch.elapsed,
-              stackTrace: stacktrace,
-            ),
-          );
-          // Non-critical persistence failure
+            // Non-critical persistence failure
+          }
         }
       }
 
@@ -386,11 +388,13 @@ class TrooperQuery<T, P extends Parameter> extends Trooper<T, P> {
         );
       }
 
-      streamController.emitError(
-        error,
-        stackTrace: stackTrace,
-        staleData: staleData,
-      );
+      if (!isParamChanged(param)) {
+        streamController.emitError(
+          error,
+          stackTrace: stackTrace,
+          staleData: staleData,
+        );
+      }
 
       runSideEffect(() => sideEffects?.onError?.call(error, stackTrace, param));
 

@@ -400,35 +400,46 @@ class KeyedTrooperQuery<K extends Object, T, P extends Parameter>
       );
       stopwatch.stop();
 
-      if (config.hasCache) {
-        cache.put(
-          qKey,
-          result,
-          timeToLive: config.timeToLive,
-          source: DataSource.network,
-        );
-      }
-
-      final entry = config.hasCache ? cache.getEntry<T>(qKey) : null;
-
-      // Persist to L2 storage asynchronously if configured
-      final storage = config.storage;
-      final currentCodec = codec;
-      if (storage != null && currentCodec != null) {
-        try {
-          final serialized = currentCodec.encode(result);
-          final now = DateTime.now();
-          final envelope = StorageEnvelope(
-            payload: serialized,
-            createdAt: now,
-            expiresAt: config.hasCache ? now.add(config.timeToLive) : null,
-            timeToLiveMillis: config.hasCache
-                ? config.timeToLive.inMilliseconds
-                : null,
+      if (!isParamChanged(key, param)) {
+        if (config.hasCache) {
+          cache.put(
+            qKey,
+            result,
+            timeToLive: config.timeToLive,
+            source: DataSource.network,
           );
-          storage
-              .write(qKey.storageKey, envelope.encode())
-              .catchError((Object error, StackTrace stacktrace) {
+        }
+
+        final entry = config.hasCache ? cache.getEntry<T>(qKey) : null;
+
+        // Persist to L2 storage asynchronously if configured
+        final storage = config.storage;
+        final currentCodec = codec;
+        if (storage != null && currentCodec != null) {
+          try {
+            final serialized = currentCodec.encode(result);
+            final now = DateTime.now();
+            final envelope = StorageEnvelope(
+              payload: serialized,
+              createdAt: now,
+              expiresAt: config.hasCache ? now.add(config.timeToLive) : null,
+              timeToLiveMillis: config.hasCache
+                  ? config.timeToLive.inMilliseconds
+                  : null,
+            );
+            storage
+                .write(qKey.storageKey, envelope.encode())
+                .catchError((Object error, StackTrace stacktrace) {
+              telemetry.emit(
+                PersistenceErrorEvent(
+                  qKey,
+                  error: error,
+                  duration: stopwatch.elapsed,
+                  stackTrace: stacktrace,
+                ),
+              );
+            });
+          } catch (error, stacktrace) {
             telemetry.emit(
               PersistenceErrorEvent(
                 qKey,
@@ -437,21 +448,12 @@ class KeyedTrooperQuery<K extends Object, T, P extends Parameter>
                 stackTrace: stacktrace,
               ),
             );
-          });
-        } catch (error, stacktrace) {
-          telemetry.emit(
-            PersistenceErrorEvent(
-              qKey,
-              error: error,
-              duration: stopwatch.elapsed,
-              stackTrace: stacktrace,
-            ),
-          );
-          // Non-critical persistence failure
+            // Non-critical persistence failure
+          }
         }
-      }
 
-      stream.emitData(key, result, metadata: entry?.metadata);
+        stream.emitData(key, result, metadata: entry?.metadata);
+      }
 
       if (telemetry.hasListeners) {
         telemetry.emit(
@@ -484,13 +486,13 @@ class KeyedTrooperQuery<K extends Object, T, P extends Parameter>
         () => sideEffects?.onError?.call(key, error, stackTrace, param),
       );
 
-      // SWR fallback: emit stale data as fallback if error occurs
-      if (staleData != null &&
-          config.stalePolicy == StalePolicy.keepStaleWhileRevalidate) {
-        final existingEntry = cache.getEntry<T>(qKey);
-        stream.emitData(key, staleData, metadata: existingEntry?.metadata);
-      } else {
-        stream.emitError(key, error, stackTrace: stackTrace);
+      if (!isParamChanged(key, param)) {
+        stream.emitError(
+          key,
+          error,
+          stackTrace: stackTrace,
+          staleData: staleData,
+        );
       }
 
       rethrow;

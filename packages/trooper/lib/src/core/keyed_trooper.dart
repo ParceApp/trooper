@@ -197,6 +197,9 @@ abstract class KeyedTrooper<K extends Object, T, P extends Parameter>
   /// Otherwise, entries matching this key are pruned from cache via wildcard.
   @override
   void invalidateKey(K key, [P? parameter]) {
+    queryQueue.cancelWhere(
+      (k) => k.matchesNameAndKey(name: namespace, entityKey: key),
+    );
     final param = parameter ?? _lastParams.remove(key);
     if (param != null) {
       final qKey = QueryKey.keyed(namespace, key: key, parameter: param);
@@ -219,6 +222,7 @@ abstract class KeyedTrooper<K extends Object, T, P extends Parameter>
   /// Invalidates all keys belonging to this query family. Implements [Invalidatable].
   @override
   void invalidate() {
+    queryQueue.cancelNamespace(namespace);
     final storage = config.storage;
     for (final key in stream.activeKeys) {
       final param = _lastParams[key];
@@ -240,6 +244,9 @@ abstract class KeyedTrooper<K extends Object, T, P extends Parameter>
 
   /// Removes [key] from the stream, cache, and optional persistent storage.
   Future<void> removeKey(K key, [P? parameter]) async {
+    queryQueue.cancelWhere(
+      (k) => k.matchesNameAndKey(name: namespace, entityKey: key),
+    );
     final param = parameter ?? _lastParams.remove(key);
     cache.removeWhere(
       (k) => k.matchesNameAndKey(name: namespace, entityKey: key),
