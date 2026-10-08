@@ -1,10 +1,11 @@
 import 'package:trooper/src/config/query_conflict_policy.dart';
+import 'package:trooper/src/config/retry_policy.dart';
 import 'package:trooper/src/config/stale_policy.dart';
 import 'package:trooper/src/storage/storage_backend.dart';
 
-/// Configuration specifying caching, staleness, deduplication, and conflict policies for a Trooper query.
+/// Configuration specifying caching, staleness, deduplication, conflict, timeout, and retry policies for a Trooper query.
 class TrooperConfig {
-  /// Creates a [TrooperConfig] with customizable TTL, stale policy, conflict policy, deduplication, and optional storage.
+  /// Creates a [TrooperConfig] with customizable TTL, stale policy, conflict policy, deduplication, timeout, and optional storage.
   ///
   /// Defaults to standard Stale-While-Revalidate caching with 1 minute TTL, [QueryConflictPolicy.forward], and `deduplicate: true`.
   const TrooperConfig({
@@ -14,6 +15,8 @@ class TrooperConfig {
     this.deduplicate = true,
     this.storage,
     this.refreshAfterChangeDependencies = true,
+    this.timeout,
+    this.retryPolicy,
   });
 
   /// Ephemeral configuration without caching (TTL = 0).
@@ -21,6 +24,8 @@ class TrooperConfig {
     this.conflictPolicy = QueryConflictPolicy.forward,
     this.deduplicate = true,
     this.refreshAfterChangeDependencies = true,
+    this.timeout,
+    this.retryPolicy,
   }) : timeToLive = Duration.zero,
        stalePolicy = StalePolicy.discardStaleOnRefresh,
        storage = null;
@@ -47,6 +52,12 @@ class TrooperConfig {
 
   /// Whether `didChangeDependencies()` should trigger a refresh directly after invalidating.
   final bool refreshAfterChangeDependencies;
+
+  /// Optional maximum duration allowed for in-flight operations before throwing a [TrooperTimeoutException].
+  final Duration? timeout;
+
+  /// Optional automated retry strategy executed when operations fail.
+  final RetryPolicy? retryPolicy;
 
   /// Shorthand alias for [conflictPolicy].
   QueryConflictPolicy get queryConflictPolicy => conflictPolicy;
@@ -76,6 +87,8 @@ class TrooperConfig {
     bool? deduplicate,
     StorageBackend? storage,
     bool? refreshAfterChangeDependencies,
+    Duration? timeout,
+    RetryPolicy? retryPolicy,
   }) => TrooperConfig(
     timeToLive: timeToLive ?? this.timeToLive,
     stalePolicy: stalePolicy ?? this.stalePolicy,
@@ -84,5 +97,7 @@ class TrooperConfig {
     storage: storage ?? this.storage,
     refreshAfterChangeDependencies:
         refreshAfterChangeDependencies ?? this.refreshAfterChangeDependencies,
+    timeout: timeout ?? this.timeout,
+    retryPolicy: retryPolicy ?? this.retryPolicy,
   );
 }

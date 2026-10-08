@@ -14,6 +14,8 @@ void main() {
       expect(config.hasCache, isTrue);
       expect(config.storage, isNull);
       expect(config.refreshAfterChangeDependencies, isTrue);
+      expect(config.timeout, isNull);
+      expect(config.retryPolicy, isNull);
     });
 
     test('TrooperConfig.noCache disables caching and sets discard policy', () {
@@ -23,11 +25,14 @@ void main() {
       expect(noCache.hasCache, isFalse);
       expect(noCache.stalePolicy, StalePolicy.discardStaleOnRefresh);
       expect(noCache.storage, isNull);
+      expect(noCache.timeout, isNull);
+      expect(noCache.retryPolicy, isNull);
     });
 
     test('copyWith updates individual fields', () {
       const initial = TrooperConfig();
       final storage = InMemoryStorageBackend();
+      final retry = RetryPolicy.immediate(maxRetries: 3);
       final updated = initial.copyWith(
         timeToLive: const Duration(hours: 2),
         conflictPolicy: QueryConflictPolicy.cancel,
@@ -35,6 +40,8 @@ void main() {
         refreshAfterChangeDependencies: false,
         stalePolicy: StalePolicy.discardStaleOnRefresh,
         storage: storage,
+        timeout: const Duration(seconds: 10),
+        retryPolicy: retry,
       );
 
       expect(updated.timeToLive, const Duration(hours: 2));
@@ -43,6 +50,8 @@ void main() {
       expect(updated.refreshAfterChangeDependencies, isFalse);
       expect(updated.stalePolicy, StalePolicy.discardStaleOnRefresh);
       expect(updated.storage, storage);
+      expect(updated.timeout, const Duration(seconds: 10));
+      expect(updated.retryPolicy, retry);
     });
 
     test('static defaultConfig and setDefaultConfig', () {

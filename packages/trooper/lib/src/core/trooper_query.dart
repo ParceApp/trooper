@@ -296,6 +296,8 @@ class TrooperQuery<T, P extends Parameter> extends Trooper<T, P> {
         forceRefresh: forceRefresh,
         deduplicate: config.deduplicate,
         conflictPolicy: config.conflictPolicy,
+        timeout: config.timeout,
+        retryPolicy: config.retryPolicy,
         action: (token) => fetch(param, token),
       );
       stopwatch.stop();

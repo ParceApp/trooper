@@ -3,6 +3,7 @@ import 'package:trooper/src/codec/trooper_codec.dart';
 import 'package:trooper/src/config/trooper_config.dart';
 import 'package:trooper/src/core/accessor.dart';
 import 'package:trooper/src/core/trooper.dart';
+import 'package:trooper/src/error/trooper_exception.dart';
 import 'package:trooper/src/state/data_metadata.dart';
 import 'package:trooper/src/state/stateful_data.dart';
 import 'package:trooper/src/stream/stateful_stream.dart';
@@ -150,10 +151,51 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
             stackTrace: stackTrace,
           ),
         );
-        // Non-critical persistence failure
+        throw TrooperStorageException(
+          'Failed to serialize state for ${key.name}',
+          error: error,
+        );
       }
     }
 
+    return value;
+  }
+
+  /// Sets [value] in memory and awaits asynchronous persistence to [StorageBackend],
+  /// throwing a [TrooperStorageException] if writing to persistent storage fails.
+  Future<T> setAsync(T value, P parameter) async {
+    set(value, parameter);
+    final storage = config.storage;
+    final currentCodec = codec;
+    if (storage != null && currentCodec != null) {
+      final key = buildQueryKey(parameter);
+      try {
+        final serialized = currentCodec.encode(value);
+        final now = DateTime.now();
+        final envelope = StorageEnvelope(
+          payload: serialized,
+          createdAt: now,
+          expiresAt: config.hasCache ? now.add(config.timeToLive) : null,
+          timeToLiveMillis: config.hasCache
+              ? config.timeToLive.inMilliseconds
+              : null,
+        );
+        await storage.write(key.storageKey, envelope.encode());
+      } catch (error, stackTrace) {
+        telemetry.emit(
+          PersistenceErrorEvent(
+            key,
+            error: error,
+            duration: Duration.zero,
+            stackTrace: stackTrace,
+          ),
+        );
+        throw TrooperStorageException(
+          'Failed to persist state for ${key.name} to storage backend',
+          error: error,
+        );
+      }
+    }
     return value;
   }
 
@@ -179,6 +221,33 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
       storage.delete(key.storageKey).ignore();
     }
 
+    return initialValue;
+  }
+
+  /// Resets state back to [initialValue] and awaits deletion from persistent storage,
+  /// throwing a [TrooperStorageException] if storage deletion fails.
+  Future<T> resetAsync(P parameter) async {
+    reset(parameter);
+    final storage = config.storage;
+    if (storage != null) {
+      final key = buildQueryKey(parameter);
+      try {
+        await storage.delete(key.storageKey);
+      } catch (error, stackTrace) {
+        telemetry.emit(
+          PersistenceErrorEvent(
+            key,
+            error: error,
+            duration: Duration.zero,
+            stackTrace: stackTrace,
+          ),
+        );
+        throw TrooperStorageException(
+          'Failed to delete persisted state for ${key.name} from storage backend',
+          error: error,
+        );
+      }
+    }
     return initialValue;
   }
 
@@ -276,9 +345,15 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
 
 /// Convenience extension for parameterless [LocalTrooper] instances where `P` is `()`.
 extension ParameterlessLocalTrooper<T> on LocalTrooper<T, ()> {
+  /// Sets [value] and awaits persistent storage without requiring an explicit `()` parameter.
+  Future<T> setAsync(T value) => this.setAsync(value, const ());
+
   /// Updates the local state by applying [transform] without requiring an explicit `()` parameter.
   T update(T Function(T current) transform) => this.update(transform, const ());
 
   /// Resets the state back to [initialValue] without requiring an explicit `()` parameter.
   T reset() => this.reset(const ());
+
+  /// Resets the state back to [initialValue] and awaits deletion from persistent storage without requiring an explicit `()` parameter.
+  Future<T> resetAsync() => this.resetAsync(const ());
 }

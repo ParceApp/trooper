@@ -6,6 +6,7 @@ export 'src/concurrency/cancel_token.dart';
 export 'src/concurrency/mutation_queue.dart';
 export 'src/concurrency/query_queue.dart';
 export 'src/config/query_conflict_policy.dart';
+export 'src/config/retry_policy.dart';
 export 'src/config/stale_policy.dart';
 export 'src/config/trooper_config.dart';
 export 'src/controller/trooper_controller.dart';

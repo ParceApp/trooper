@@ -398,6 +398,8 @@ class KeyedTrooperQuery<K extends Object, T, P extends Parameter>
         forceRefresh: forceNew,
         deduplicate: config.deduplicate,
         conflictPolicy: config.conflictPolicy,
+        timeout: config.timeout,
+        retryPolicy: config.retryPolicy,
         action: (token) => fetch(key, param, token),
       );
       stopwatch.stop();

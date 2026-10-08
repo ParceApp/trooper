@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:trooper/src/concurrency/cancel_token.dart';
 import 'package:trooper/src/config/query_conflict_policy.dart';
+import 'package:trooper/src/config/retry_policy.dart';
 import 'package:trooper/src/error/trooper_exception.dart';
 import 'package:trooper/src/key/query_key.dart';
 import 'package:trooper/src/lifecycle/lifecycle_aware.dart';
@@ -54,6 +55,8 @@ class TrooperQueryQueue with LifecycleAware {
     QueryConflictPolicy conflictPolicy = QueryConflictPolicy.forward,
     bool deduplicate = true,
     bool forceRefresh = false,
+    Duration? timeout,
+    RetryPolicy? retryPolicy,
   }) {
     if (_isDisposed) {
       throw StateError(
@@ -114,13 +117,57 @@ class TrooperQueryQueue with LifecycleAware {
 
     Future<void> runTask() async {
       try {
-        final result = await action(cancelToken);
-        if (!completer.isCompleted) {
-          completer.complete(result);
-        }
-      } catch (error, stackTrace) {
-        if (!completer.isCompleted) {
-          completer.completeError(error, stackTrace);
+        var attempt = 0;
+        while (true) {
+          attempt++;
+          try {
+            Future<T> actionFuture = action(cancelToken);
+            if (timeout != null) {
+              actionFuture = actionFuture.timeout(
+                timeout,
+                onTimeout: () => throw TrooperTimeoutException(
+                  timeout: timeout,
+                  message:
+                      'Operation on ${key.describe()} timed out after ${timeout.inMilliseconds} ms.',
+                ),
+              );
+            }
+            final result = await actionFuture;
+            if (!completer.isCompleted) {
+              completer.complete(result);
+            }
+            break;
+          } catch (error, stackTrace) {
+            final isCancelled =
+                cancelToken.isCancelled || error is TrooperCancelledException;
+            final shouldRetry = !isCancelled &&
+                retryPolicy != null &&
+                retryPolicy.shouldRetry(error, attempt);
+
+            if (shouldRetry) {
+              final delay = retryPolicy.delayForAttempt(attempt);
+              if (delay > Duration.zero) {
+                await Future<void>.delayed(delay);
+              }
+              if (cancelToken.isCancelled) {
+                if (!completer.isCompleted) {
+                  completer.completeError(
+                    TrooperCancelledException(
+                      message: cancelToken.reason ?? 'Operation cancelled',
+                    ),
+                    stackTrace,
+                  );
+                }
+                break;
+              }
+              continue;
+            }
+
+            if (!completer.isCompleted) {
+              completer.completeError(error, stackTrace);
+            }
+            break;
+          }
         }
       } finally {
         _ongoingList.remove(ongoing);

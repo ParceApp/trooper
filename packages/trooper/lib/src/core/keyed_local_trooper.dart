@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:trooper/src/codec/trooper_codec.dart';
 import 'package:trooper/src/core/accessor.dart';
 import 'package:trooper/src/core/keyed_trooper.dart';
+import 'package:trooper/src/error/trooper_exception.dart';
 import 'package:trooper/src/state/data_metadata.dart';
 import 'package:trooper/src/state/stateful_data.dart';
 import 'package:trooper/src/stream/stateful_stream.dart';
@@ -145,7 +146,48 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
             stackTrace: stackTrace,
           ),
         );
-        // Non-critical persistence failure
+        throw TrooperStorageException(
+          'Failed to serialize state for ${qKey.name}',
+          error: error,
+        );
+      }
+    }
+    return value;
+  }
+
+  /// Sets [value] for [key] in memory and awaits asynchronous persistence to [StorageBackend],
+  /// throwing a [TrooperStorageException] if writing to persistent storage fails.
+  Future<T> setKeyAsync(K key, T value, P parameter) async {
+    setKey(key, value, parameter);
+    final storage = config.storage;
+    final currentCodec = codec;
+    if (storage != null && currentCodec != null) {
+      final qKey = buildQueryKey(key, parameter);
+      try {
+        final serialized = currentCodec.encode(value);
+        final now = DateTime.now();
+        final envelope = StorageEnvelope(
+          payload: serialized,
+          createdAt: now,
+          expiresAt: config.hasCache ? now.add(config.timeToLive) : null,
+          timeToLiveMillis: config.hasCache
+              ? config.timeToLive.inMilliseconds
+              : null,
+        );
+        await storage.write(qKey.storageKey, envelope.encode());
+      } catch (error, stackTrace) {
+        telemetry.emit(
+          PersistenceErrorEvent(
+            qKey,
+            error: error,
+            duration: Duration.zero,
+            stackTrace: stackTrace,
+          ),
+        );
+        throw TrooperStorageException(
+          'Failed to persist state for ${qKey.name} to storage backend',
+          error: error,
+        );
       }
     }
     return value;
@@ -172,6 +214,33 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
       storage.delete(qKey.storageKey).ignore();
     }
     return initial;
+  }
+
+  /// Resets state for [key] back to its initial value and awaits deletion from persistent storage,
+  /// throwing a [TrooperStorageException] if storage deletion fails.
+  Future<T> resetKeyAsync(K key, P parameter) async {
+    resetKey(key, parameter);
+    final storage = config.storage;
+    if (storage != null) {
+      final qKey = buildQueryKey(key, parameter);
+      try {
+        await storage.delete(qKey.storageKey);
+      } catch (error, stackTrace) {
+        telemetry.emit(
+          PersistenceErrorEvent(
+            qKey,
+            error: error,
+            duration: Duration.zero,
+            stackTrace: stackTrace,
+          ),
+        );
+        throw TrooperStorageException(
+          'Failed to delete persisted state for ${qKey.name} from storage backend',
+          error: error,
+        );
+      }
+    }
+    return initialValueFactory(key);
   }
 
   /// Resets all currently tracked keys back to their initial values.
@@ -396,12 +465,18 @@ extension ParameterlessKeyedLocalTrooper<K extends Object, T>
   /// Sets data for [key] without requiring an explicit `()` parameter.
   T setKey(K key, T value) => this.setKey(key, value, const ());
 
+  /// Sets data for [key] and awaits persistent storage without requiring an explicit `()` parameter.
+  Future<T> setKeyAsync(K key, T value) => this.setKeyAsync(key, value, const ());
+
   /// Updates state for [key] without requiring an explicit `()` parameter.
   T updateKey(K key, T Function(T current) transform) =>
       this.updateKey(key, transform, const ());
 
   /// Resets state for [key] without requiring an explicit `()` parameter.
   T resetKey(K key) => this.resetKey(key, const ());
+
+  /// Resets state for [key] and awaits deletion from persistent storage without requiring an explicit `()` parameter.
+  Future<T> resetKeyAsync(K key) => this.resetKeyAsync(key, const ());
 
   /// Refreshes state for [key] without requiring an explicit `()` parameter.
   Future<T> refreshKey(K key) => this.refreshKey(key, const ());
