@@ -397,8 +397,8 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
   }
 
   @override
-  StatefulStream<T> watch(P parameter, {bool eager = true}) {
-    if (eager && !isConnected) {
+  StatefulStream<T> watch([P? parameter, bool eager = true]) {
+    if (eager && parameter != null && !isConnected) {
       connect(parameter).ignore();
     }
 
@@ -406,7 +406,7 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
     return StatefulStream<T>(
       Stream<StatefulData<T>>.multi((listener) {
         _activeWatchers++;
-        if (!isConnected) {
+        if (parameter != null && !isConnected) {
           connect(parameter).ignore();
         }
         final sub = streamController.stream.listen(

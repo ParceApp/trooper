@@ -92,18 +92,18 @@ class KeyedTrooperAccessor<K extends Object, T, P extends Parameter>
   /// Creates a [KeyedTrooperAccessor] delegating to the underlying [stream] and accessor callbacks.
   KeyedTrooperAccessor({
     required this.accessorFactory,
-    required this.stream,
+    required KeyedStatefulStream<K, T> stream,
     required this.onInvalidate,
     this.onInvalidateKey,
     this.onRead,
     this.onRefresh,
-  });
+  }) : _keyedStream = stream;
 
   /// Factory resolving a single-key [Accessor].
   final Accessor<T, P> Function(K key) accessorFactory;
 
-  /// Keyed stream managing per-key state.
-  final KeyedStatefulStream<K, T> stream;
+  /// Underlying keyed stream managing per-key state.
+  final KeyedStatefulStream<K, T> _keyedStream;
 
   /// Callback to invalidate the collection.
   final void Function() onInvalidate;
@@ -168,29 +168,31 @@ class KeyedTrooperAccessor<K extends Object, T, P extends Parameter>
   }
 
   @override
-  Map<K, T> get currentDataMap => stream.currentDataMap;
+  Map<K, T> get currentDataMap => _keyedStream.currentDataMap;
 
   @override
-  Map<K, StatefulData<T>> get currentStates => stream.currentStates;
+  Map<K, StatefulData<T>> get currentStates => _keyedStream.currentStates;
 
   @override
-  Set<K> get activeKeys => stream.activeKeys;
+  Set<K> get activeKeys => _keyedStream.activeKeys;
 
   @override
-  int get count => stream.count;
+  int get count => _keyedStream.count;
 
   @override
-  Stream<Map<K, StatefulData<T>>> watchAll() => stream.watchAll();
+  Stream<Map<K, StatefulData<T>>> watchAll() => _keyedStream.watchAll();
 
   @override
-  Stream<Set<K>> watchKeys() => stream.watchKeys();
+  Stream<Set<K>> watchKeys() => _keyedStream.watchKeys();
 
   @override
-  StatefulStream<Map<K, T>> watch(() parameter, {bool eager = true}) =>
-      StatefulStream<Map<K, T>>(
-        stream.watchAll().map((_) => current(parameter)),
-        currentStateProvider: () => current(parameter),
+  StatefulStream<Map<K, T>> get stream => StatefulStream<Map<K, T>>(
+        _keyedStream.watchAll().map((_) => current()),
+        currentStateProvider: current,
       );
+
+  @override
+  StatefulStream<Map<K, T>> watch([() ? parameter, bool eager = true]) => stream;
 
   @override
   Future<Map<K, T>> get(() parameter, {bool forceRefresh = false}) async {
@@ -218,7 +220,7 @@ class KeyedTrooperAccessor<K extends Object, T, P extends Parameter>
   }
 
   @override
-  StatefulData<Map<K, T>> current(() parameter) {
+  StatefulData<Map<K, T>> current([()? parameter]) {
     final data = currentDataMap;
     if (data.isEmpty) {
       return const DataInitial();
@@ -230,7 +232,7 @@ class KeyedTrooperAccessor<K extends Object, T, P extends Parameter>
   }
 
   @override
-  Map<K, T>? currentData(() parameter) {
+  Map<K, T>? currentData([()? parameter]) {
     final data = currentDataMap;
     return data.isEmpty ? null : data;
   }

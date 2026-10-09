@@ -80,6 +80,7 @@ abstract class Trooper<T, P extends Parameter>
   final StatefulStreamController<T> streamController;
 
   /// The underlying [StatefulStream] emitting [StatefulData] transitions.
+  @override
   StatefulStream<T> get stream => streamController.stream;
 
   P? _lastParam;
@@ -123,8 +124,8 @@ abstract class Trooper<T, P extends Parameter>
   }
 
   @override
-  StatefulStream<T> watch(P parameter, {bool eager = true}) {
-    if (eager) {
+  StatefulStream<T> watch([P? parameter, bool eager = true]) {
+    if (eager && parameter != null) {
       final state = current(parameter);
       if (state is DataInitial ||
           isParamChanged(parameter) ||
@@ -136,10 +137,10 @@ abstract class Trooper<T, P extends Parameter>
   }
 
   @override
-  StatefulData<T> current(P parameter) => streamController.currentState;
+  StatefulData<T> current([P? parameter]) => streamController.currentState;
 
   @override
-  T? currentData(P parameter) => streamController.currentData;
+  T? currentData([P? parameter]) => streamController.currentData;
 
   /// Manually sets data in cache and emits [DataLoaded], returning the set [data].
   ///
@@ -259,8 +260,11 @@ class _BoundTrooperAccessor<T, P extends Parameter> implements Accessor<T, P> {
   final Trooper<T, P> _trooper;
 
   @override
-  StatefulStream<T> watch(P parameter, {bool eager = true}) =>
-      _trooper.watch(parameter, eager: eager);
+  StatefulStream<T> get stream => _trooper.stream;
+
+  @override
+  StatefulStream<T> watch([P? parameter, bool eager = true]) =>
+      _trooper.watch(parameter, eager);
 
   @override
   Future<T> get(P parameter, {bool forceRefresh = false}) =>
@@ -274,10 +278,10 @@ class _BoundTrooperAccessor<T, P extends Parameter> implements Accessor<T, P> {
       _trooper.trigger(parameter, forceRefresh: forceRefresh);
 
   @override
-  StatefulData<T> current(P parameter) => _trooper.current(parameter);
+  StatefulData<T> current([P? parameter]) => _trooper.current(parameter);
 
   @override
-  T? currentData(P parameter) => _trooper.currentData(parameter);
+  T? currentData([P? parameter]) => _trooper.currentData(parameter);
 
   @override
   void invalidate() => _trooper.invalidate();

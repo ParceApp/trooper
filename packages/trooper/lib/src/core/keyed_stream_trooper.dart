@@ -402,8 +402,8 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
       Future.wait(keys.map(disconnectKey));
 
   /// Watches state updates for a single [key], managing automatic connection.
-  StatefulStream<T> watchKey(K key, P parameter, {bool eager = true}) {
-    if (eager && !isConnectedKey(key)) {
+  StatefulStream<T> watchKey(K key, [P? parameter, bool eager = true]) {
+    if (eager && parameter != null && !isConnectedKey(key)) {
       connectKey(key, parameter).ignore();
     }
 
@@ -412,7 +412,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
     return StatefulStream<T>(
       Stream.multi((controller) {
         _activeWatchers[key] = (_activeWatchers[key] ?? 0) + 1;
-        if (!isConnectedKey(key)) {
+        if (parameter != null && !isConnectedKey(key)) {
           connectKey(key, parameter).ignore();
         }
         final sub = keyStream.listen(
@@ -739,8 +739,11 @@ class _KeyedStreamBoundAccessor<K extends Object, T, P extends Parameter>
   final K _key;
 
   @override
-  StatefulStream<T> watch(P parameter, {bool eager = true}) =>
-      _parent.watchKey(_key, parameter, eager: eager);
+  StatefulStream<T> get stream => _parent.stream.streamOf(_key);
+
+  @override
+  StatefulStream<T> watch([P? parameter, bool eager = true]) =>
+      _parent.watchKey(_key, parameter, eager);
 
   @override
   Future<T> get(P parameter, {bool forceRefresh = false}) =>
@@ -754,10 +757,10 @@ class _KeyedStreamBoundAccessor<K extends Object, T, P extends Parameter>
   Future<T> refresh(P parameter) => _parent.refreshKey(_key, parameter);
 
   @override
-  StatefulData<T> current(P parameter) => _parent.currentKey(_key);
+  StatefulData<T> current([P? parameter]) => _parent.currentKey(_key);
 
   @override
-  T? currentData(P parameter) => _parent.currentKeyData(_key);
+  T? currentData([P? parameter]) => _parent.currentKeyData(_key);
 
   @override
   void invalidate() => _parent.invalidateKey(_key);
@@ -802,7 +805,7 @@ extension ParameterlessKeyedStreamTrooper<K extends Object, T>
 
   /// Watches state updates for a single [key] without requiring an explicit `()` parameter.
   StatefulStream<T> watchKey(K key, {bool eager = true}) =>
-      this.watchKey(key, const (), eager: eager);
+      this.watchKey(key, const (), eager);
 
   /// Manually sets data for [key] without requiring an explicit `()` parameter.
   T setKey(K key, T data) => this.setKey(key, data, const ());

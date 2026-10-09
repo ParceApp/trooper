@@ -233,7 +233,7 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 10));
       expect(accessor.currentData(const ()), 'Val-item-1-3');
 
-      final stream = accessor.watch(const (), eager: false);
+      final stream = accessor.watch(const (), false);
       expect(stream.currentData, 'Val-item-1-3');
 
       accessor.invalidate();

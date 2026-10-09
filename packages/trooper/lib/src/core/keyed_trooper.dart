@@ -27,7 +27,7 @@ import 'package:trooper/types/parameter.dart';
 /// - Per-key parameter tracking through [_lastParams].
 abstract class KeyedTrooper<K extends Object, T, P extends Parameter>
     with LifecycleAware
-    implements Invalidatable, KeyedAccessor<K, T, P> {
+    implements Invalidatable {
   /// Creates a [KeyedTrooper] with the specified [namespace] and dependencies.
   KeyedTrooper({
     required this.namespace,
@@ -134,52 +134,38 @@ abstract class KeyedTrooper<K extends Object, T, P extends Parameter>
     },
   );
 
-  @override
   Accessor<T, P> operator [](K key);
 
-  @override
   Accessor<T, P> key(K key) => this[key];
 
-  @override
   Map<K, StatefulData<T>> get currentStates => stream.currentStates;
 
-  @override
   Map<K, T> get currentDataMap => stream.currentDataMap;
 
-  @override
   Set<K> get activeKeys => stream.activeKeys;
 
-  @override
   int get count => stream.count;
 
-  @override
   Stream<Map<K, StatefulData<T>>> watchAll() => stream.watchAll();
 
-  @override
   Stream<Set<K>> watchKeys() => stream.watchKeys();
 
-  // --- Collection-level Accessor<Map<K, T>, ()> implementation ---
+  // --- Collection-level Accessor<Map<K, T>, ()> delegation ---
 
-  @override
-  StatefulStream<Map<K, T>> watch(() parameter, {bool eager = true}) =>
-      accessor.watch(parameter, eager: eager);
+  StatefulStream<Map<K, T>> watch([() ? parameter, bool eager = true]) =>
+      accessor.watch(parameter, eager);
 
-  @override
   Future<Map<K, T>> get(() parameter, {bool forceRefresh = false}) =>
       accessor.get(parameter, forceRefresh: forceRefresh);
 
-  @override
   Future<Map<K, T>> refresh(() parameter) => accessor.refresh(parameter);
 
-  @override
   void trigger(() parameter, {bool forceRefresh = false}) =>
       accessor.trigger(parameter, forceRefresh: forceRefresh);
 
-  @override
-  StatefulData<Map<K, T>> current(() parameter) => accessor.current(parameter);
+  StatefulData<Map<K, T>> current([()? parameter]) => accessor.current(parameter);
 
-  @override
-  Map<K, T>? currentData(() parameter) => accessor.currentData(parameter);
+  Map<K, T>? currentData([()? parameter]) => accessor.currentData(parameter);
 
   // --- Single Key State Queries ---
 
@@ -195,7 +181,6 @@ abstract class KeyedTrooper<K extends Object, T, P extends Parameter>
   ///
   /// If [parameter] is provided, the specific storage entry is deleted.
   /// Otherwise, entries matching this key are pruned from cache via wildcard.
-  @override
   void invalidateKey(K key, [P? parameter]) {
     queryQueue.cancelWhere(
       (k) => k.matchesNameAndKey(name: namespace, entityKey: key),
@@ -242,18 +227,15 @@ abstract class KeyedTrooper<K extends Object, T, P extends Parameter>
     }
   }
 
-  @override
   Future<Map<K, T>> getAll(
     Iterable<K> keys,
     P parameter, {
     bool forceRefresh = false,
   }) => accessor.getAll(keys, parameter, forceRefresh: forceRefresh);
 
-  @override
   Future<Map<K, T>> refreshKeys(Iterable<K> keys, P parameter) =>
       accessor.refreshKeys(keys, parameter);
 
-  @override
   void triggerKeys(
     Iterable<K> keys,
     P parameter, {
@@ -261,7 +243,6 @@ abstract class KeyedTrooper<K extends Object, T, P extends Parameter>
   }) => accessor.triggerKeys(keys, parameter, forceRefresh: forceRefresh);
 
   /// Invalidates the cache entry and resets state to [DataInitial] for multiple [keys].
-  @override
   void invalidateKeys(Iterable<K> keys, [P? parameter]) {
     for (final key in keys) {
       invalidateKey(key, parameter);

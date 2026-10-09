@@ -138,7 +138,7 @@ void main() {
       accessor.trigger(const ());
       accessor.invalidate();
 
-      final watcher = accessor.watch(const (), eager: false);
+      final watcher = accessor.watch(const (), false);
       expect(watcher.currentData, isNull);
 
       trooper.dispose();

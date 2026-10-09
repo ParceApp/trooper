@@ -301,8 +301,8 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
   }
 
   @override
-  StatefulStream<T> watch(P parameter, {bool eager = true}) {
-    if (eager && !_isHydrated && config.storage != null && codec != null) {
+  StatefulStream<T> watch([P? parameter, bool eager = true]) {
+    if (eager && parameter != null && !_isHydrated && config.storage != null && codec != null) {
       get(parameter).ignore();
     }
     return streamController.stream;

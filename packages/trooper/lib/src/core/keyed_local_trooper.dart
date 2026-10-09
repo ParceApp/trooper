@@ -408,21 +408,30 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
   }
 
   /// Watches state updates for a single [key].
-  StatefulStream<T> watchKey(K key, P parameter, {bool eager = true}) {
+  StatefulStream<T> watchKey(K key, [P? parameter, bool eager = true]) {
     if (!stream.containsKey(key)) {
       final initial = initialValueFactory(key);
-      final qKey = buildQueryKey(key, parameter);
-      cache.put(
-        qKey,
-        initial,
-        timeToLive: config.timeToLive,
-        source: DataSource.local,
-      );
-      final entry = cache.getEntry<T>(qKey);
-      stream.emitData(key, initial, metadata: entry?.metadata);
+      if (parameter != null) {
+        final qKey = buildQueryKey(key, parameter);
+        cache.put(
+          qKey,
+          initial,
+          timeToLive: config.timeToLive,
+          source: DataSource.local,
+        );
+        final entry = cache.getEntry<T>(qKey);
+        stream.emitData(key, initial, metadata: entry?.metadata);
+      } else {
+        stream.emitData(
+          key,
+          initial,
+          metadata: DataMetadata.now(source: DataSource.local),
+        );
+      }
     }
 
     if (eager &&
+        parameter != null &&
         !_hydratedKeys.contains(key) &&
         config.storage != null &&
         codec != null) {
@@ -495,8 +504,11 @@ class _KeyedLocalBoundAccessor<K extends Object, T, P extends Parameter>
   final K _key;
 
   @override
-  StatefulStream<T> watch(P parameter, {bool eager = true}) =>
-      _parent.watchKey(_key, parameter, eager: eager);
+  StatefulStream<T> get stream => _parent.stream.streamOf(_key);
+
+  @override
+  StatefulStream<T> watch([P? parameter, bool eager = true]) =>
+      _parent.watchKey(_key, parameter, eager);
 
   @override
   Future<T> get(P parameter, {bool forceRefresh = false}) =>
@@ -510,10 +522,10 @@ class _KeyedLocalBoundAccessor<K extends Object, T, P extends Parameter>
   Future<T> refresh(P parameter) => _parent.refreshKey(_key, parameter);
 
   @override
-  StatefulData<T> current(P parameter) => _parent.currentKeyState(_key);
+  StatefulData<T> current([P? parameter]) => _parent.currentKeyState(_key);
 
   @override
-  T? currentData(P parameter) => _parent.currentKeyData(_key);
+  T? currentData([P? parameter]) => _parent.currentKeyData(_key);
 
   @override
   void invalidate() => _parent.invalidateKey(_key);
@@ -575,5 +587,5 @@ extension ParameterlessKeyedLocalTrooper<K extends Object, T>
 
   /// Watches state updates for a single [key] without requiring an explicit `()` parameter.
   StatefulStream<T> watchKey(K key, {bool eager = true}) =>
-      this.watchKey(key, const (), eager: eager);
+      this.watchKey(key, const (), eager);
 }

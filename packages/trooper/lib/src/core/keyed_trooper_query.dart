@@ -303,8 +303,8 @@ class KeyedTrooperQuery<K extends Object, T, P extends Parameter>
   }
 
   /// Watches state updates for a single [key].
-  StatefulStream<T> watchKey(K key, P parameter, {bool eager = true}) {
-    if (eager) {
+  StatefulStream<T> watchKey(K key, [P? parameter, bool eager = true]) {
+    if (eager && parameter != null) {
       final state = currentKey(key);
       if (state is DataInitial ||
           isParamChanged(key, parameter) ||
@@ -539,8 +539,11 @@ class _KeyedBoundAccessor<K extends Object, T, P extends Parameter>
   final K _key;
 
   @override
-  StatefulStream<T> watch(P parameter, {bool eager = true}) =>
-      _parent.watchKey(_key, parameter, eager: eager);
+  StatefulStream<T> get stream => _parent.stream.streamOf(_key);
+
+  @override
+  StatefulStream<T> watch([P? parameter, bool eager = true]) =>
+      _parent.watchKey(_key, parameter, eager);
 
   @override
   Future<T> get(P parameter, {bool forceRefresh = false}) =>
@@ -554,10 +557,10 @@ class _KeyedBoundAccessor<K extends Object, T, P extends Parameter>
       _parent.triggerKey(_key, parameter, forceRefresh: forceRefresh);
 
   @override
-  StatefulData<T> current(P parameter) => _parent.currentKey(_key);
+  StatefulData<T> current([P? parameter]) => _parent.currentKey(_key);
 
   @override
-  T? currentData(P parameter) => _parent.currentKeyData(_key);
+  T? currentData([P? parameter]) => _parent.currentKeyData(_key);
 
   @override
   void invalidate() => _parent.invalidateKey(_key);
@@ -579,7 +582,7 @@ extension ParameterlessKeyedTrooperQuery<K extends Object, T>
 
   /// Watches state updates for a single [key] without requiring an explicit `()` parameter.
   StatefulStream<T> watchKey(K key, {bool eager = true}) =>
-      this.watchKey(key, const (), eager: eager);
+      this.watchKey(key, const (), eager);
 
   /// Reads multiple keys concurrently without requiring an explicit `()` parameter.
   Future<Map<K, StatefulData<T>>> getMany(

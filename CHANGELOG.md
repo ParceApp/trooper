@@ -45,3 +45,13 @@ Initial public release of the Trooper framework monorepo.
 - **172 Unit & Integration Tests**: 100% pass rate with **83.8%** code coverage.
 - **Benchmarks**: Benchmark suite measuring throughput and latency for query and cache operations.
 - **Static Analysis**: 0 issues under strict `very_good_analysis`.
+
+#### Flutter BLoC Integration (`packages/trooper_bloc`)
+- **`Tloc<Event, State>`**: Enterprise BLoC base class combining `flutter_bloc` with Trooper reactive caching and snapshot-locking.
+- **`Tubit<State>`**: Lightweight Cubit alternative for reactive state derivation without events.
+- **`TrooperSources`**: Core derivation mixin with snapshot-locking, microtask batching, and restartable async concurrency.
+- **`watch` & `watchWith`**: Declarative source watching with dynamic parameter switching.
+- **`MatchResult`**: Type-safe derivation result (`.handled`, `.unhandled`) with automated loading and error fallback cascades.
+- **`Effects<F>` & `TlocEffectListener`**: One-off presentation side-effects pipeline for snackbars, toasts, and navigation.
+- **`FakeAccessor<T, P>`**: In-memory test utility for testing BLoC derivation states.
+- **100% Test Coverage**: 40 unit and widget tests with zero warnings or analyzer hints.

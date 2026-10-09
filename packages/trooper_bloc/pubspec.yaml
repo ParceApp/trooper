@@ -1,0 +1,33 @@
+name: trooper_bloc
+description: "High-performance Flutter BLoC and Cubit integration for Trooper reactive data-flow."
+version: 0.1.0
+
+homepage: https://parceapp.de
+repository: https://github.com/ParceApp/trooper/tree/main/packages/trooper_bloc
+issue_tracker: https://github.com/ParceApp/trooper/issues
+
+topics:
+  - state-management
+  - bloc
+  - reactive
+  - data-flow
+  - flutter
+
+environment:
+  sdk: ^3.12.0
+  flutter: ">=3.24.0"
+
+resolution: workspace
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_bloc: ^9.1.1
+  meta: ^1.19.0
+  trooper:
+
+dev_dependencies:
+  bloc_test: ^10.0.0
+  flutter_test:
+    sdk: flutter
+  lints: ^6.1.0
