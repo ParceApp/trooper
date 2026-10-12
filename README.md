@@ -53,7 +53,7 @@ An architectural blueprint and high-performance reactive data-flow framework for
 This repository is organized as a unified Dart 3.5+ workspace:
 
 | Directory | Package | Description | Pub Status |
-|||||
+|---|---|---|---|
 | [`packages/trooper`](file:///Users/hannes/Developer/trooper/packages/trooper) | [`trooper`](https://pub.dev/packages/trooper) | Core pure Dart engine: multi-tier caching (L1/L2), zero-flicker SWR, request coalescing, push streams, mutations, and controllers | [![pub package](https://img.shields.io/pub/v/trooper.svg)](https://pub.dev/packages/trooper) |
 | [`packages/trooper_bloc`](file:///Users/hannes/Developer/trooper/packages/trooper_bloc) | [`trooper_bloc`](https://pub.dev/packages/trooper_bloc) | High-performance Flutter BLoC and Cubit integration (`Tloc`, `Tubit`), snapshot-locking, microtask batching, and presentation effects. Re-exports 100% of `trooper` | [![pub package](https://img.shields.io/pub/v/trooper_bloc.svg)](https://pub.dev/packages/trooper_bloc) |
 
