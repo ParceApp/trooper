@@ -27,7 +27,7 @@ void main() {
       // Fetch should succeed in-memory even if persistent disk write throws FileSystemException
       final data = await query.get((id: 1));
       expect(data, 'Data 1');
-      expect(query.currentData((id: 1)), 'Data 1');
+      expect(query.currentData(), 'Data 1');
 
       // Persistence error event should have been emitted
       await Future<void>.delayed(const Duration(milliseconds: 10));
@@ -54,7 +54,7 @@ void main() {
 
       final result = await query.get(const ());
       expect(result, 'Fresh from network');
-      expect(query.currentData(const ()), 'Fresh from network');
+      expect(query.currentData(), 'Fresh from network');
 
       query.dispose();
     });
@@ -79,7 +79,7 @@ void main() {
 
       final updated = local.set('New Value', const ());
       expect(updated, 'New Value');
-      expect(local.currentData(const ()), 'New Value');
+      expect(local.currentData(), 'New Value');
 
       await Future<void>.delayed(const Duration(milliseconds: 10));
       expect(events.any((e) => e is PersistenceErrorEvent), isTrue);
@@ -144,7 +144,7 @@ void main() {
       // Decoding 'not_an_int' as int fails gracefully in hydrate, falling back to fetch
       final result = await query.get(const ());
       expect(result, 999);
-      expect(query.currentData(const ()), 999);
+      expect(query.currentData(), 999);
 
       query.dispose();
     });

@@ -184,8 +184,8 @@ class KeyedTrooperAccessor<K extends Object, T, P extends Parameter>
 
   @override
   StatefulStream<Map<K, T>> get stream => StatefulStream<Map<K, T>>(
-        _keyedStream.watchAll().map((_) => current(const ())),
-        currentStateProvider: () => current(const ()),
+        _keyedStream.watchAll().map((_) => current()),
+        currentStateProvider: () => current(),
       );
 
   @override
@@ -218,7 +218,7 @@ class KeyedTrooperAccessor<K extends Object, T, P extends Parameter>
   }
 
   @override
-  StatefulData<Map<K, T>> current(() parameter) {
+  StatefulData<Map<K, T>> current() {
     final data = currentDataMap;
     if (data.isEmpty) {
       return const DataInitial();
@@ -230,7 +230,7 @@ class KeyedTrooperAccessor<K extends Object, T, P extends Parameter>
   }
 
   @override
-  Map<K, T>? currentData(() parameter) {
+  Map<K, T>? currentData() {
     final data = currentDataMap;
     return data.isEmpty ? null : data;
   }

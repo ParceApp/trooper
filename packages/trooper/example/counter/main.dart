@@ -59,7 +59,7 @@ void main() async {
   controller.reset();
   await Future<void>.delayed(const Duration(milliseconds: 10));
 
-  print('\nSynchronous read via currentData: ${controller.count.currentData(const ())}');
+  print('\nSynchronous read via currentData: ${controller.count.currentData()}');
 
   // Clean disposal
   await subscription.cancel();

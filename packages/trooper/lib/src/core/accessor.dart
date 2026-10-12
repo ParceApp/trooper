@@ -48,12 +48,12 @@ abstract interface class Accessor<T, P extends Parameter>
   /// If [forceRefresh] is `true`, cache freshness is bypassed.
   void trigger(P parameter, {bool forceRefresh = false});
 
-  /// Returns the current state synchronously for [parameter].
-  StatefulData<T> current(P parameter);
+  /// Returns the current state synchronously.
+  StatefulData<T> current();
 
   /// Returns the unwrapped data payload if the resource is currently [DataLoaded],
   /// or `null` otherwise.
-  T? currentData(P parameter);
+  T? currentData();
 
   /// Marks cached data as stale across all parameters, removes storage, and resets state to [DataInitial].
   @override
@@ -65,12 +65,6 @@ extension ParameterlessAccessor<T> on Accessor<T, ()> {
   /// Watches reactive state updates without requiring an explicit `()` parameter.
   StatefulStream<T> watch({bool eager = false}) =>
       this.watch(initialParameter: const (), eager: eager);
-
-  /// Synchronously returns the current state without requiring an explicit `()` parameter.
-  StatefulData<T> current() => this.current(const ());
-
-  /// Synchronously returns current data payload without requiring an explicit `()` parameter.
-  T? currentData() => this.currentData(const ());
 
   /// Reads the value without requiring an explicit `()` parameter.
   Future<T> get({bool forceRefresh = false}) =>

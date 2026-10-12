@@ -126,7 +126,7 @@ abstract class Trooper<T, P extends Parameter>
   @override
   StatefulStream<T> watch({P? initialParameter, bool eager = false}) {
     if (eager && initialParameter != null) {
-      final state = current(initialParameter);
+      final state = current();
       if (state is DataInitial ||
           isParamChanged(initialParameter) ||
           (config.hasCache && cache.isStale(buildQueryKey(initialParameter)))) {
@@ -137,10 +137,10 @@ abstract class Trooper<T, P extends Parameter>
   }
 
   @override
-  StatefulData<T> current(P parameter) => streamController.currentState;
+  StatefulData<T> current() => streamController.currentState;
 
   @override
-  T? currentData(P parameter) => streamController.currentData;
+  T? currentData() => streamController.currentData;
 
   /// Manually sets data in cache and emits [DataLoaded], returning the set [data].
   ///
@@ -268,10 +268,10 @@ class _BoundTrooperAccessor<T, P extends Parameter> implements Accessor<T, P> {
       _trooper.trigger(parameter, forceRefresh: forceRefresh);
 
   @override
-  StatefulData<T> current(P parameter) => _trooper.current(parameter);
+  StatefulData<T> current() => _trooper.current();
 
   @override
-  T? currentData(P parameter) => _trooper.currentData(parameter);
+  T? currentData() => _trooper.currentData();
 
   @override
   void invalidate() => _trooper.invalidate();

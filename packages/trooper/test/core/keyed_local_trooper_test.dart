@@ -125,8 +125,8 @@ void main() {
       );
 
       final accessor = trooper['hello'];
-      expect(accessor.currentData(const ()), 5);
-      expect(accessor.current(const ()), isA<DataLoaded<int>>());
+      expect(accessor.currentData(), 5);
+      expect(accessor.current(), isA<DataLoaded<int>>());
       expect(trooper.initialValueOf('hello'), 5);
 
       final data = await accessor.get(const ());

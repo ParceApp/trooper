@@ -54,8 +54,8 @@ void main() {
 
       final res = await order101.get(const ());
       expect(res, 'Order #101');
-      expect(order101.currentData(const ()), 'Order #101');
-      expect(order101.current(const ()), isA<DataLoaded<String>>());
+      expect(order101.currentData(), 'Order #101');
+      expect(order101.current(), isA<DataLoaded<String>>());
     });
 
     test('getMany fetches multiple keys concurrently and aggregates states',
@@ -219,25 +219,25 @@ void main() {
       );
 
       final accessor = query['item-1'];
-      expect(accessor.currentData(const ()), isNull);
-      expect(accessor.current(const ()), isA<DataInitial<String>>());
+      expect(accessor.currentData(), isNull);
+      expect(accessor.current(), isA<DataInitial<String>>());
 
       final data = await accessor.get(const ());
       expect(data, 'Val-item-1-1');
-      expect(accessor.currentData(const ()), 'Val-item-1-1');
+      expect(accessor.currentData(), 'Val-item-1-1');
 
       final refreshed = await accessor.refresh(const ());
       expect(refreshed, 'Val-item-1-2');
 
       accessor.trigger(const (), forceRefresh: true);
       await Future<void>.delayed(const Duration(milliseconds: 10));
-      expect(accessor.currentData(const ()), 'Val-item-1-3');
+      expect(accessor.currentData(), 'Val-item-1-3');
 
       final stream = accessor.watch();
       expect(stream.currentData, 'Val-item-1-3');
 
       accessor.invalidate();
-      expect(accessor.current(const ()), isA<DataInitial<String>>());
+      expect(accessor.current(), isA<DataInitial<String>>());
 
       query.dispose();
     });

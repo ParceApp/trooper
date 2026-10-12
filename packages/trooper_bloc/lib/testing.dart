@@ -40,10 +40,10 @@ class FakeAccessor<T, P extends Parameter> implements Accessor<T, P> {
       );
 
   @override
-  StatefulData<T> current(P parameter) => _state;
+  StatefulData<T> current() => _state;
 
   @override
-  T? currentData(P parameter) => _state.dataOrNull;
+  T? currentData() => _state.dataOrNull;
 
   @override
   StatefulStream<T> watch({P? initialParameter, bool eager = false}) {

@@ -163,9 +163,9 @@ abstract class KeyedTrooper<K extends Object, T, P extends Parameter>
   void trigger(() parameter, {bool forceRefresh = false}) =>
       accessor.trigger(parameter, forceRefresh: forceRefresh);
 
-  StatefulData<Map<K, T>> current(() parameter) => accessor.current(parameter);
+  StatefulData<Map<K, T>> current() => accessor.current();
 
-  Map<K, T>? currentData(() parameter) => accessor.currentData(parameter);
+  Map<K, T>? currentData() => accessor.currentData();
 
   // --- Single Key State Queries ---
 

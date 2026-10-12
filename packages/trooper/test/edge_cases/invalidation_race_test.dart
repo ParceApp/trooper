@@ -20,11 +20,11 @@ void main() {
       final future = query.get(const ());
       await Future<void>.delayed(Duration.zero);
 
-      expect(query.current(const ()).isLoading, isTrue);
+      expect(query.current().isLoading, isTrue);
 
       // Invalidate while fetch is still in flight
       query.invalidate();
-      expect(query.current(const ()), isA<DataInitial<String>>());
+      expect(query.current(), isA<DataInitial<String>>());
 
       // The in-flight caller future should be cancelled with TrooperCancelledException
       expect(future, throwsA(isA<TrooperCancelledException>()));
@@ -34,7 +34,7 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 20));
 
       // Invalidation must NOT be overwritten by the late network response
-      expect(query.current(const ()), isA<DataInitial<String>>());
+      expect(query.current(), isA<DataInitial<String>>());
       expect(query.cache.get(const QueryKey('race_invalidation', ())), isNull);
 
       await sub.cancel();

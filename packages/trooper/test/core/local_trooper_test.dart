@@ -22,16 +22,16 @@ void main() {
       final values = <int>[];
       final sub = trooper.stream.dataStream.listen(values.add);
 
-      expect(trooper.currentData(const ()), 0);
+      expect(trooper.currentData(), 0);
 
       trooper.set(5, const ());
-      expect(trooper.currentData(const ()), 5);
+      expect(trooper.currentData(), 5);
 
       trooper.update((prev) => prev + 10, const ());
-      expect(trooper.currentData(const ()), 15);
+      expect(trooper.currentData(), 15);
 
       trooper.reset(const ());
-      expect(trooper.currentData(const ()), 0);
+      expect(trooper.currentData(), 0);
 
       await Future<void>.delayed(Duration.zero);
       expect(values, [0, 5, 15, 0]);
@@ -72,7 +72,7 @@ void main() {
 
       final loaded = await restored.get(const ());
       expect(loaded, 'dark');
-      expect(restored.currentData(const ()), 'dark');
+      expect(restored.currentData(), 'dark');
 
       trooper.dispose();
       restored.dispose();

@@ -557,10 +557,10 @@ class _KeyedBoundAccessor<K extends Object, T, P extends Parameter>
       _parent.triggerKey(_key, parameter, forceRefresh: forceRefresh);
 
   @override
-  StatefulData<T> current(P parameter) => _parent.currentKey(_key);
+  StatefulData<T> current() => _parent.currentKey(_key);
 
   @override
-  T? currentData(P parameter) => _parent.currentKeyData(_key);
+  T? currentData() => _parent.currentKeyData(_key);
 
   @override
   void invalidate() => _parent.invalidateKey(_key);

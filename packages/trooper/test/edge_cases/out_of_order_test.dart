@@ -79,7 +79,7 @@ void main() {
 
       final r2 = await f2;
       expect(r2, 'Result for second');
-      expect(query.currentData((text: 'second')), 'Result for second');
+      expect(query.currentData(), 'Result for second');
 
       query.dispose();
     });

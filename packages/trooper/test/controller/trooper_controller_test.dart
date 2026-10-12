@@ -134,12 +134,12 @@ void main() {
       final controller = _CascadingController(externalTarget);
 
       await controller.userQuery.get(const ());
-      expect(controller.userQuery.currentData(const ()), 'User');
+      expect(controller.userQuery.currentData(), 'User');
 
       controller.invalidate();
 
       expect(externalInvalidated, isTrue);
-      expect(controller.userQuery.current(const ()), isA<DataInitial<String>>());
+      expect(controller.userQuery.current(), isA<DataInitial<String>>());
 
       await controller.dispose();
     });
@@ -151,9 +151,9 @@ void main() {
       expect(controller.initCalled, isTrue);
 
       // Local & KeyedLocal
-      expect(controller.theme.current(const ()).dataOrNull, 'dark');
+      expect(controller.theme.current().dataOrNull, 'dark');
       controller.theme.set('light', const ());
-      expect(controller.theme.current(const ()).dataOrNull, 'light');
+      expect(controller.theme.current().dataOrNull, 'light');
 
       controller.featureFlags.setKey('beta', true, const ());
       expect(controller.featureFlags.currentKeyData('beta'), isTrue);

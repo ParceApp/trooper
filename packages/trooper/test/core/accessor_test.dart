@@ -12,16 +12,16 @@ void main() {
 
       final Accessor<String, ()> accessor = query.accessor;
 
-      // ParameterlessAccessor extension methods
-      expect(ParameterlessAccessor(accessor).current(), isA<DataInitial<String>>());
-      expect(ParameterlessAccessor(accessor).currentData(), isNull);
+      // Accessor current() and currentData() methods
+      expect(accessor.current(), isA<DataInitial<String>>());
+      expect(accessor.currentData(), isNull);
 
       // Trigger background via extension
       ParameterlessAccessor(accessor).trigger();
       await Future<void>.delayed(const Duration(milliseconds: 10));
 
-      expect(ParameterlessAccessor(accessor).currentData(), 'My Application');
-      expect(ParameterlessAccessor(accessor).current(), isA<DataLoaded<String>>());
+      expect(accessor.currentData(), 'My Application');
+      expect(accessor.current(), isA<DataLoaded<String>>());
 
       // Get via extension
       final data = await ParameterlessAccessor(accessor).get();
@@ -35,13 +35,13 @@ void main() {
       final watcher = ParameterlessAccessor(accessor).watch();
       expect(watcher.currentData, 'My Application');
 
-      // Standard Accessor methods with parameter
-      expect(accessor.current(const ()), isA<DataLoaded<String>>());
-      expect(accessor.currentData(const ()), 'My Application');
+      // Standard Accessor methods
+      expect(accessor.current(), isA<DataLoaded<String>>());
+      expect(accessor.currentData(), 'My Application');
 
       // Invalidate
       accessor.invalidate();
-      expect(accessor.current(const ()), isA<DataInitial<String>>());
+      expect(accessor.current(), isA<DataInitial<String>>());
 
       query.dispose();
     });
@@ -60,8 +60,8 @@ void main() {
       expect(accessor.activeKeys, isEmpty);
       expect(accessor.currentDataMap, isEmpty);
       expect(accessor.currentStates, isEmpty);
-      expect(accessor.current(const ()), isA<DataInitial<Map<int, String>>>());
-      expect(accessor.currentData(const ()), isNull);
+      expect(accessor.current(), isA<DataInitial<Map<int, String>>>());
+      expect(accessor.currentData(), isNull);
 
       // Read via single key accessor operator [] and key()
       final user1 = await accessor[1].get(const ());
@@ -73,8 +73,8 @@ void main() {
       expect(accessor.count, 2);
       expect(accessor.activeKeys, {1, 2});
       expect(accessor.currentDataMap, {1: 'User 1', 2: 'User 2'});
-      expect(accessor.currentData(const ()), {1: 'User 1', 2: 'User 2'});
-      expect(accessor.current(const ()), isA<DataLoaded<Map<int, String>>>());
+      expect(accessor.currentData(), {1: 'User 1', 2: 'User 2'});
+      expect(accessor.current(), isA<DataLoaded<Map<int, String>>>());
 
       // Collection-level read & refresh
       // Invalidate key 1

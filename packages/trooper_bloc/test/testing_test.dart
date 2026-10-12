@@ -10,8 +10,8 @@ void main() {
   group('FakeAccessor', () {
     test('current and currentData reflect internal state', () {
       final fake = FakeAccessor<String, ()>(initialData: 'test');
-      expect(fake.current(const ()).dataOrNull, 'test');
-      expect(fake.currentData(const ()), 'test');
+      expect(fake.current().dataOrNull, 'test');
+      expect(fake.currentData(), 'test');
     });
 
     test('get returns data when available and throws when empty', () async {
@@ -22,7 +22,7 @@ void main() {
 
       fake.invalidate();
       expect(fake.invalidateCount, 1);
-      expect(fake.current(const ()), isA<DataInitial<String>>());
+      expect(fake.current(), isA<DataInitial<String>>());
       expect(() => fake.get(const ()), throwsStateError);
     });
 

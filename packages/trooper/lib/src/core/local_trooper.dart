@@ -202,7 +202,7 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
   /// Updates the local state by applying [transform] to the current value
   /// and returns the updated value.
   T update(T Function(T current) transform, P parameter) {
-    final current = currentData(parameter) ?? initialValue;
+    final current = currentData() ?? initialValue;
     final updated = transform(current);
     set(updated, parameter);
     return updated;
@@ -297,7 +297,7 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
       _isHydrated = true;
     }
 
-    return currentData(parameter) ?? initialValue;
+    return currentData() ?? initialValue;
   }
 
   @override

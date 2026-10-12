@@ -27,7 +27,7 @@ void main() {
       final first = await query.get((id: 1));
       expect(first, 'User Alice');
       expect(api.callCount, 1);
-      expect(query.current((id: 1)).isLoaded, isTrue);
+      expect(query.current().isLoaded, isTrue);
 
       final second = await query.get((id: 1));
       expect(second, 'User Alice');
@@ -80,8 +80,8 @@ void main() {
       // Initial fetch
       final v1 = await query.get(const ());
       expect(v1, 'Version 1');
-      expect(query.currentData(const ()), 'Version 1');
-      expect(query.current(const ()), isA<DataLoaded<String>>());
+      expect(query.currentData(), 'Version 1');
+      expect(query.current(), isA<DataLoaded<String>>());
 
       // Wait past TTL
       await Future<void>.delayed(const Duration(milliseconds: 30));
@@ -99,7 +99,7 @@ void main() {
               as DataRefreshing<String>;
       expect(refreshingState.data, 'Version 1');
 
-      expect(query.currentData(const ()), 'Version 2');
+      expect(query.currentData(), 'Version 2');
       expect(call, 2);
 
       await sub.cancel();
@@ -208,7 +208,7 @@ void main() {
 
       final restored = await restoredQuery.get((id: 10));
       expect(restored, 'Saved Payload');
-      expect(restoredQuery.current((id: 10)), isA<DataLoaded<String>>());
+      expect(restoredQuery.current(), isA<DataLoaded<String>>());
     });
 
     test('expired L2 data with keepStaleWhileRevalidate triggers SWR on startup',
@@ -246,7 +246,7 @@ void main() {
       // Allow background revalidation to complete
       await Future<void>.delayed(const Duration(milliseconds: 10));
       expect(refreshed, isTrue);
-      expect(query.currentData(const ()), 'Fresh Network Data');
+      expect(query.currentData(), 'Fresh Network Data');
     });
 
     test('expired L2 data with discardStaleOnRefresh deletes from storage',
@@ -291,7 +291,7 @@ void main() {
       );
 
       await query.get(const ());
-      expect(query.currentData(const ()), 'Valid Data');
+      expect(query.currentData(), 'Valid Data');
 
       // Force failure
       shouldFail = true;
@@ -302,7 +302,7 @@ void main() {
         expect(e.toString(), contains('API Outage'));
       }
 
-      final errState = query.current(const ());
+      final errState = query.current();
       expect(errState, isA<DataError<String>>());
       expect((errState as DataError<String>).staleData, 'Valid Data');
 
@@ -310,7 +310,7 @@ void main() {
       shouldFail = false;
       query.recover();
       await Future<void>.delayed(const Duration(milliseconds: 10));
-      expect(query.currentData(const ()), 'Valid Data');
+      expect(query.currentData(), 'Valid Data');
 
       query.dispose();
     });
@@ -328,7 +328,7 @@ void main() {
       query.trigger(const ());
       await Future<void>.delayed(const Duration(milliseconds: 10));
       expect(fetchCount, 1);
-      expect(query.currentData(const ()), 'Result 1');
+      expect(query.currentData(), 'Result 1');
 
       query.pause();
       query.resume();
@@ -399,7 +399,7 @@ void main() {
 
       final returned = query.set('Manual Value', const ());
       expect(returned, 'Manual Value');
-      expect(query.currentData(const ()), 'Manual Value');
+      expect(query.currentData(), 'Manual Value');
 
       await Future<void>.delayed(const Duration(milliseconds: 10));
       const key = QueryKey('set_storage_ns', ());

@@ -156,7 +156,7 @@ void main() {
       final result = await query.get(const ());
       expect(result, 'Recovered data');
       expect(fetchCount, 3);
-      expect(query.currentData(const ()), 'Recovered data');
+      expect(query.currentData(), 'Recovered data');
 
       await query.dispose();
     });

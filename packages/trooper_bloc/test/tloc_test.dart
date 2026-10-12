@@ -318,7 +318,7 @@ void main() {
         expect(bloc.isClosed, isTrue);
 
         // Fake accessor is still functional
-        expect(fake.currentData(const ()), 'data');
+        expect(fake.currentData(), 'data');
       },
     );
 

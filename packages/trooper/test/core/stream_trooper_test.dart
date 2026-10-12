@@ -91,7 +91,7 @@ void main() {
 
       final result = await getFuture;
       expect(result, 'Alert Message');
-      expect(trooper.currentData(const ()), 'Alert Message');
+      expect(trooper.currentData(), 'Alert Message');
 
       trooper.dispose();
     });
@@ -138,7 +138,7 @@ void main() {
 
       final instant = await restoredTrooper.get(const ());
       expect(instant, 'Item #1');
-      expect(restoredTrooper.currentData(const ()), 'Item #1');
+      expect(restoredTrooper.currentData(), 'Item #1');
 
       trooper.dispose();
       restoredTrooper.dispose();
@@ -154,7 +154,7 @@ void main() {
 
       final returned = trooper.set('pinned_message', const ());
       expect(returned, 'pinned_message');
-      expect(trooper.currentData(const ()), 'pinned_message');
+      expect(trooper.currentData(), 'pinned_message');
 
       await Future<void>.delayed(const Duration(milliseconds: 10));
       expect(storage.writeCount, 1);
@@ -218,7 +218,7 @@ void main() {
 
       s.add('Hello from factory');
       await Future<void>.delayed(Duration.zero);
-      expect(trooper.currentData(const ()), 'Hello from factory');
+      expect(trooper.currentData(), 'Hello from factory');
 
       await trooper.disconnect();
       expect(trooper.isConnected, isFalse);
@@ -283,7 +283,7 @@ void main() {
       await trooper1.connect(const ());
       s.add('Frame 1');
       await Future<void>.delayed(const Duration(milliseconds: 10));
-      expect(trooper1.currentData(const ()), 'Frame 1');
+      expect(trooper1.currentData(), 'Frame 1');
       await trooper1.dispose();
 
       // Instance 2 should hydrate immediately from storage on get or connect

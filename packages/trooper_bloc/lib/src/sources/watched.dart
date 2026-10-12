@@ -52,18 +52,15 @@ class WatchedHandle<T, P extends Parameter>
   WatchedHandle({
     required Accessor<T, P> accessor,
     required this._onUpdate,
-    P? initialParameter,
+    this.initialParameter,
     this.eager = false,
   }) : _accessor = accessor,
-       _initialParameter = initialParameter,
-       _liveState = initialParameter != null
-           ? accessor.current(initialParameter)
-           : (const () is P
-               ? accessor.current(const () as P)
-               : accessor.stream.currentState);
+       _liveState = accessor.current();
 
   final Accessor<T, P> _accessor;
-  final P? _initialParameter;
+
+  /// The initial parameter passed when watching, or `null` if watched passively.
+  final P? initialParameter;
 
   /// Whether watching is eager (triggers initial fetch).
   final bool eager;
@@ -80,7 +77,7 @@ class WatchedHandle<T, P extends Parameter>
   Accessor<T, P> get accessor => _accessor;
 
   /// The parameter passed when watching, or `null` if watched passively.
-  P? get parameter => _initialParameter;
+  P? get parameter => initialParameter;
 
   /// The authoritative live state of the underlying accessor.
   StatefulData<T> get liveState => _liveState;
@@ -121,14 +118,10 @@ class WatchedHandle<T, P extends Parameter>
     _subscription = null;
 
     final stream = _accessor.watch(
-      initialParameter: _initialParameter,
+      initialParameter: initialParameter,
       eager: eager,
     );
-    _liveState = _initialParameter != null
-        ? _accessor.current(_initialParameter)
-        : (const () is P
-            ? _accessor.current(const () as P)
-            : _accessor.stream.currentState);
+    _liveState = _accessor.current();
 
     _subscription = stream.listen(
       (data) {
@@ -157,11 +150,7 @@ class WatchedHandle<T, P extends Parameter>
     if (!_isPaused) return;
     _isPaused = false;
     _subscription?.resume();
-    final fresh = _initialParameter != null
-        ? _accessor.current(_initialParameter)
-        : (const () is P
-            ? _accessor.current(const () as P)
-            : _accessor.stream.currentState);
+    final fresh = _accessor.current();
     if (_liveState != fresh) {
       _liveState = fresh;
     }

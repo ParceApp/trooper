@@ -44,7 +44,7 @@ void main() {
       );
 
       await query.get(const ());
-      expect(query.currentData(const ()), 'Bio v1');
+      expect(query.currentData(), 'Bio v1');
       expect(queryFetches, 1);
 
       // Mutation linked to query
@@ -57,11 +57,11 @@ void main() {
       await mutation((newBio: 'New Content'));
 
       // Query should now be invalidated
-      expect(query.current(const ()), isA<DataInitial<String>>());
+      expect(query.current(), isA<DataInitial<String>>());
 
       // Subsequent query get will trigger a fresh fetch
       await query.get(const ());
-      expect(query.currentData(const ()), 'Bio v2');
+      expect(query.currentData(), 'Bio v2');
       expect(queryFetches, 2);
 
       query.dispose();

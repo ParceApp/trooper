@@ -523,10 +523,10 @@ class _KeyedLocalBoundAccessor<K extends Object, T, P extends Parameter>
   Future<T> refresh(P parameter) => _parent.refreshKey(_key, parameter);
 
   @override
-  StatefulData<T> current(P parameter) => _parent.currentKeyState(_key);
+  StatefulData<T> current() => _parent.currentKeyState(_key);
 
   @override
-  T? currentData(P parameter) => _parent.currentKeyData(_key);
+  T? currentData() => _parent.currentKeyData(_key);
 
   @override
   void invalidate() => _parent.invalidateKey(_key);

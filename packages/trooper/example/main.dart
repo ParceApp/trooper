@@ -147,7 +147,7 @@ void main() async {
   // Step 5: Update local state
   print('5. Setting selected post ID in local state...');
   controller.selectedPostId.set(2, const ());
-  print('   Selected Post ID: ${controller.selectedPostId.currentData(const ())}\n');
+  print('   Selected Post ID: ${controller.selectedPostId.currentData()}\n');
 
   // Step 6: Execute a Mutation with automatic cache invalidation
   print('6. Publishing new post via mutation...');
