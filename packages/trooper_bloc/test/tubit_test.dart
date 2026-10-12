@@ -27,9 +27,7 @@ class CounterTubit extends Tubit<TubitTestState> {
   late final Watched<String> item;
 
   @override
-  List<Watched<Object?>> get sources => [
-    item = watch(accessor),
-  ];
+  List<Watched<Object?>> get sources => [item = watch(accessor)];
 
   @override
   FutureOr<MatchResult> matchSources(Emit<TubitTestState> emit) {
@@ -43,7 +41,8 @@ class CounterTubit extends Tubit<TubitTestState> {
   }
 
   @override
-  void onAnyLoading(Emit<TubitTestState> emit) => emit(const TubitLoadingState());
+  void onAnyLoading(Emit<TubitTestState> emit) =>
+      emit(const TubitLoadingState());
 
   @override
   void onAnyError(Object error, StackTrace? st, Emit<TubitTestState> emit) =>
@@ -95,38 +94,47 @@ void main() {
       await tubit.close();
     });
 
-    test('pause and resume lifecycle controls source stream updates in Tubit', () async {
-      final fake = FakeAccessor<String, ()>(initialData: 'v1');
-      final tubit = CounterTubit(fake);
-      await pumpEventQueue();
+    test(
+      'pause and resume lifecycle controls source stream updates in Tubit',
+      () async {
+        final fake = FakeAccessor<String, ()>(initialData: 'v1');
+        final tubit = CounterTubit(fake);
+        await pumpEventQueue();
 
-      expect((tubit.state as TubitLoadedState).data, 'v1');
+        expect((tubit.state as TubitLoadedState).data, 'v1');
 
-      tubit.pause();
-      fake.emitData('v2_paused');
-      await pumpEventQueue();
+        tubit.pause();
+        fake.emitData('v2_paused');
+        await pumpEventQueue();
 
-      expect((tubit.state as TubitLoadedState).data, 'v1');
+        expect((tubit.state as TubitLoadedState).data, 'v1');
 
-      tubit.resume();
-      await pumpEventQueue();
+        tubit.resume();
+        await pumpEventQueue();
 
-      expect((tubit.state as TubitLoadedState).data, 'v2_paused');
+        expect((tubit.state as TubitLoadedState).data, 'v2_paused');
 
-      await tubit.close();
-    });
+        await tubit.close();
+      },
+    );
 
-    test('matchSources exception in Tubit routes to onAnyError and onError', () async {
-      final fake = FakeAccessor<String, ()>(initialData: 'ok');
-      final tubit = ThrowingTubit(fake);
-      await pumpEventQueue();
+    test(
+      'matchSources exception in Tubit routes to onAnyError and onError',
+      () async {
+        final fake = FakeAccessor<String, ()>(initialData: 'ok');
+        final tubit = ThrowingTubit(fake);
+        await pumpEventQueue();
 
-      expect(tubit.state, isA<TubitErrorState>());
-      expect((tubit.state as TubitErrorState).error, 'Cubit derivation exploded');
-      expect(tubit.capturedError, 'Cubit derivation exploded');
+        expect(tubit.state, isA<TubitErrorState>());
+        expect(
+          (tubit.state as TubitErrorState).error,
+          'Cubit derivation exploded',
+        );
+        expect(tubit.capturedError, 'Cubit derivation exploded');
 
-      await tubit.close();
-    });
+        await tubit.close();
+      },
+    );
   });
 }
 

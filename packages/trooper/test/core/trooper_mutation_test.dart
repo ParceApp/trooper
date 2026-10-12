@@ -4,36 +4,40 @@ import 'package:trooper/trooper.dart';
 
 void main() {
   group('TrooperMutation', () {
-    test('FIFO queueing guarantees sequential execution under high concurrency',
-        () async {
-      final executionOrder = <int>[];
-      final mutation = TrooperMutation<int, ({int id})>(
-        namespace: 'order_processor',
-        action: (param) async {
-          // Add artificial delay inversely proportional to id
-          await Future<void>.delayed(Duration(milliseconds: 20 - param.id * 2));
-          executionOrder.add(param.id);
-          return param.id;
-        },
-      );
+    test(
+      'FIFO queueing guarantees sequential execution under high concurrency',
+      () async {
+        final executionOrder = <int>[];
+        final mutation = TrooperMutation<int, ({int id})>(
+          namespace: 'order_processor',
+          action: (param) async {
+            // Add artificial delay inversely proportional to id
+            await Future<void>.delayed(
+              Duration(milliseconds: 20 - param.id * 2),
+            );
+            executionOrder.add(param.id);
+            return param.id;
+          },
+        );
 
-      // Launch 5 mutations concurrently in order 1, 2, 3, 4, 5
-      final futures = [
-        mutation((id: 1)),
-        mutation((id: 2)),
-        mutation((id: 3)),
-        mutation((id: 4)),
-        mutation((id: 5)),
-      ];
+        // Launch 5 mutations concurrently in order 1, 2, 3, 4, 5
+        final futures = [
+          mutation((id: 1)),
+          mutation((id: 2)),
+          mutation((id: 3)),
+          mutation((id: 4)),
+          mutation((id: 5)),
+        ];
 
-      final results = await Future.wait(futures);
+        final results = await Future.wait(futures);
 
-      expect(results, [1, 2, 3, 4, 5]);
-      // Must maintain strict FIFO execution despite delays
-      expect(executionOrder, [1, 2, 3, 4, 5]);
+        expect(results, [1, 2, 3, 4, 5]);
+        // Must maintain strict FIFO execution despite delays
+        expect(executionOrder, [1, 2, 3, 4, 5]);
 
-      mutation.dispose();
-    });
+        mutation.dispose();
+      },
+    );
 
     test('invalidateOnSuccess invalidates specified invalidatables', () async {
       var queryFetches = 0;
@@ -68,28 +72,30 @@ void main() {
       mutation.dispose();
     });
 
-    test('error isolation: failing mutation does not block subsequent mutations',
-        () async {
-      var counter = 0;
-      final mutation = TrooperMutation<int, ({bool shouldFail})>(
-        namespace: 'robust_mutation',
-        action: (param) async {
-          counter++;
-          if (param.shouldFail) {
-            throw StateError('Simulated mutation error');
-          }
-          return counter;
-        },
-      );
+    test(
+      'error isolation: failing mutation does not block subsequent mutations',
+      () async {
+        var counter = 0;
+        final mutation = TrooperMutation<int, ({bool shouldFail})>(
+          namespace: 'robust_mutation',
+          action: (param) async {
+            counter++;
+            if (param.shouldFail) {
+              throw StateError('Simulated mutation error');
+            }
+            return counter;
+          },
+        );
 
-      final req1 = mutation((shouldFail: true));
-      final req2 = mutation((shouldFail: false));
+        final req1 = mutation((shouldFail: true));
+        final req2 = mutation((shouldFail: false));
 
-      expect(req1, throwsA(isA<StateError>()));
-      expect(await req2, 2);
+        expect(req1, throwsA(isA<StateError>()));
+        expect(await req2, 2);
 
-      mutation.dispose();
-    });
+        mutation.dispose();
+      },
+    );
 
     test('sideEffects, stream states and reset on TrooperMutation', () async {
       var started = false;
@@ -130,66 +136,76 @@ void main() {
       mutation.dispose();
     });
 
-    test('parameterless mutation, isLoading, didChangeDependencies, and disposed error', () async {
-      var executed = false;
-      final paramless = TrooperMutation<String, ()>(
-        namespace: 'paramless_mut',
-        action: (_) async {
-          await Future<void>.delayed(const Duration(milliseconds: 10));
-          executed = true;
-          return 'Done';
-        },
-      );
+    test(
+      'parameterless mutation, isLoading, didChangeDependencies, and disposed error',
+      () async {
+        var executed = false;
+        final paramless = TrooperMutation<String, ()>(
+          namespace: 'paramless_mut',
+          action: (_) async {
+            await Future<void>.delayed(const Duration(milliseconds: 10));
+            executed = true;
+            return 'Done';
+          },
+        );
 
-      final callFuture = ParameterlessTrooperMutation(paramless)();
-      await Future<void>.delayed(Duration.zero);
-      expect(paramless.isLoading, isTrue);
+        final callFuture = ParameterlessTrooperMutation(paramless)();
+        await Future<void>.delayed(Duration.zero);
+        expect(paramless.isLoading, isTrue);
 
-      final result = await callFuture;
-      expect(result, 'Done');
-      expect(executed, isTrue);
-      expect(paramless.isLoading, isFalse);
+        final result = await callFuture;
+        expect(result, 'Done');
+        expect(executed, isTrue);
+        expect(paramless.isLoading, isFalse);
 
-      final execResult = await ParameterlessTrooperMutation(paramless).execute();
-      expect(execResult, 'Done');
+        final execResult = await ParameterlessTrooperMutation(
+          paramless,
+        ).execute();
+        expect(execResult, 'Done');
 
-      paramless.didChangeDependencies();
-      expect(paramless.currentState, isA<DataInitial<String>>());
+        paramless.didChangeDependencies();
+        expect(paramless.currentState, isA<DataInitial<String>>());
 
-      paramless.invalidate();
-      expect(paramless.currentState, isA<DataInitial<String>>());
+        paramless.invalidate();
+        expect(paramless.currentState, isA<DataInitial<String>>());
 
-      await paramless.dispose();
-      await paramless.dispose(); // Double dispose should be safe
+        await paramless.dispose();
+        await paramless.dispose(); // Double dispose should be safe
 
-      expect(
-        () => paramless.execute(const ()),
-        throwsA(isA<StateError>()),
-      );
-    });
+        expect(() => paramless.execute(const ()), throwsA(isA<StateError>()));
+      },
+    );
 
-    test('cancellable mutation respects TrooperCancelToken and emits DataError on cancel', () async {
-      final token = TrooperCancelToken();
-      final mutation = TrooperMutation<String, ({String data})>.cancellable(
-        namespace: 'cancellable_mut',
-        action: (p, cancelToken) async {
-          await Future<void>.delayed(const Duration(milliseconds: 30));
-          cancelToken.throwIfCancelled();
-          return 'Result: ${p.data}';
-        },
-      );
+    test(
+      'cancellable mutation respects TrooperCancelToken and emits DataError on cancel',
+      () async {
+        final token = TrooperCancelToken();
+        final mutation = TrooperMutation<String, ({String data})>.cancellable(
+          namespace: 'cancellable_mut',
+          action: (p, cancelToken) async {
+            await Future<void>.delayed(const Duration(milliseconds: 30));
+            cancelToken.throwIfCancelled();
+            return 'Result: ${p.data}';
+          },
+        );
 
-      final future = mutation.execute((data: 'Important'), cancelToken: token);
-      // Cancel mid-execution
-      token.cancel(reason: 'User cancelled mutation');
+        final future = mutation.execute((
+          data: 'Important',
+        ), cancelToken: token);
+        // Cancel mid-execution
+        token.cancel(reason: 'User cancelled mutation');
 
-      expect(future, throwsA(isA<TrooperCancelledException>()));
-      await Future<void>.delayed(const Duration(milliseconds: 40));
+        expect(future, throwsA(isA<TrooperCancelledException>()));
+        await Future<void>.delayed(const Duration(milliseconds: 40));
 
-      expect(mutation.stream.isError, isTrue);
-      expect(mutation.currentState.errorOrNull, isA<TrooperCancelledException>());
+        expect(mutation.stream.isError, isTrue);
+        expect(
+          mutation.currentState.errorOrNull,
+          isA<TrooperCancelledException>(),
+        );
 
-      mutation.dispose();
-    });
+        mutation.dispose();
+      },
+    );
   });
 }

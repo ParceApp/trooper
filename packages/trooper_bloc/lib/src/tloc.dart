@@ -61,7 +61,8 @@ import 'package:trooper_bloc/src/sources/trooper_sources.dart';
 /// }
 /// ```
 abstract class Tloc<Event extends TlocEvent, State>
-    extends Bloc<TlocEvent, State> with TrooperSources<State> {
+    extends Bloc<TlocEvent, State>
+    with TrooperSources<State> {
   /// Creates a [Tloc] initialized with [initialState].
   Tloc(super.initialState) {
     on<TlocSourceUpdateEvent>((event, emit) {

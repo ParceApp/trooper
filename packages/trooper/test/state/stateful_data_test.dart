@@ -193,10 +193,7 @@ void main() {
       );
 
       expect(
-        loaded.maybeWhen(
-          initial: () => 'init',
-          orElse: () => 'fallback',
-        ),
+        loaded.maybeWhen(initial: () => 'init', orElse: () => 'fallback'),
         'fallback',
       );
 
@@ -227,13 +224,17 @@ void main() {
         StatefulData.error('err'),
       ];
 
-      final labels = states.map((s) => s.map(
-        initial: (_) => 'INITIAL',
-        loading: (_) => 'LOADING',
-        loaded: (_) => 'LOADED',
-        refreshing: (_) => 'REFRESHING',
-        error: (_) => 'ERROR',
-      )).toList();
+      final labels = states
+          .map(
+            (s) => s.map(
+              initial: (_) => 'INITIAL',
+              loading: (_) => 'LOADING',
+              loaded: (_) => 'LOADED',
+              refreshing: (_) => 'REFRESHING',
+              error: (_) => 'ERROR',
+            ),
+          )
+          .toList();
 
       expect(labels, ['INITIAL', 'LOADING', 'LOADED', 'REFRESHING', 'ERROR']);
     });
@@ -280,7 +281,10 @@ void main() {
       final identicalCopy = meta.copyWith();
       expect(identicalCopy, equals(meta));
       expect(identicalCopy.hashCode, meta.hashCode);
-      expect(meta.toString(), contains('DataMetadata(source: DataSource.storage'));
+      expect(
+        meta.toString(),
+        contains('DataMetadata(source: DataSource.storage'),
+      );
     });
   });
 }

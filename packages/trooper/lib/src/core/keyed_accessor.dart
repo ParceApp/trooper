@@ -59,11 +59,7 @@ abstract interface class KeyedAccessor<K extends Object, T, P extends Parameter>
   Future<Map<K, T>> refreshKeys(Iterable<K> keys, P parameter);
 
   /// Triggers background fetches for multiple [keys] without waiting for results.
-  void triggerKeys(
-    Iterable<K> keys,
-    P parameter, {
-    bool forceRefresh = false,
-  });
+  void triggerKeys(Iterable<K> keys, P parameter, {bool forceRefresh = false});
 
   /// Reactively observes the state of all keys as a Map of [StatefulData].
   Stream<Map<K, StatefulData<T>>> watchAll();
@@ -154,11 +150,7 @@ class KeyedTrooperAccessor<K extends Object, T, P extends Parameter>
   }
 
   @override
-  void triggerKeys(
-    Iterable<K> keys,
-    P parameter, {
-    bool forceRefresh = false,
-  }) {
+  void triggerKeys(Iterable<K> keys, P parameter, {bool forceRefresh = false}) {
     for (final k in keys) {
       this[k].trigger(parameter, forceRefresh: forceRefresh);
     }
@@ -184,12 +176,12 @@ class KeyedTrooperAccessor<K extends Object, T, P extends Parameter>
 
   @override
   StatefulStream<Map<K, T>> get stream => StatefulStream<Map<K, T>>(
-        _keyedStream.watchAll().map((_) => current()),
-        currentStateProvider: () => current(),
-      );
+    _keyedStream.watchAll().map((_) => current()),
+    currentStateProvider: () => current(),
+  );
 
   @override
-  StatefulStream<Map<K, T>> watch({() ? initialParameter, bool eager = false}) =>
+  StatefulStream<Map<K, T>> watch({()? initialParameter, bool eager = false}) =>
       stream;
 
   @override
@@ -243,10 +235,8 @@ class KeyedTrooperAccessor<K extends Object, T, P extends Parameter>
 extension ParameterlessKeyedAccessor<K extends Object, T>
     on KeyedAccessor<K, T, ()> {
   /// Reads or hydrates data for multiple [keys] without requiring an explicit `()` parameter.
-  Future<Map<K, T>> getAll(
-    Iterable<K> keys, {
-    bool forceRefresh = false,
-  }) => this.getAll(keys, const (), forceRefresh: forceRefresh);
+  Future<Map<K, T>> getAll(Iterable<K> keys, {bool forceRefresh = false}) =>
+      this.getAll(keys, const (), forceRefresh: forceRefresh);
 
   /// Forces fresh data fetches for multiple [keys] without requiring an explicit `()` parameter.
   Future<Map<K, T>> refreshKeys(Iterable<K> keys) =>

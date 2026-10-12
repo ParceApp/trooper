@@ -152,7 +152,7 @@ abstract class KeyedTrooper<K extends Object, T, P extends Parameter>
 
   // --- Collection-level Accessor<Map<K, T>, ()> delegation ---
 
-  StatefulStream<Map<K, T>> watch({() ? initialParameter, bool eager = false}) =>
+  StatefulStream<Map<K, T>> watch({()? initialParameter, bool eager = false}) =>
       accessor.watch(initialParameter: initialParameter, eager: eager);
 
   Future<Map<K, T>> get(() parameter, {bool forceRefresh = false}) =>

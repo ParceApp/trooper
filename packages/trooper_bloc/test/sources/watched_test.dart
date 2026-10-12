@@ -20,71 +20,80 @@ void main() {
       expect(handle.isError, isFalse);
     });
 
-    test('updates state and invokes onUpdate callback when stream emits', () async {
-      final fake = FakeAccessor<String, ()>(initialData: 'v1');
-      var updateCalls = 0;
-      final handle = WatchedHandle<String, ()>(
-        accessor: fake,
-        initialParameter: const (),
-        onUpdate: (_) => updateCalls++,
-      );
-      handle.attach();
+    test(
+      'updates state and invokes onUpdate callback when stream emits',
+      () async {
+        final fake = FakeAccessor<String, ()>(initialData: 'v1');
+        var updateCalls = 0;
+        final handle = WatchedHandle<String, ()>(
+          accessor: fake,
+          initialParameter: const (),
+          onUpdate: (_) => updateCalls++,
+        );
+        handle.attach();
 
-      expect(updateCalls, 0);
+        expect(updateCalls, 0);
 
-      fake.emitData('v2');
-      await pumpEventQueue();
+        fake.emitData('v2');
+        await pumpEventQueue();
 
-      expect(handle.dataOrNull, 'v2');
-      expect(updateCalls, 1);
-    });
+        expect(handle.dataOrNull, 'v2');
+        expect(updateCalls, 1);
+      },
+    );
 
-    test('snapshot locking freezes state while liveState continues to update', () async {
-      final fake = FakeAccessor<String, ()>(initialData: 'initial');
-      final handle = WatchedHandle<String, ()>(
-        accessor: fake,
-        initialParameter: const (),
-        onUpdate: (_) {},
-      );
-      handle.attach();
+    test(
+      'snapshot locking freezes state while liveState continues to update',
+      () async {
+        final fake = FakeAccessor<String, ()>(initialData: 'initial');
+        final handle = WatchedHandle<String, ()>(
+          accessor: fake,
+          initialParameter: const (),
+          onUpdate: (_) {},
+        );
+        handle.attach();
 
-      expect(handle.state.dataOrNull, 'initial');
-      expect(handle.liveState.dataOrNull, 'initial');
+        expect(handle.state.dataOrNull, 'initial');
+        expect(handle.liveState.dataOrNull, 'initial');
 
-      // Lock snapshot
-      handle.lockSnapshot();
+        // Lock snapshot
+        handle.lockSnapshot();
 
-      // Emit new background data to fake accessor
-      fake.emitData('background_update');
-      await pumpEventQueue();
+        // Emit new background data to fake accessor
+        fake.emitData('background_update');
+        await pumpEventQueue();
 
-      // handle.state remains locked to 'initial'
-      expect(handle.state.dataOrNull, 'initial');
-      // liveState reflects background emission
-      expect(handle.liveState.dataOrNull, 'background_update');
+        // handle.state remains locked to 'initial'
+        expect(handle.state.dataOrNull, 'initial');
+        // liveState reflects background emission
+        expect(handle.liveState.dataOrNull, 'background_update');
 
-      // Unlock snapshot
-      handle.unlockSnapshot();
-      expect(handle.state.dataOrNull, 'background_update');
-    });
+        // Unlock snapshot
+        handle.unlockSnapshot();
+        expect(handle.state.dataOrNull, 'background_update');
+      },
+    );
 
-    test('passively listens to parameterized accessor and receives background updates', () async {
-      final fake = FakeAccessor<String, ({int id})>();
-      var updateCalls = 0;
-      final handle = WatchedHandle<String, ({int id})>(
-        accessor: fake,
-        onUpdate: (_) => updateCalls++,
-      );
-      handle.attach();
+    test(
+      'passively listens to parameterized accessor and receives background updates',
+      () async {
+        final fake = FakeAccessor<String, ({int id})>();
+        var updateCalls = 0;
+        final handle = WatchedHandle<String, ({int id})>(
+          accessor: fake,
+          onUpdate: (_) => updateCalls++,
+        );
+        handle.attach();
 
-      expect(handle.parameter, isNull);
-      expect(handle.state, isA<DataInitial<String>>());
+        expect(handle.parameter, isNull);
+        expect(handle.state, isA<DataInitial<String>>());
 
-      fake.emitData('item-2');
-      await pumpEventQueue();
-      expect(handle.dataOrNull, 'item-2');
-      expect(updateCalls, 1);
-    });
+        fake.emitData('item-2');
+        await pumpEventQueue();
+        expect(handle.dataOrNull, 'item-2');
+        expect(updateCalls, 1);
+      },
+    );
 
     test('pause and resume lifecycle buffers stream events', () async {
       final fake = FakeAccessor<int, ()>(initialData: 10);

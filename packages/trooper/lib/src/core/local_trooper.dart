@@ -130,18 +130,19 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
               ? config.timeToLive.inMilliseconds
               : null,
         );
-        storage.write(key.storageKey, envelope.encode()).catchError(
-          (Object error, StackTrace stackTrace) {
-            telemetry.emit(
-              PersistenceErrorEvent(
-                key,
-                error: error,
-                duration: Duration.zero,
-                stackTrace: stackTrace,
-              ),
-            );
-          },
-        );
+        storage.write(key.storageKey, envelope.encode()).catchError((
+          Object error,
+          StackTrace stackTrace,
+        ) {
+          telemetry.emit(
+            PersistenceErrorEvent(
+              key,
+              error: error,
+              duration: Duration.zero,
+              stackTrace: stackTrace,
+            ),
+          );
+        });
       } catch (error, stackTrace) {
         telemetry.emit(
           PersistenceErrorEvent(
@@ -302,7 +303,11 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
 
   @override
   StatefulStream<T> watch({P? initialParameter, bool eager = false}) {
-    if (eager && initialParameter != null && !_isHydrated && config.storage != null && codec != null) {
+    if (eager &&
+        initialParameter != null &&
+        !_isHydrated &&
+        config.storage != null &&
+        codec != null) {
       get(initialParameter).ignore();
     }
     return streamController.stream;

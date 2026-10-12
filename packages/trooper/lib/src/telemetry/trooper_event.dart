@@ -20,6 +20,7 @@ final class RequestStartedEvent extends TrooperEvent {
 
 /// Emitted when a query is served directly from the in-memory cache.
 final class CacheHitEvent extends TrooperEvent {
+  /// Creates a [CacheHitEvent].
   CacheHitEvent(
     this.key, {
     required this.isFresh,
@@ -27,8 +28,13 @@ final class CacheHitEvent extends TrooperEvent {
     super.timestamp,
   });
 
+  /// The cache query key that was hit.
   final QueryKey key;
+
+  /// Whether the cached entry was fresh at the time of access.
   final bool isFresh;
+
+  /// Optional metadata describing the origin and expiration of the cached entry.
   final DataMetadata? metadata;
 
   @override

@@ -71,48 +71,51 @@ void main() {
       hub.dispose();
     });
 
-    test('TelemetryHub emitLazy, registerLogger, reentrancy and disposal', () async {
-      final hub = TelemetryHub.isolated();
-      var factoryCalled = false;
+    test(
+      'TelemetryHub emitLazy, registerLogger, reentrancy and disposal',
+      () async {
+        final hub = TelemetryHub.isolated();
+        var factoryCalled = false;
 
-      // Lazy emission without listeners should not invoke factory
-      hub.emitLazy(() {
-        factoryCalled = true;
-        return RequestStartedEvent(testKey);
-      });
-      expect(factoryCalled, isFalse);
+        // Lazy emission without listeners should not invoke factory
+        hub.emitLazy(() {
+          factoryCalled = true;
+          return RequestStartedEvent(testKey);
+        });
+        expect(factoryCalled, isFalse);
 
-      final received = <TrooperEvent>[];
-      final logger = ConsoleTrooperLogger(
-        printFunction: (obj) => received.add(RequestStartedEvent(testKey)),
-      );
-      hub.registerLogger(logger);
-      expect(hub.hasListeners, isTrue);
+        final received = <TrooperEvent>[];
+        final logger = ConsoleTrooperLogger(
+          printFunction: (obj) => received.add(RequestStartedEvent(testKey)),
+        );
+        hub.registerLogger(logger);
+        expect(hub.hasListeners, isTrue);
 
-      hub.emitLazy(() {
-        factoryCalled = true;
-        return RequestStartedEvent(testKey);
-      });
-      await Future<void>.delayed(Duration.zero);
-      expect(factoryCalled, isTrue);
-      expect(received.length, 1);
+        hub.emitLazy(() {
+          factoryCalled = true;
+          return RequestStartedEvent(testKey);
+        });
+        await Future<void>.delayed(Duration.zero);
+        expect(factoryCalled, isTrue);
+        expect(received.length, 1);
 
-      // Re-entrant emission
-      final reentrantHub = TelemetryHub.isolated();
-      final order = <String>[];
-      reentrantHub.events.listen((e) {
-        order.add(e.runtimeType.toString());
-        if (order.length == 1) {
-          reentrantHub.emit(CacheInvalidatedEvent(testKey));
-        }
-      });
+        // Re-entrant emission
+        final reentrantHub = TelemetryHub.isolated();
+        final order = <String>[];
+        reentrantHub.events.listen((e) {
+          order.add(e.runtimeType.toString());
+          if (order.length == 1) {
+            reentrantHub.emit(CacheInvalidatedEvent(testKey));
+          }
+        });
 
-      reentrantHub.emit(RequestStartedEvent(testKey));
-      await Future<void>.delayed(Duration.zero);
-      expect(order, ['RequestStartedEvent', 'CacheInvalidatedEvent']);
+        reentrantHub.emit(RequestStartedEvent(testKey));
+        await Future<void>.delayed(Duration.zero);
+        expect(order, ['RequestStartedEvent', 'CacheInvalidatedEvent']);
 
-      await reentrantHub.dispose();
-      await hub.dispose();
-    });
+        await reentrantHub.dispose();
+        await hub.dispose();
+      },
+    );
   });
 }

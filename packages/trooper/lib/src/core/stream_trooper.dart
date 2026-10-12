@@ -126,7 +126,7 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
   final FutureOr<void> Function(P parameter, TrooperCancelToken cancelToken)?
   onConnect;
 
-  /// Optional hook invoked when refreshing data via [refresh] or [read].
+  /// Optional hook invoked when refreshing data via [refresh] or [get].
   ///
   /// Useful for requesting immediate snapshots or polling fresh data over an active socket.
   final FutureOr<void> Function(P parameter)? onRefresh;

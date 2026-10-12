@@ -252,9 +252,10 @@ class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
               ? config.timeToLive.inMilliseconds
               : null,
         );
-        storage
-            .write(key.storageKey, envelope.encode())
-            .catchError((Object error, StackTrace stacktrace) {
+        storage.write(key.storageKey, envelope.encode()).catchError((
+          Object error,
+          StackTrace stacktrace,
+        ) {
           telemetry.emit(
             PersistenceErrorEvent(
               key,
@@ -339,9 +340,10 @@ class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
                   ? config.timeToLive.inMilliseconds
                   : null,
             );
-            storage
-                .write(key.storageKey, envelope.encode())
-                .catchError((Object error, StackTrace stacktrace) {
+            storage.write(key.storageKey, envelope.encode()).catchError((
+              Object error,
+              StackTrace stacktrace,
+            ) {
               telemetry.emit(
                 PersistenceErrorEvent(
                   key,

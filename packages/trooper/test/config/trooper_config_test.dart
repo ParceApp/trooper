@@ -59,7 +59,10 @@ void main() {
       const custom = TrooperConfig(timeToLive: Duration(seconds: 45));
 
       TrooperConfig.setDefaultConfig(custom);
-      expect(TrooperConfig.defaultConfig.timeToLive, const Duration(seconds: 45));
+      expect(
+        TrooperConfig.defaultConfig.timeToLive,
+        const Duration(seconds: 45),
+      );
 
       // Restore
       TrooperConfig.setDefaultConfig(original);

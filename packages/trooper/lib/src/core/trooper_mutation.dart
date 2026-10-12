@@ -19,7 +19,7 @@ import 'package:trooper/types/parameter.dart';
 /// Features:
 /// - **Automatic Invalidation**: Declaratively pass [invalidateOnSuccess] to invalidate
 ///   related queries or controllers upon successful completion.
-/// - **Sequential Execution**: Optional [MutationQueue] guarantees strict FIFO order.
+/// - **Sequential Execution**: Optional [TrooperMutationQueue] guarantees strict FIFO order.
 /// - **Reactive State**: Exposes [stream] with [StatefulData] transitions (`DataInitial`, `DataLoading`, `DataLoaded`, `DataError`).
 /// - **Callable**: Can be executed directly via `mutation(param)` or `mutation.execute(param)`.
 ///

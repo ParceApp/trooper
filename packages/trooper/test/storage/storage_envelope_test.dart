@@ -20,8 +20,14 @@ void main() {
 
       final decoded = StorageEnvelope.decode(encoded);
       expect(decoded.payload, '{"user":"test"}');
-      expect(decoded.createdAt.millisecondsSinceEpoch, now.millisecondsSinceEpoch);
-      expect(decoded.expiresAt?.millisecondsSinceEpoch, expires.millisecondsSinceEpoch);
+      expect(
+        decoded.createdAt.millisecondsSinceEpoch,
+        now.millisecondsSinceEpoch,
+      );
+      expect(
+        decoded.expiresAt?.millisecondsSinceEpoch,
+        expires.millisecondsSinceEpoch,
+      );
       expect(decoded.timeToLiveMillis, 1800000);
       expect(decoded.version, 1);
       expect(decoded.isExpired, isFalse);
@@ -48,12 +54,18 @@ void main() {
       expect(permanent.isExpired, isFalse);
     });
 
-    test('tryDecode safely returns null on malformed JSON or invalid schema', () {
-      expect(StorageEnvelope.tryDecode('not a json'), isNull);
-      expect(StorageEnvelope.tryDecode('{bad}'), isNull);
-      expect(StorageEnvelope.tryDecode('{"some_key": 123}'), isNull);
-      expect(StorageEnvelope.tryDecode('{"payload": "only_payload"}'), isNull);
-      expect(StorageEnvelope.tryDecode(''), isNull);
-    });
+    test(
+      'tryDecode safely returns null on malformed JSON or invalid schema',
+      () {
+        expect(StorageEnvelope.tryDecode('not a json'), isNull);
+        expect(StorageEnvelope.tryDecode('{bad}'), isNull);
+        expect(StorageEnvelope.tryDecode('{"some_key": 123}'), isNull);
+        expect(
+          StorageEnvelope.tryDecode('{"payload": "only_payload"}'),
+          isNull,
+        );
+        expect(StorageEnvelope.tryDecode(''), isNull);
+      },
+    );
   });
 }

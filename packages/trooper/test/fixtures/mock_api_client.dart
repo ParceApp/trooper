@@ -3,10 +3,7 @@ import 'package:trooper/trooper.dart';
 
 /// Test fixture simulating an asynchronous API client with latency, cancellation, and error injection.
 class MockApiClient<P, T> {
-  MockApiClient({
-    this.defaultResponse,
-    this.latency,
-  });
+  MockApiClient({this.defaultResponse, this.latency});
 
   T? defaultResponse;
   Duration? latency;

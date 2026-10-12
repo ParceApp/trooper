@@ -12,80 +12,84 @@ void main() {
       storage = MockStorageBackend();
     });
 
-    test('synchronous set and update mutate in-memory state and emit to stream',
-        () async {
-      final trooper = LocalTrooper<int, ()>(
-        namespace: 'counter',
-        initialValue: 0,
-      );
+    test(
+      'synchronous set and update mutate in-memory state and emit to stream',
+      () async {
+        final trooper = LocalTrooper<int, ()>(
+          namespace: 'counter',
+          initialValue: 0,
+        );
 
-      final values = <int>[];
-      final sub = trooper.stream.dataStream.listen(values.add);
+        final values = <int>[];
+        final sub = trooper.stream.dataStream.listen(values.add);
 
-      expect(trooper.currentData(), 0);
+        expect(trooper.currentData(), 0);
 
-      trooper.set(5, const ());
-      expect(trooper.currentData(), 5);
+        trooper.set(5, const ());
+        expect(trooper.currentData(), 5);
 
-      trooper.update((prev) => prev + 10, const ());
-      expect(trooper.currentData(), 15);
+        trooper.update((prev) => prev + 10, const ());
+        expect(trooper.currentData(), 15);
 
-      trooper.reset(const ());
-      expect(trooper.currentData(), 0);
+        trooper.reset(const ());
+        expect(trooper.currentData(), 0);
 
-      await Future<void>.delayed(Duration.zero);
-      expect(values, [0, 5, 15, 0]);
+        await Future<void>.delayed(Duration.zero);
+        expect(values, [0, 5, 15, 0]);
 
-      await sub.cancel();
-      trooper.dispose();
-    });
+        await sub.cancel();
+        trooper.dispose();
+      },
+    );
 
-    test('persists to L2 with StorageEnvelope and restores on hydration',
-        () async {
-      final trooper = LocalTrooper<String, ()>(
-        namespace: 'theme',
-        initialValue: 'light',
-        codec: TrooperCodec.string,
-        config: TrooperConfig(storage: storage),
-      );
+    test(
+      'persists to L2 with StorageEnvelope and restores on hydration',
+      () async {
+        final trooper = LocalTrooper<String, ()>(
+          namespace: 'theme',
+          initialValue: 'light',
+          codec: TrooperCodec.string,
+          config: TrooperConfig(storage: storage),
+        );
 
-      trooper.set('dark', const ());
+        trooper.set('dark', const ());
 
-      // Allow async write to storage
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-      expect(storage.writeCount, 1);
+        // Allow async write to storage
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        expect(storage.writeCount, 1);
 
-      // Verify envelope
-      final raw = await storage.read(QueryKey(trooper.namespace, const ()).storageKey);
-      expect(raw, isNotNull);
-      final envelope = StorageEnvelope.tryDecode(raw!);
-      expect(envelope, isNotNull);
-      expect(envelope!.payload, 'dark');
+        // Verify envelope
+        final raw = await storage.read(
+          QueryKey(trooper.namespace, const ()).storageKey,
+        );
+        expect(raw, isNotNull);
+        final envelope = StorageEnvelope.tryDecode(raw!);
+        expect(envelope, isNotNull);
+        expect(envelope!.payload, 'dark');
 
-      // Hydrate via fresh instance
-      final restored = LocalTrooper<String, ()>(
-        namespace: 'theme',
-        initialValue: 'light',
-        codec: TrooperCodec.string,
-        config: TrooperConfig(storage: storage),
-      );
+        // Hydrate via fresh instance
+        final restored = LocalTrooper<String, ()>(
+          namespace: 'theme',
+          initialValue: 'light',
+          codec: TrooperCodec.string,
+          config: TrooperConfig(storage: storage),
+        );
 
-      final loaded = await restored.get(const ());
-      expect(loaded, 'dark');
-      expect(restored.currentData(), 'dark');
+        final loaded = await restored.get(const ());
+        expect(loaded, 'dark');
+        expect(restored.currentData(), 'dark');
 
-      trooper.dispose();
-      restored.dispose();
-    });
+        trooper.dispose();
+        restored.dispose();
+      },
+    );
 
     test('lifecycle hooks and sideEffects in LocalTrooper', () async {
       var dataSetCalled = false;
       final trooper = LocalTrooper<String, ()>(
         namespace: 'app_lang',
         initialValue: 'en',
-        sideEffects: TrooperSideEffects(
-          onData: (_, _) => dataSetCalled = true,
-        ),
+        sideEffects: TrooperSideEffects(onData: (_, _) => dataSetCalled = true),
       );
 
       trooper.set('de', const ());

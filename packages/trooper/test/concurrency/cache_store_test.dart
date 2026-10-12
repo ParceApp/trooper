@@ -22,7 +22,11 @@ void main() {
       final cache = CacheStore();
       const key = QueryKey('temp', ());
 
-      cache.put(key, 'Expired Data', timeToLive: const Duration(milliseconds: 10));
+      cache.put(
+        key,
+        'Expired Data',
+        timeToLive: const Duration(milliseconds: 10),
+      );
       expect(cache.isFresh(key), isTrue);
 
       await Future<void>.delayed(const Duration(milliseconds: 25));

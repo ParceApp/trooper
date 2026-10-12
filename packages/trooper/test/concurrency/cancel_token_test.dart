@@ -50,17 +50,20 @@ void main() {
       expect(token.reason, 'First cancellation');
     });
 
-    test('registering listener on already cancelled token executes immediately', () {
-      final token = TrooperCancelToken();
-      token.cancel(reason: 'Already dead');
+    test(
+      'registering listener on already cancelled token executes immediately',
+      () {
+        final token = TrooperCancelToken();
+        token.cancel(reason: 'Already dead');
 
-      var invoked = false;
-      token.onCancel(() {
-        invoked = true;
-      });
+        var invoked = false;
+        token.onCancel(() {
+          invoked = true;
+        });
 
-      expect(invoked, isTrue);
-    });
+        expect(invoked, isTrue);
+      },
+    );
 
     test('removeListener prevents callback execution on subsequent cancel', () {
       final token = TrooperCancelToken();

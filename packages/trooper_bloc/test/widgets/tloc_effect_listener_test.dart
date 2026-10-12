@@ -37,7 +37,9 @@ class WidgetTestTloc extends Tloc<WidgetTestEvent, int>
 
 void main() {
   group('TlocEffectListener', () {
-    testWidgets('invokes onEffect with explicit bloc parameter', (tester) async {
+    testWidgets('invokes onEffect with explicit bloc parameter', (
+      tester,
+    ) async {
       final bloc = WidgetTestTloc();
       final captured = <String>[];
 
@@ -71,35 +73,38 @@ void main() {
       await bloc.close();
     });
 
-    testWidgets('resolves bloc from context.read when bloc parameter is omitted', (tester) async {
-      final bloc = WidgetTestTloc();
-      final captured = <String>[];
+    testWidgets(
+      'resolves bloc from context.read when bloc parameter is omitted',
+      (tester) async {
+        final bloc = WidgetTestTloc();
+        final captured = <String>[];
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: BlocProvider.value(
-            value: bloc,
-            child: TlocEffectListener<WidgetTestTloc, WidgetEffect>(
-              onEffect: (context, effect) {
-                if (effect is ShowSnackBarEffect) {
-                  captured.add(effect.text);
-                }
-              },
-              child: const Text('Provided Child'),
+        await tester.pumpWidget(
+          MaterialApp(
+            home: BlocProvider.value(
+              value: bloc,
+              child: TlocEffectListener<WidgetTestTloc, WidgetEffect>(
+                onEffect: (context, effect) {
+                  if (effect is ShowSnackBarEffect) {
+                    captured.add(effect.text);
+                  }
+                },
+                child: const Text('Provided Child'),
+              ),
             ),
           ),
-        ),
-      );
+        );
 
-      expect(find.text('Provided Child'), findsOneWidget);
+        expect(find.text('Provided Child'), findsOneWidget);
 
-      bloc.triggerEffect('Context resolved!');
-      await tester.pump();
+        bloc.triggerEffect('Context resolved!');
+        await tester.pump();
 
-      expect(captured, ['Context resolved!']);
+        expect(captured, ['Context resolved!']);
 
-      await bloc.close();
-    });
+        await bloc.close();
+      },
+    );
 
     testWidgets('filters effects when listenWhen is provided', (tester) async {
       final bloc = WidgetTestTloc();
@@ -132,7 +137,9 @@ void main() {
       await bloc.close();
     });
 
-    testWidgets('resubscribes when widget.bloc instance changes', (tester) async {
+    testWidgets('resubscribes when widget.bloc instance changes', (
+      tester,
+    ) async {
       final bloc1 = WidgetTestTloc();
       final bloc2 = WidgetTestTloc();
       final captured = <String>[];

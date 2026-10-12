@@ -6,7 +6,10 @@ void main() {
     test('TrooperCancelledException message and toString', () {
       const cancel = TrooperCancelledException(message: 'Request was aborted.');
       expect(cancel.message, 'Request was aborted.');
-      expect(cancel.toString(), 'TrooperCancelledException: Request was aborted.');
+      expect(
+        cancel.toString(),
+        'TrooperCancelledException: Request was aborted.',
+      );
 
       final cancelWithError = TrooperCancelledException(
         message: 'Aborted',
@@ -19,9 +22,16 @@ void main() {
     });
 
     test('TrooperTimeoutException elapsed timeout and formatting', () {
-      final timeout = TrooperTimeoutException(timeout: const Duration(seconds: 5));
+      final timeout = TrooperTimeoutException(
+        timeout: const Duration(seconds: 5),
+      );
       expect(timeout.timeout, const Duration(seconds: 5));
-      expect(timeout.toString(), contains('TrooperTimeoutException: The operation timed out after 5000 ms.'));
+      expect(
+        timeout.toString(),
+        contains(
+          'TrooperTimeoutException: The operation timed out after 5000 ms.',
+        ),
+      );
 
       final customTimeout = TrooperTimeoutException(
         timeout: const Duration(seconds: 2),

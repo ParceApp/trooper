@@ -5,13 +5,12 @@ import 'package:trooper/trooper.dart';
 /// and reactively manipulated during unit tests.
 class FakeAccessor<T, P extends Parameter> implements Accessor<T, P> {
   /// Creates a [FakeAccessor] with optional [initialData] or [initialState].
-  FakeAccessor({
-    T? initialData,
-    StatefulData<T>? initialState,
-  }) : _state = initialState ??
-            (initialData != null
-                ? StatefulData.loaded(initialData)
-                : StatefulData.initial()) {
+  FakeAccessor({T? initialData, StatefulData<T>? initialState})
+    : _state =
+          initialState ??
+          (initialData != null
+              ? StatefulData.loaded(initialData)
+              : StatefulData.initial()) {
     _streamController = StreamController<StatefulData<T>>.broadcast();
   }
 
@@ -35,9 +34,9 @@ class FakeAccessor<T, P extends Parameter> implements Accessor<T, P> {
 
   @override
   StatefulStream<T> get stream => StatefulStream<T>(
-        _streamController.stream,
-        currentStateProvider: () => _state,
-      );
+    _streamController.stream,
+    currentStateProvider: () => _state,
+  );
 
   @override
   StatefulData<T> current() => _state;
@@ -96,11 +95,15 @@ class FakeAccessor<T, P extends Parameter> implements Accessor<T, P> {
 
   /// Convenience method to push a [DataRefreshing] state.
   void emitRefreshing(T data, {double? progress, DataMetadata? metadata}) =>
-      emitState(StatefulData.refreshing(data, progress: progress, metadata: metadata));
+      emitState(
+        StatefulData.refreshing(data, progress: progress, metadata: metadata),
+      );
 
   /// Convenience method to push a [DataError] state.
   void emitError(Object error, {StackTrace? stackTrace, T? staleData}) =>
-      emitState(StatefulData.error(error, stackTrace: stackTrace, staleData: staleData));
+      emitState(
+        StatefulData.error(error, stackTrace: stackTrace, staleData: staleData),
+      );
 
   /// Manually pushes an unhandled error to the underlying stream.
   void emitStreamError(Object error, {StackTrace? stackTrace}) {

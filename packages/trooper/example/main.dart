@@ -3,11 +3,7 @@ import 'package:trooper/trooper.dart';
 
 /// Simple immutable data model representing a post.
 class Post {
-  const Post({
-    required this.id,
-    required this.title,
-    required this.views,
-  });
+  const Post({required this.id, required this.title, required this.views});
 
   final int id;
   final String title;
@@ -22,7 +18,11 @@ class MockBlogApi {
   int networkHits = 0;
 
   final List<Post> _database = [
-    const Post(id: 1, title: 'Introduction to Trooper Architecture', views: 420),
+    const Post(
+      id: 1,
+      title: 'Introduction to Trooper Architecture',
+      views: 420,
+    ),
     const Post(id: 2, title: 'Zero-Flicker SWR in Production', views: 890),
     const Post(id: 3, title: 'Request Deduplication Deep Dive', views: 230),
   ];
@@ -45,11 +45,7 @@ class MockBlogApi {
   Future<Post> createPost(String title) async {
     networkHits++;
     await Future<void>.delayed(const Duration(milliseconds: 120));
-    final newPost = Post(
-      id: _database.length + 1,
-      title: title,
-      views: 0,
-    );
+    final newPost = Post(id: _database.length + 1, title: title, views: 0);
     _database.add(newPost);
     return newPost;
   }
@@ -113,9 +109,13 @@ void main() async {
       case DataLoading():
         print('   [Stream Event] State: Initial fetch in-flight (DataLoading)');
       case DataRefreshing(:final data):
-        print('   [Stream Event] State: SWR background refresh (DataRefreshing, ${data.length} items)');
+        print(
+          '   [Stream Event] State: SWR background refresh (DataRefreshing, ${data.length} items)',
+        );
       case DataLoaded(:final data):
-        print('   [Stream Event] State: Data ready (DataLoaded, ${data.length} items)');
+        print(
+          '   [Stream Event] State: Data ready (DataLoaded, ${data.length} items)',
+        );
       case DataError(:final error):
         print('   [Stream Event] State: Error occurred ($error)');
     }
@@ -135,8 +135,12 @@ void main() async {
   final stopwatch = Stopwatch()..start();
   final cachedFeed = await controller.feed.get(const ());
   stopwatch.stop();
-  print('   Result: Served ${cachedFeed.length} posts from L1 cache in ${stopwatch.elapsedMicroseconds} µs.');
-  print('   Total Network Hits: ${api.networkHits} (0 additional network calls!)\n');
+  print(
+    '   Result: Served ${cachedFeed.length} posts from L1 cache in ${stopwatch.elapsedMicroseconds} µs.',
+  );
+  print(
+    '   Total Network Hits: ${api.networkHits} (0 additional network calls!)\n',
+  );
 
   // Step 4: Keyed Query partitioned by entity ID
   print('4. Requesting keyed post details for ID 2...');
@@ -151,7 +155,9 @@ void main() async {
 
   // Step 6: Execute a Mutation with automatic cache invalidation
   print('6. Publishing new post via mutation...');
-  final newPost = await controller.publish((title: 'Reactive Micro-Frontends with Dart'));
+  final newPost = await controller.publish((
+    title: 'Reactive Micro-Frontends with Dart',
+  ));
   print('   Mutation succeeded: Created ${newPost.title} (ID: ${newPost.id})');
   print('   Notice: "feed" cache was invalidated automatically!\n');
 

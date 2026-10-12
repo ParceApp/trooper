@@ -125,18 +125,19 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
               ? config.timeToLive.inMilliseconds
               : null,
         );
-        storage.write(qKey.storageKey, envelope.encode()).catchError(
-          (Object error, StackTrace stackTrace) {
-            telemetry.emit(
-              PersistenceErrorEvent(
-                qKey,
-                error: error,
-                duration: Duration.zero,
-                stackTrace: stackTrace,
-              ),
-            );
-          },
-        );
+        storage.write(qKey.storageKey, envelope.encode()).catchError((
+          Object error,
+          StackTrace stackTrace,
+        ) {
+          telemetry.emit(
+            PersistenceErrorEvent(
+              qKey,
+              error: error,
+              duration: Duration.zero,
+              stackTrace: stackTrace,
+            ),
+          );
+        });
       } catch (error, stackTrace) {
         telemetry.emit(
           PersistenceErrorEvent(
@@ -272,10 +273,7 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
   }
 
   /// Updates multiple keys using their corresponding [transforms] functions.
-  Map<K, T> updateAll(
-    Map<K, T Function(T current)> transforms,
-    P parameter,
-  ) {
+  Map<K, T> updateAll(Map<K, T Function(T current)> transforms, P parameter) {
     final results = <K, T>{};
     transforms.forEach((key, transform) {
       results[key] = updateKey(key, transform, parameter);
@@ -543,7 +541,8 @@ extension ParameterlessKeyedLocalTrooper<K extends Object, T>
   T setKey(K key, T value) => this.setKey(key, value, const ());
 
   /// Sets data for [key] and awaits persistent storage without requiring an explicit `()` parameter.
-  Future<T> setKeyAsync(K key, T value) => this.setKeyAsync(key, value, const ());
+  Future<T> setKeyAsync(K key, T value) =>
+      this.setKeyAsync(key, value, const ());
 
   /// Updates state for [key] without requiring an explicit `()` parameter.
   T updateKey(K key, T Function(T current) transform) =>
@@ -581,10 +580,8 @@ extension ParameterlessKeyedLocalTrooper<K extends Object, T>
       this.resetKeysAsync(keys, const ());
 
   /// Reads or hydrates multiple keys without requiring an explicit `()` parameter.
-  Future<Map<K, T>> getAll(
-    Iterable<K> keys, {
-    bool forceRefresh = false,
-  }) => this.getAll(keys, const (), forceRefresh: forceRefresh);
+  Future<Map<K, T>> getAll(Iterable<K> keys, {bool forceRefresh = false}) =>
+      this.getAll(keys, const (), forceRefresh: forceRefresh);
 
   /// Watches state updates for a single [key] without requiring an explicit `()` parameter.
   StatefulStream<T> watchKey(K key, {bool eager = false}) =>

@@ -27,23 +27,23 @@ class RetryPolicy {
 
   /// No-op retry policy that never retries failed operations.
   const RetryPolicy.none()
-      : maxRetries = 0,
-        delay = Duration.zero,
-        backoffMultiplier = 1.0,
-        maxDelay = null,
-        retryWhen = null;
+    : maxRetries = 0,
+      delay = Duration.zero,
+      backoffMultiplier = 1.0,
+      maxDelay = null,
+      retryWhen = null;
 
   /// Retries immediately without delay up to [maxRetries] times.
   const RetryPolicy.immediate({
     int maxRetries = 3,
     bool Function(Object error)? retryWhen,
   }) : this(
-          maxRetries: maxRetries,
-          delay: Duration.zero,
-          backoffMultiplier: 1.0,
-          maxDelay: null,
-          retryWhen: retryWhen,
-        );
+         maxRetries: maxRetries,
+         delay: Duration.zero,
+         backoffMultiplier: 1.0,
+         maxDelay: null,
+         retryWhen: retryWhen,
+       );
 
   /// Retries with a fixed [delay] between attempts.
   const RetryPolicy.linear({
@@ -52,12 +52,12 @@ class RetryPolicy {
     Duration? maxDelay,
     bool Function(Object error)? retryWhen,
   }) : this(
-          maxRetries: maxRetries,
-          delay: delay,
-          backoffMultiplier: 1.0,
-          maxDelay: maxDelay,
-          retryWhen: retryWhen,
-        );
+         maxRetries: maxRetries,
+         delay: delay,
+         backoffMultiplier: 1.0,
+         maxDelay: maxDelay,
+         retryWhen: retryWhen,
+       );
 
   /// Retries with exponential backoff increasing by [backoffMultiplier] on each attempt.
   const RetryPolicy.exponential({
@@ -67,12 +67,12 @@ class RetryPolicy {
     Duration? maxDelay,
     bool Function(Object error)? retryWhen,
   }) : this(
-          maxRetries: maxRetries,
-          delay: initialDelay,
-          backoffMultiplier: backoffMultiplier,
-          maxDelay: maxDelay,
-          retryWhen: retryWhen,
-        );
+         maxRetries: maxRetries,
+         delay: initialDelay,
+         backoffMultiplier: backoffMultiplier,
+         maxDelay: maxDelay,
+         retryWhen: retryWhen,
+       );
 
   /// The maximum number of retry attempts after the initial failure.
   final int maxRetries;
@@ -101,7 +101,9 @@ class RetryPolicy {
       return delay;
     }
     final factor = math.pow(backoffMultiplier, attempt - 1).toDouble();
-    final calculated = Duration(milliseconds: (delay.inMilliseconds * factor).round());
+    final calculated = Duration(
+      milliseconds: (delay.inMilliseconds * factor).round(),
+    );
     if (maxDelay != null && calculated > maxDelay!) {
       return maxDelay!;
     }

@@ -58,46 +58,49 @@ void main() {
       trooper.dispose();
     });
 
-    test('getKey retrieves data from live stream or L2 storage envelope', () async {
-      final trooper = KeyedStreamTrooper<String, String, ()>(
-        namespace: 'market',
-        streamFactory: (ticker, _, _) => getSource(ticker).stream,
-        codec: TrooperCodec.string,
-        config: TrooperConfig(
-          storage: storage,
-          timeToLive: const Duration(hours: 1),
-        ),
-      );
+    test(
+      'getKey retrieves data from live stream or L2 storage envelope',
+      () async {
+        final trooper = KeyedStreamTrooper<String, String, ()>(
+          namespace: 'market',
+          streamFactory: (ticker, _, _) => getSource(ticker).stream,
+          codec: TrooperCodec.string,
+          config: TrooperConfig(
+            storage: storage,
+            timeToLive: const Duration(hours: 1),
+          ),
+        );
 
-      final getFuture = trooper.getKey('AAPL', const ());
-      await Future<void>.delayed(const Duration(milliseconds: 10));
+        final getFuture = trooper.getKey('AAPL', const ());
+        await Future<void>.delayed(const Duration(milliseconds: 10));
 
-      getSource('AAPL').emit('\$220.50');
-      final price = await getFuture;
-      expect(price, '\$220.50');
+        getSource('AAPL').emit('\$220.50');
+        final price = await getFuture;
+        expect(price, '\$220.50');
 
-      // Check L2 storage envelope
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-      expect(storage.writeCount, 1);
+        // Check L2 storage envelope
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        expect(storage.writeCount, 1);
 
-      // Hydrate from L2 storage via fresh instance
-      final restored = KeyedStreamTrooper<String, String, ()>(
-        namespace: 'market',
-        streamFactory: (ticker, _, _) => getSource(ticker).stream,
-        codec: TrooperCodec.string,
-        config: TrooperConfig(
-          storage: storage,
-          timeToLive: const Duration(hours: 1),
-        ),
-      );
+        // Hydrate from L2 storage via fresh instance
+        final restored = KeyedStreamTrooper<String, String, ()>(
+          namespace: 'market',
+          streamFactory: (ticker, _, _) => getSource(ticker).stream,
+          codec: TrooperCodec.string,
+          config: TrooperConfig(
+            storage: storage,
+            timeToLive: const Duration(hours: 1),
+          ),
+        );
 
-      final instant = await restored.getKey('AAPL', const ());
-      expect(instant, '\$220.50');
-      expect(restored.currentKeyData('AAPL'), '\$220.50');
+        final instant = await restored.getKey('AAPL', const ());
+        expect(instant, '\$220.50');
+        expect(restored.currentKeyData('AAPL'), '\$220.50');
 
-      trooper.dispose();
-      restored.dispose();
-    });
+        trooper.dispose();
+        restored.dispose();
+      },
+    );
 
     test('setKey, reconnectKey, removeKey and clearAll', () async {
       final trooper = KeyedStreamTrooper<String, String, ()>(
@@ -171,7 +174,9 @@ void main() {
         ),
       );
 
-      final sub = trooper.watchKey('ch1', initialParameter: const ()).listen((_) {});
+      final sub = trooper
+          .watchKey('ch1', initialParameter: const ())
+          .listen((_) {});
       await Future<void>.delayed(Duration.zero);
 
       getSource('ch1').emitError(StateError('Stream drop'));
@@ -190,62 +195,71 @@ void main() {
       trooper.dispose();
     });
 
-    test('KeyedStreamTrooper.fromStream, operator [], and parameterless extension', () async {
-      final controllers = <String, StreamController<String>>{};
-      StreamController<String> getCtrl(String key) =>
-          controllers.putIfAbsent(key, () => StreamController<String>.broadcast());
+    test(
+      'KeyedStreamTrooper.fromStream, operator [], and parameterless extension',
+      () async {
+        final controllers = <String, StreamController<String>>{};
+        StreamController<String> getCtrl(String key) => controllers.putIfAbsent(
+          key,
+          () => StreamController<String>.broadcast(),
+        );
 
-      var refreshHookCalled = false;
-      var disconnectHookCalled = false;
+        var refreshHookCalled = false;
+        var disconnectHookCalled = false;
 
-      final trooper = KeyedStreamTrooper.fromStream<String, String>(
-        namespace: 'from_stream_k',
-        stream: (k) => getCtrl(k).stream,
-        onRefresh: (_) => refreshHookCalled = true,
-        onDisconnect: (_) => disconnectHookCalled = true,
-      );
+        final trooper = KeyedStreamTrooper.fromStream<String, String>(
+          namespace: 'from_stream_k',
+          stream: (k) => getCtrl(k).stream,
+          onRefresh: (_) => refreshHookCalled = true,
+          onDisconnect: (_) => disconnectHookCalled = true,
+        );
 
-      // Bound accessor
-      final accessor = trooper['room1'];
-      final getFuture = accessor.get(const ());
-      await Future<void>.delayed(const Duration(milliseconds: 5));
-      getCtrl('room1').add('Room 1 Payload');
+        // Bound accessor
+        final accessor = trooper['room1'];
+        final getFuture = accessor.get(const ());
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+        getCtrl('room1').add('Room 1 Payload');
 
-      final val = await getFuture;
-      expect(val, 'Room 1 Payload');
+        final val = await getFuture;
+        expect(val, 'Room 1 Payload');
 
-      // Refresh
-      final refreshFuture = accessor.refresh(const ());
-      await Future<void>.delayed(const Duration(milliseconds: 5));
-      getCtrl('room1').add('Room 1 Refreshed');
-      final refreshedVal = await refreshFuture;
-      expect(refreshedVal, 'Room 1 Refreshed');
-      expect(refreshHookCalled, isTrue);
+        // Refresh
+        final refreshFuture = accessor.refresh(const ());
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+        getCtrl('room1').add('Room 1 Refreshed');
+        final refreshedVal = await refreshFuture;
+        expect(refreshedVal, 'Room 1 Refreshed');
+        expect(refreshHookCalled, isTrue);
 
-      // Parameterless extension
-      await ParameterlessKeyedStreamTrooper(trooper).connectKey('room2');
-      expect(trooper.isConnectedKey('room2'), isTrue);
-      ParameterlessKeyedStreamTrooper(trooper).setKey('room2', 'Manual 2');
-      expect(trooper.currentKeyData('room2'), 'Manual 2');
+        // Parameterless extension
+        await ParameterlessKeyedStreamTrooper(trooper).connectKey('room2');
+        expect(trooper.isConnectedKey('room2'), isTrue);
+        ParameterlessKeyedStreamTrooper(trooper).setKey('room2', 'Manual 2');
+        expect(trooper.currentKeyData('room2'), 'Manual 2');
 
-      final watcher = ParameterlessKeyedStreamTrooper(trooper).watchKey('room2', eager: false);
-      expect(watcher.currentData, 'Manual 2');
+        final watcher = ParameterlessKeyedStreamTrooper(
+          trooper,
+        ).watchKey('room2', eager: false);
+        expect(watcher.currentData, 'Manual 2');
 
-      await trooper.disconnectKey('room1');
-      expect(disconnectHookCalled, isTrue);
+        await trooper.disconnectKey('room1');
+        expect(disconnectHookCalled, isTrue);
 
-      await trooper.dispose();
-      for (final c in controllers.values) {
-        await c.close();
-      }
-    });
+        await trooper.dispose();
+        for (final c in controllers.values) {
+          await c.close();
+        }
+      },
+    );
 
     test('KeyedStreamTrooper L2 storage persistence and hydration', () async {
       final storage = InMemoryStorageBackend();
       final codec = TrooperCodec.string;
       final controllers = <String, StreamController<String>>{};
-      StreamController<String> getCtrl(String key) =>
-          controllers.putIfAbsent(key, () => StreamController<String>.broadcast());
+      StreamController<String> getCtrl(String key) => controllers.putIfAbsent(
+        key,
+        () => StreamController<String>.broadcast(),
+      );
 
       final trooper1 = KeyedStreamTrooper<String, String, ()>(
         namespace: 'l2_stream_k',

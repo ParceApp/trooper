@@ -3,9 +3,9 @@ import 'dart:async';
 /// Test fixture simulating a push-based data source (e.g. WebSocket connection).
 class MockStreamSource<T> {
   MockStreamSource({bool broadcast = true})
-      : _controller = broadcast
-            ? StreamController<T>.broadcast()
-            : StreamController<T>();
+    : _controller = broadcast
+          ? StreamController<T>.broadcast()
+          : StreamController<T>();
 
   final StreamController<T> _controller;
   int subscriptionCount = 0;

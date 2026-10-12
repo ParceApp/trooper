@@ -58,7 +58,7 @@ class KeyedTrooperSideEffects<K, T, P extends Parameter> {
 
   /// Invoked before cached data for the entity key expires, providing the cached value and the time remaining until expiration.
   /// Can be used to perform actions or notifications before the cache is considered stale.
-  /// The [timeBefore] is controller by the [notifyBeforeCacheExpired] list, which defines the specific durations before expiration when this callback should be triggered.
+  /// The `timeBefore` duration is controlled by the [notifyBeforeCacheExpired] list, which defines the specific durations before expiration when this callback should be triggered.
   final void Function(K key, T? data, Duration timeBefore)? beforeCacheExpired;
 
   /// Invoked after data for the entity key is received and processed from a socket.

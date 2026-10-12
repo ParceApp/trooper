@@ -41,8 +41,7 @@ import 'package:trooper_bloc/src/sources/trooper_sources.dart';
 ///   Future<void> refresh() => store.users.refreshKey(userId);
 /// }
 /// ```
-abstract class Tubit<State> extends Cubit<State>
-    with TrooperSources<State> {
+abstract class Tubit<State> extends Cubit<State> with TrooperSources<State> {
   /// Creates a [Tubit] initialized with [initialState].
   Tubit(super.initialState) {
     initializeSources();

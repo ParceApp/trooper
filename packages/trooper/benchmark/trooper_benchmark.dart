@@ -4,11 +4,17 @@ import 'dart:io';
 import 'package:trooper/trooper.dart';
 
 void main() async {
-  stdout.writeln('========================================================================');
+  stdout.writeln(
+    '========================================================================',
+  );
   stdout.writeln('  TROOPER ENTERPRISE BENCHMARK SUITE');
-  stdout.writeln('  Platform: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}');
+  stdout.writeln(
+    '  Platform: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}',
+  );
   stdout.writeln('  Dart SDK: ${Platform.version.split(' ').first}');
-  stdout.writeln('========================================================================\n');
+  stdout.writeln(
+    '========================================================================\n',
+  );
 
   final results = <BenchmarkResult>[];
 
@@ -186,7 +192,11 @@ Future<BenchmarkResult> benchmarkMemoryFootprint() async {
 
   final stopwatch = Stopwatch()..start();
   for (var i = 0; i < keyCount; i++) {
-    query.setKey(i, 'Cached Item Value with metadata and timestamps #$i', const ());
+    query.setKey(
+      i,
+      'Cached Item Value with metadata and timestamps #$i',
+      const (),
+    );
   }
   stopwatch.stop();
 
@@ -204,16 +214,23 @@ Future<BenchmarkResult> benchmarkMemoryFootprint() async {
     samples: keyCount,
     duration: stopwatch.elapsed,
     opsPerSec: opsPerSec,
-    latencyPerOp: '${diffMb.toStringAsFixed(2)} MB (${bytesPerKey.toStringAsFixed(0)} B/key)',
+    latencyPerOp:
+        '${diffMb.toStringAsFixed(2)} MB (${bytesPerKey.toStringAsFixed(0)} B/key)',
     targetDescription: '< 30.0 MB added RAM',
     targetMet: diffMb < 30.0,
   );
 }
 
 void printResultsTable(List<BenchmarkResult> results) {
-  stdout.writeln('+--------------------------+-----------+--------------+------------------+----------------------+---------+');
-  stdout.writeln('| Benchmark Name           | Samples   | Duration     | Throughput       | Latency / Footprint  | Status  |');
-  stdout.writeln('+--------------------------+-----------+--------------+------------------+----------------------+---------+');
+  stdout.writeln(
+    '+--------------------------+-----------+--------------+------------------+----------------------+---------+',
+  );
+  stdout.writeln(
+    '| Benchmark Name           | Samples   | Duration     | Throughput       | Latency / Footprint  | Status  |',
+  );
+  stdout.writeln(
+    '+--------------------------+-----------+--------------+------------------+----------------------+---------+',
+  );
 
   for (final res in results) {
     final name = res.name.padRight(24);
@@ -223,9 +240,13 @@ void printResultsTable(List<BenchmarkResult> results) {
     final latency = res.latencyPerOp.padLeft(20);
     final status = (res.targetMet ? 'PASS' : 'WARN').padRight(7);
 
-    stdout.writeln('| $name | $samples | $duration | $throughput | $latency | $status |');
+    stdout.writeln(
+      '| $name | $samples | $duration | $throughput | $latency | $status |',
+    );
   }
 
-  stdout.writeln('+--------------------------+-----------+--------------+------------------+----------------------+---------+\n');
+  stdout.writeln(
+    '+--------------------------+-----------+--------------+------------------+----------------------+---------+\n',
+  );
   stdout.writeln('All benchmarks completed successfully.\n');
 }

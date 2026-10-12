@@ -41,40 +41,48 @@ void main() {
       expect(counts['B'], 1);
     });
 
-    test('bound accessor operator [] behaves identically to an Accessor',
-        () async {
-      final query = KeyedQueryTrooper<int, String, ()>(
-        namespace: 'orders',
-        fetch: (id, _) async => 'Order #$id',
-        config: const TrooperConfig(timeToLive: Duration(minutes: 5)),
-      );
+    test(
+      'bound accessor operator [] behaves identically to an Accessor',
+      () async {
+        final query = KeyedQueryTrooper<int, String, ()>(
+          namespace: 'orders',
+          fetch: (id, _) async => 'Order #$id',
+          config: const TrooperConfig(timeToLive: Duration(minutes: 5)),
+        );
 
-      final order101 = query[101];
-      expect(order101, isA<Accessor<String, ()>>());
+        final order101 = query[101];
+        expect(order101, isA<Accessor<String, ()>>());
 
-      final res = await order101.get(const ());
-      expect(res, 'Order #101');
-      expect(order101.currentData(), 'Order #101');
-      expect(order101.current(), isA<DataLoaded<String>>());
-    });
+        final res = await order101.get(const ());
+        expect(res, 'Order #101');
+        expect(order101.currentData(), 'Order #101');
+        expect(order101.current(), isA<DataLoaded<String>>());
+      },
+    );
 
-    test('getMany fetches multiple keys concurrently and aggregates states',
-        () async {
-      final query = KeyedQueryTrooper<String, int, ()>(
-        namespace: 'scores',
-        fetch: (player, _) async => player.length * 10,
-      );
+    test(
+      'getMany fetches multiple keys concurrently and aggregates states',
+      () async {
+        final query = KeyedQueryTrooper<String, int, ()>(
+          namespace: 'scores',
+          fetch: (player, _) async => player.length * 10,
+        );
 
-      final results = await query.getMany(['Tom', 'Alexander', 'Bob'], const ());
+        final results = await query.getMany([
+          'Tom',
+          'Alexander',
+          'Bob',
+        ], const ());
 
-      expect(results.length, 3);
-      expect(results['Tom']?.dataOrNull, 30);
-      expect(results['Alexander']?.dataOrNull, 90);
-      expect(results['Bob']?.dataOrNull, 30);
-      for (final state in results.values) {
-        expect(state, isA<DataLoaded<int>>());
-      }
-    });
+        expect(results.length, 3);
+        expect(results['Tom']?.dataOrNull, 30);
+        expect(results['Alexander']?.dataOrNull, 90);
+        expect(results['Bob']?.dataOrNull, 30);
+        for (final state in results.values) {
+          expect(state, isA<DataLoaded<int>>());
+        }
+      },
+    );
 
     test('removeKey cleans up cache, storage, and stream state', () async {
       final query = KeyedQueryTrooper<String, String, ()>(
@@ -98,47 +106,53 @@ void main() {
       expect(storage.deleteCount, greaterThanOrEqualTo(1));
     });
 
-    test('persists keyed data with StorageEnvelope and restores on hydration',
-        () async {
-      final query = KeyedQueryTrooper<int, String, ()>(
-        namespace: 'cached_items',
-        fetch: (id, _) async => 'Item #$id',
-        codec: TrooperCodec.string,
-        config: TrooperConfig(
-          storage: storage,
-          timeToLive: const Duration(hours: 1),
-        ),
-      );
+    test(
+      'persists keyed data with StorageEnvelope and restores on hydration',
+      () async {
+        final query = KeyedQueryTrooper<int, String, ()>(
+          namespace: 'cached_items',
+          fetch: (id, _) async => 'Item #$id',
+          codec: TrooperCodec.string,
+          config: TrooperConfig(
+            storage: storage,
+            timeToLive: const Duration(hours: 1),
+          ),
+        );
 
-      await query.getKey(42, const ());
+        await query.getKey(42, const ());
 
-      // Check stored envelope
-      final storedRaw = await storage.read(
-        QueryKey.keyed(query.namespace, key: 42, parameter: const ()).storageKey,
-      );
-      expect(storedRaw, isNotNull);
-      final envelope = StorageEnvelope.tryDecode(storedRaw!);
-      expect(envelope, isNotNull);
-      expect(envelope!.payload, 'Item #42');
+        // Check stored envelope
+        final storedRaw = await storage.read(
+          QueryKey.keyed(
+            query.namespace,
+            key: 42,
+            parameter: const (),
+          ).storageKey,
+        );
+        expect(storedRaw, isNotNull);
+        final envelope = StorageEnvelope.tryDecode(storedRaw!);
+        expect(envelope, isNotNull);
+        expect(envelope!.payload, 'Item #42');
 
-      // Hydrate via fresh instance
-      final restoredQuery = KeyedQueryTrooper<int, String, ()>(
-        namespace: 'cached_items',
-        fetch: (_, _) async => throw StateError('Should hit L2 storage'),
-        codec: TrooperCodec.string,
-        config: TrooperConfig(
-          storage: storage,
-          timeToLive: const Duration(hours: 1),
-        ),
-      );
+        // Hydrate via fresh instance
+        final restoredQuery = KeyedQueryTrooper<int, String, ()>(
+          namespace: 'cached_items',
+          fetch: (_, _) async => throw StateError('Should hit L2 storage'),
+          codec: TrooperCodec.string,
+          config: TrooperConfig(
+            storage: storage,
+            timeToLive: const Duration(hours: 1),
+          ),
+        );
 
-      final restored = await restoredQuery.getKey(42, const ());
-      expect(restored, 'Item #42');
-      expect(restoredQuery.currentKey(42), isA<DataLoaded<String>>());
+        final restored = await restoredQuery.getKey(42, const ());
+        expect(restored, 'Item #42');
+        expect(restoredQuery.currentKey(42), isA<DataLoaded<String>>());
 
-      query.dispose();
-      restoredQuery.dispose();
-    });
+        query.dispose();
+        restoredQuery.dispose();
+      },
+    );
 
     test('getMany reads multiple keys in parallel', () async {
       final query = KeyedQueryTrooper<int, String, ()>(
@@ -181,35 +195,38 @@ void main() {
       query.dispose();
     });
 
-    test('lifecycle hooks pause, resume, recover, and didChangeDependencies', () async {
-      var shouldFail = true;
-      final query = KeyedQueryTrooper<int, String, ()>(
-        namespace: 'lifecycle_keyed',
-        fetch: (id, _) async {
-          if (shouldFail) throw StateError('Fetch failed');
-          return 'Recovered $id';
-        },
-      );
+    test(
+      'lifecycle hooks pause, resume, recover, and didChangeDependencies',
+      () async {
+        var shouldFail = true;
+        final query = KeyedQueryTrooper<int, String, ()>(
+          namespace: 'lifecycle_keyed',
+          fetch: (id, _) async {
+            if (shouldFail) throw StateError('Fetch failed');
+            return 'Recovered $id';
+          },
+        );
 
-      try {
-        await query.getKey(1, const ());
-      } catch (_) {}
+        try {
+          await query.getKey(1, const ());
+        } catch (_) {}
 
-      expect(query.currentKey(1).isError, isTrue);
+        expect(query.currentKey(1).isError, isTrue);
 
-      // Now fix failure and call recover
-      shouldFail = false;
-      query.recover();
-      await Future<void>.delayed(const Duration(milliseconds: 10));
+        // Now fix failure and call recover
+        shouldFail = false;
+        query.recover();
+        await Future<void>.delayed(const Duration(milliseconds: 10));
 
-      expect(query.currentKey(1).dataOrNull, 'Recovered 1');
+        expect(query.currentKey(1).dataOrNull, 'Recovered 1');
 
-      query.pause();
-      query.resume();
-      query.didChangeDependencies();
+        query.pause();
+        query.resume();
+        query.didChangeDependencies();
 
-      query.dispose();
-    });
+        query.dispose();
+      },
+    );
 
     test('operator [] returns functional KeyedBoundAccessor', () async {
       var fetchCount = 0;
@@ -252,7 +269,9 @@ void main() {
       final val = await ParameterlessKeyedQueryTrooper(query).getKey(10);
       expect(val, 'Result 10 (1)');
 
-      final refreshed = await ParameterlessKeyedQueryTrooper(query).refreshKey(10);
+      final refreshed = await ParameterlessKeyedQueryTrooper(
+        query,
+      ).refreshKey(10);
       expect(refreshed, 'Result 10 (2)');
 
       ParameterlessKeyedQueryTrooper(query).triggerKey(10, forceRefresh: true);
@@ -262,112 +281,132 @@ void main() {
       ParameterlessKeyedQueryTrooper(query).setKey(10, 'Manual 10');
       expect(query.currentKeyData(10), 'Manual 10');
 
-      final many = await ParameterlessKeyedQueryTrooper(query).getMany([10, 20]);
+      final many = await ParameterlessKeyedQueryTrooper(
+        query,
+      ).getMany([10, 20]);
       expect(many[10]?.dataOrNull, 'Manual 10');
       expect(many[20]?.dataOrNull, 'Result 20 (4)');
 
-      final watchStream = ParameterlessKeyedQueryTrooper(query).watchKey(10, eager: false);
+      final watchStream = ParameterlessKeyedQueryTrooper(
+        query,
+      ).watchKey(10, eager: false);
       expect(watchStream.currentData, 'Manual 10');
 
       query.dispose();
     });
 
-    test('L2 storage persistence, hydration, and expired envelope handling', () async {
-      final storage = InMemoryStorageBackend();
-      final codec = TrooperCodec.string;
+    test(
+      'L2 storage persistence, hydration, and expired envelope handling',
+      () async {
+        final storage = InMemoryStorageBackend();
+        final codec = TrooperCodec.string;
 
-      final query1 = KeyedQueryTrooper<String, String, ()>(
-        namespace: 'persisted_kq',
-        fetch: (id, _) async => 'FromNetwork-$id',
-        codec: codec,
-        config: TrooperConfig(
-          storage: storage,
-          timeToLive: const Duration(milliseconds: 50),
-          stalePolicy: StalePolicy.keepStaleWhileRevalidate,
-        ),
-      );
+        final query1 = KeyedQueryTrooper<String, String, ()>(
+          namespace: 'persisted_kq',
+          fetch: (id, _) async => 'FromNetwork-$id',
+          codec: codec,
+          config: TrooperConfig(
+            storage: storage,
+            timeToLive: const Duration(milliseconds: 50),
+            stalePolicy: StalePolicy.keepStaleWhileRevalidate,
+          ),
+        );
 
-      // Fetch from network and persist to storage
-      final res1 = await query1.getKey('alpha', const ());
-      expect(res1, 'FromNetwork-alpha');
-      query1.dispose();
+        // Fetch from network and persist to storage
+        final res1 = await query1.getKey('alpha', const ());
+        expect(res1, 'FromNetwork-alpha');
+        query1.dispose();
 
-      // Query 2 without L1 cache should hydrate from L2 storage
-      final query2 = KeyedQueryTrooper<String, String, ()>(
-        namespace: 'persisted_kq',
-        fetch: (id, _) async => 'NetworkReloaded-$id',
-        codec: codec,
-        config: TrooperConfig(
-          storage: storage,
-          timeToLive: const Duration(milliseconds: 50),
-          stalePolicy: StalePolicy.keepStaleWhileRevalidate,
-        ),
-      );
+        // Query 2 without L1 cache should hydrate from L2 storage
+        final query2 = KeyedQueryTrooper<String, String, ()>(
+          namespace: 'persisted_kq',
+          fetch: (id, _) async => 'NetworkReloaded-$id',
+          codec: codec,
+          config: TrooperConfig(
+            storage: storage,
+            timeToLive: const Duration(milliseconds: 50),
+            stalePolicy: StalePolicy.keepStaleWhileRevalidate,
+          ),
+        );
 
-      final hydrated = await query2.getKey('alpha', const ());
-      expect(hydrated, 'FromNetwork-alpha');
+        final hydrated = await query2.getKey('alpha', const ());
+        expect(hydrated, 'FromNetwork-alpha');
 
-      // Now test expired L2 with keepStaleWhileRevalidate
-      await Future<void>.delayed(const Duration(milliseconds: 60));
+        // Now test expired L2 with keepStaleWhileRevalidate
+        await Future<void>.delayed(const Duration(milliseconds: 60));
 
-      final swrResult = await query2.getKey('alpha', const ());
-      expect(swrResult, 'FromNetwork-alpha'); // Returns stale data immediately
-      await Future<void>.delayed(const Duration(milliseconds: 20));
-      expect(query2.currentKeyData('alpha'), 'NetworkReloaded-alpha'); // Background revalidated
+        final swrResult = await query2.getKey('alpha', const ());
+        expect(
+          swrResult,
+          'FromNetwork-alpha',
+        ); // Returns stale data immediately
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        expect(
+          query2.currentKeyData('alpha'),
+          'NetworkReloaded-alpha',
+        ); // Background revalidated
 
-      query2.dispose();
+        query2.dispose();
 
-      // Now test corrupted storage handling
-      final corruptedKey = QueryKey.keyed('corrupted_kq', key: 'bad', parameter: (id: 'bad'));
-      await storage.write(corruptedKey.storageKey, 'not-valid-json');
+        // Now test corrupted storage handling
+        final corruptedKey = QueryKey.keyed(
+          'corrupted_kq',
+          key: 'bad',
+          parameter: (id: 'bad'),
+        );
+        await storage.write(corruptedKey.storageKey, 'not-valid-json');
 
-      final query3 = KeyedQueryTrooper<String, String, ({String id})>(
-        namespace: 'corrupted_kq',
-        fetch: (id, _) async => 'Fallback-$id',
-        codec: codec,
-        config: TrooperConfig(
-          storage: storage,
-          stalePolicy: StalePolicy.discardStaleOnRefresh,
-        ),
-      );
+        final query3 = KeyedQueryTrooper<String, String, ({String id})>(
+          namespace: 'corrupted_kq',
+          fetch: (id, _) async => 'Fallback-$id',
+          codec: codec,
+          config: TrooperConfig(
+            storage: storage,
+            stalePolicy: StalePolicy.discardStaleOnRefresh,
+          ),
+        );
 
-      final fallback = await query3.getKey('bad', (id: 'bad'));
-      expect(fallback, 'Fallback-bad');
-      final newRaw = await storage.read(corruptedKey.storageKey);
-      expect(newRaw, contains('Fallback-bad'));
-      expect(newRaw, isNot('not-valid-json'));
+        final fallback = await query3.getKey('bad', (id: 'bad'));
+        expect(fallback, 'Fallback-bad');
+        final newRaw = await storage.read(corruptedKey.storageKey);
+        expect(newRaw, contains('Fallback-bad'));
+        expect(newRaw, isNot('not-valid-json'));
 
-      query3.dispose();
-    });
+        query3.dispose();
+      },
+    );
 
-    test('KeyedQueryTrooper sideEffects callbacks and error handling', () async {
-      var started = false;
-      var dataCallback = false;
-      var errorCallback = false;
+    test(
+      'KeyedQueryTrooper sideEffects callbacks and error handling',
+      () async {
+        var started = false;
+        var dataCallback = false;
+        var errorCallback = false;
 
-      final query = KeyedQueryTrooper<int, String, ()>(
-        namespace: 'effects_kq',
-        fetch: (id, _) async {
-          if (id < 0) throw ArgumentError('Negative ID');
-          return 'Valid $id';
-        },
-        sideEffects: KeyedTrooperSideEffects(
-          onRequestStarted: (_, _) => started = true,
-          onData: (_, _, _) => dataCallback = true,
-          onError: (_, _, _, _) => errorCallback = true,
-        ),
-      );
+        final query = KeyedQueryTrooper<int, String, ()>(
+          namespace: 'effects_kq',
+          fetch: (id, _) async {
+            if (id < 0) throw ArgumentError('Negative ID');
+            return 'Valid $id';
+          },
+          sideEffects: KeyedTrooperSideEffects(
+            onRequestStarted: (_, _) => started = true,
+            onData: (_, _, _) => dataCallback = true,
+            onError: (_, _, _, _) => errorCallback = true,
+          ),
+        );
 
-      await query.getKey(1, const ());
-      expect(started, isTrue);
-      expect(dataCallback, isTrue);
+        await query.getKey(1, const ());
+        expect(started, isTrue);
+        expect(dataCallback, isTrue);
 
-      try {
-        await query.getKey(-1, const ());
-      } catch (_) {}
-      expect(errorCallback, isTrue);
+        try {
+          await query.getKey(-1, const ());
+        } catch (_) {}
+        expect(errorCallback, isTrue);
 
-      query.dispose();
-    });
+        query.dispose();
+      },
+    );
   });
 }

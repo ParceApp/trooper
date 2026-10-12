@@ -1,4 +1,4 @@
-## 0.1.0
+## 0.1.0-beta.1
 
 Initial public release of Trooper BLoC, high-performance Flutter BLoC and Cubit integration for the Trooper reactive data-flow framework.
 

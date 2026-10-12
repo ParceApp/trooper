@@ -273,11 +273,7 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
       getAll(keys, parameter, forceRefresh: true);
 
   @override
-  void triggerKeys(
-    Iterable<K> keys,
-    P parameter, {
-    bool forceRefresh = false,
-  }) {
+  void triggerKeys(Iterable<K> keys, P parameter, {bool forceRefresh = false}) {
     for (final key in keys) {
       triggerKey(key, parameter, forceRefresh: forceRefresh);
     }
@@ -308,7 +304,8 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
       final state = currentKey(key);
       if (state is DataInitial ||
           isParamChanged(key, initialParameter) ||
-          (config.hasCache && cache.isStale(buildQueryKey(key, initialParameter)))) {
+          (config.hasCache &&
+              cache.isStale(buildQueryKey(key, initialParameter)))) {
         getKey(key, initialParameter).ignore();
       }
     }
@@ -348,9 +345,10 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
               ? config.timeToLive.inMilliseconds
               : null,
         );
-        storage
-            .write(qKey.storageKey, envelope.encode())
-            .catchError((Object error, StackTrace stacktrace) {
+        storage.write(qKey.storageKey, envelope.encode()).catchError((
+          Object error,
+          StackTrace stacktrace,
+        ) {
           telemetry.emit(
             PersistenceErrorEvent(
               qKey,
@@ -459,9 +457,10 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
                   ? config.timeToLive.inMilliseconds
                   : null,
             );
-            storage
-                .write(qKey.storageKey, envelope.encode())
-                .catchError((Object error, StackTrace stacktrace) {
+            storage.write(qKey.storageKey, envelope.encode()).catchError((
+              Object error,
+              StackTrace stacktrace,
+            ) {
               telemetry.emit(
                 PersistenceErrorEvent(
                   qKey,
@@ -591,10 +590,8 @@ extension ParameterlessKeyedQueryTrooper<K extends Object, T>
   }) => this.getMany(keys, const (), forceRefresh: forceRefresh);
 
   /// Reads values for multiple [keys] concurrently without requiring an explicit `()` parameter.
-  Future<Map<K, T>> getAll(
-    Iterable<K> keys, {
-    bool forceRefresh = false,
-  }) => this.getAll(keys, const (), forceRefresh: forceRefresh);
+  Future<Map<K, T>> getAll(Iterable<K> keys, {bool forceRefresh = false}) =>
+      this.getAll(keys, const (), forceRefresh: forceRefresh);
 
   /// Refreshes values for multiple [keys] concurrently without requiring an explicit `()` parameter.
   Future<Map<K, T>> refreshKeys(Iterable<K> keys) =>

@@ -1,4 +1,4 @@
-## 0.1.0
+## 0.1.0-beta.1
 
 Initial public release of Trooper, an architectural blueprint and reactive data-flow framework for Dart applications.
 

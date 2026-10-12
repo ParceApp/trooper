@@ -140,7 +140,8 @@ class TrooperQueryQueue with LifecycleAware {
           } catch (error, stackTrace) {
             final isCancelled =
                 cancelToken.isCancelled || error is TrooperCancelledException;
-            final shouldRetry = !isCancelled &&
+            final shouldRetry =
+                !isCancelled &&
                 retryPolicy != null &&
                 retryPolicy.shouldRetry(error, attempt);
 
@@ -235,9 +236,7 @@ class TrooperQueryQueue with LifecycleAware {
     final matching = _ongoingList.where((r) => predicate(r.key)).toList();
     for (final ongoing in matching) {
       _ongoingList.remove(ongoing);
-      ongoing.cancelToken.cancel(
-        reason: reason ?? 'Cancelled by query queue',
-      );
+      ongoing.cancelToken.cancel(reason: reason ?? 'Cancelled by query queue');
       if (!ongoing.completer.isCompleted) {
         ongoing.completer.completeError(
           TrooperCancelledException(
@@ -255,9 +254,7 @@ class TrooperQueryQueue with LifecycleAware {
     _ongoingList.clear();
 
     for (final ongoing in entries) {
-      ongoing.cancelToken.cancel(
-        reason: reason ?? 'Cancelled all requests',
-      );
+      ongoing.cancelToken.cancel(reason: reason ?? 'Cancelled all requests');
       if (!ongoing.completer.isCompleted) {
         ongoing.completer.completeError(
           TrooperCancelledException(

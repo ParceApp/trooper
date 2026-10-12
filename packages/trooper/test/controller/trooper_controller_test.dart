@@ -93,138 +93,150 @@ void main() {
       expect(controller.isDisposed, isTrue);
     });
 
-    test('service sharing: shared cache and queues are inherited by children',
-        () async {
-      final sharedCache = CacheStore();
-      final sharedQueue = TrooperQueryQueue();
-      final sharedTelemetry = TelemetryHub.isolated();
+    test(
+      'service sharing: shared cache and queues are inherited by children',
+      () async {
+        final sharedCache = CacheStore();
+        final sharedQueue = TrooperQueryQueue();
+        final sharedTelemetry = TelemetryHub.isolated();
 
-      final controller = TestFeatureController(
-        defaultCache: sharedCache,
-        defaultQueryQueue: sharedQueue,
-        defaultTelemetry: sharedTelemetry,
-      );
+        final controller = TestFeatureController(
+          defaultCache: sharedCache,
+          defaultQueryQueue: sharedQueue,
+          defaultTelemetry: sharedTelemetry,
+        );
 
-      // Verify that children use the shared services
-      expect(controller.userProfile.cache, same(sharedCache));
-      expect(controller.userProfile.queryQueue, same(sharedQueue));
-      expect(controller.userProfile.telemetry, same(sharedTelemetry));
+        // Verify that children use the shared services
+        expect(controller.userProfile.cache, same(sharedCache));
+        expect(controller.userProfile.queryQueue, same(sharedQueue));
+        expect(controller.userProfile.telemetry, same(sharedTelemetry));
 
-      final data = await controller.userProfile.get((id: 42));
-      expect(data, 'User 42');
+        final data = await controller.userProfile.get((id: 42));
+        expect(data, 'User 42');
 
-      // Shared cache should contain the entry
-      expect(
-        sharedCache.get<String>(
-          QueryKey(controller.userProfile.namespace, (id: 42)),
-        ),
-        'User 42',
-      );
+        // Shared cache should contain the entry
+        expect(
+          sharedCache.get<String>(
+            QueryKey(controller.userProfile.namespace, (id: 42)),
+          ),
+          'User 42',
+        );
 
-      await controller.dispose();
-    });
+        await controller.dispose();
+      },
+    );
 
-    test('extraInvalidatables cascade when controller invalidate is called',
-        () async {
-      var externalInvalidated = false;
-      final externalTarget = _TestInvalidatable(() {
-        externalInvalidated = true;
-      });
+    test(
+      'extraInvalidatables cascade when controller invalidate is called',
+      () async {
+        var externalInvalidated = false;
+        final externalTarget = _TestInvalidatable(() {
+          externalInvalidated = true;
+        });
 
-      final controller = _CascadingController(externalTarget);
+        final controller = _CascadingController(externalTarget);
 
-      await controller.userQuery.get(const ());
-      expect(controller.userQuery.currentData(), 'User');
+        await controller.userQuery.get(const ());
+        expect(controller.userQuery.currentData(), 'User');
 
-      controller.invalidate();
+        controller.invalidate();
 
-      expect(externalInvalidated, isTrue);
-      expect(controller.userQuery.current(), isA<DataInitial<String>>());
+        expect(externalInvalidated, isTrue);
+        expect(controller.userQuery.current(), isA<DataInitial<String>>());
 
-      await controller.dispose();
-    });
+        await controller.dispose();
+      },
+    );
 
-    test('controller factory methods create and manage all Trooper types', () async {
-      final controller = _FullFactoryController();
+    test(
+      'controller factory methods create and manage all Trooper types',
+      () async {
+        final controller = _FullFactoryController();
 
-      await controller.initialize();
-      expect(controller.initCalled, isTrue);
+        await controller.initialize();
+        expect(controller.initCalled, isTrue);
 
-      // Local & KeyedLocal
-      expect(controller.theme.current().dataOrNull, 'dark');
-      controller.theme.set('light', const ());
-      expect(controller.theme.current().dataOrNull, 'light');
+        // Local & KeyedLocal
+        expect(controller.theme.current().dataOrNull, 'dark');
+        controller.theme.set('light', const ());
+        expect(controller.theme.current().dataOrNull, 'light');
 
-      controller.featureFlags.setKey('beta', true, const ());
-      expect(controller.featureFlags.currentKeyData('beta'), isTrue);
+        controller.featureFlags.setKey('beta', true, const ());
+        expect(controller.featureFlags.currentKeyData('beta'), isTrue);
 
-      // Mutation
-      final mutationResult = await controller.createPost.execute((title: 'Hello world'));
-      expect(mutationResult, 'Created: Hello world');
+        // Mutation
+        final mutationResult = await controller.createPost.execute((
+          title: 'Hello world',
+        ));
+        expect(mutationResult, 'Created: Hello world');
 
-      // Hooks
-      controller.pause();
-      expect(controller.pauseCalled, isTrue);
+        // Hooks
+        controller.pause();
+        expect(controller.pauseCalled, isTrue);
 
-      controller.resume();
-      expect(controller.resumeCalled, isTrue);
+        controller.resume();
+        expect(controller.resumeCalled, isTrue);
 
-      controller.recover();
-      expect(controller.recoverCalled, isTrue);
+        controller.recover();
+        expect(controller.recoverCalled, isTrue);
 
-      controller.didChangeDependencies();
-      expect(controller.depsCalled, isTrue);
+        controller.didChangeDependencies();
+        expect(controller.depsCalled, isTrue);
 
-      // Manage and unregister
-      final dummyInvalidatable = _TestInvalidatable(() {});
-      controller.manageAll([dummyInvalidatable]);
-      expect(controller.unregister(dummyInvalidatable), isTrue);
+        // Manage and unregister
+        final dummyInvalidatable = _TestInvalidatable(() {});
+        controller.manageAll([dummyInvalidatable]);
+        expect(controller.unregister(dummyInvalidatable), isTrue);
 
-      await controller.dispose();
-      expect(controller.disposeCalled, isTrue);
+        await controller.dispose();
+        expect(controller.disposeCalled, isTrue);
 
-      // Attempting to manage after disposal throws StateError
-      expect(
-        () => controller.manage(_TestInvalidatable(() {})),
-        throwsA(isA<StateError>()),
-      );
-    });
+        // Attempting to manage after disposal throws StateError
+        expect(
+          () => controller.manage(_TestInvalidatable(() {})),
+          throwsA(isA<StateError>()),
+        );
+      },
+    );
 
-    test('controller cancellable query factory, defaultStorage, and extraLifecycleChildren', () async {
-      final storage = InMemoryStorageBackend();
-      final externalService = _TestLifecycleService();
+    test(
+      'controller cancellable query factory, defaultStorage, and extraLifecycleChildren',
+      () async {
+        final storage = InMemoryStorageBackend();
+        final externalService = _TestLifecycleService();
 
-      final controller = _FullFeaturedController(
-        storage: storage,
-        externalLifecycle: externalService,
-      );
+        final controller = _FullFeaturedController(
+          storage: storage,
+          externalLifecycle: externalService,
+        );
 
-      // Access late fields so they are instantiated and managed
-      controller.cancellableQ;
-      controller.cancellableKQ;
+        // Access late fields so they are instantiated and managed
+        controller.cancellableQ;
+        controller.cancellableKQ;
 
-      expect(controller.managedCount, greaterThan(0));
-      expect(controller.managedChildren.isNotEmpty, isTrue);
-      expect(controller.managedInvalidatables.isNotEmpty, isTrue);
+        expect(controller.managedCount, greaterThan(0));
+        expect(controller.managedChildren.isNotEmpty, isTrue);
+        expect(controller.managedInvalidatables.isNotEmpty, isTrue);
 
-      await controller.initialize();
-      expect(externalService.initCalled, isTrue);
+        await controller.initialize();
+        expect(externalService.initCalled, isTrue);
 
-      final queryResult = await controller.cancellableQ.get(const ());
-      expect(queryResult, 'Cancellable OK');
+        final queryResult = await controller.cancellableQ.get(const ());
+        expect(queryResult, 'Cancellable OK');
 
-      final keyedResult = await controller.cancellableKQ.getKey(1, const ());
-      expect(keyedResult, 'Keyed 1 OK');
+        final keyedResult = await controller.cancellableKQ.getKey(1, const ());
+        expect(keyedResult, 'Keyed 1 OK');
 
-      await controller.pause();
-      expect(externalService.pauseCalled, isTrue);
+        await controller.pause();
+        expect(externalService.pauseCalled, isTrue);
 
-      await controller.resume();
-      expect(externalService.resumeCalled, isTrue);
+        await controller.resume();
+        expect(externalService.resumeCalled, isTrue);
 
-      await controller.dispose();
-      expect(externalService.disposeCalled, isTrue);
-    });
+        await controller.dispose();
+        expect(externalService.disposeCalled, isTrue);
+      },
+    );
   });
 }
 
@@ -310,10 +322,8 @@ class _FullFactoryController extends TrooperController {
 
   late final clock = stream<DateTime, ()>(
     namespace: 'clock_stream',
-    streamFactory: (_, _) => Stream.periodic(
-      const Duration(hours: 1),
-      (_) => DateTime.now(),
-    ),
+    streamFactory: (_, _) =>
+        Stream.periodic(const Duration(hours: 1), (_) => DateTime.now()),
   );
 
   late final liveRoom = keyedStream<String, String, ()>(

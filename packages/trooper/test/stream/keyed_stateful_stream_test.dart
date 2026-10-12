@@ -65,28 +65,31 @@ void main() {
       await keyed.close();
     });
 
-    test('watchAll reactively emits full snapshot on any key mutation', () async {
-      final keyed = KeyedStatefulStream<String, int>();
+    test(
+      'watchAll reactively emits full snapshot on any key mutation',
+      () async {
+        final keyed = KeyedStatefulStream<String, int>();
 
-      final snapshots = <Map<String, StatefulData<int>>>[];
-      final sub = keyed.watchAll().listen(snapshots.add);
+        final snapshots = <Map<String, StatefulData<int>>>[];
+        final sub = keyed.watchAll().listen(snapshots.add);
 
-      await Future<void>.delayed(Duration.zero);
-      expect(snapshots.length, 1); // Initial empty map
+        await Future<void>.delayed(Duration.zero);
+        expect(snapshots.length, 1); // Initial empty map
 
-      keyed.emitData('user_1', 42);
-      await Future<void>.delayed(Duration.zero);
-      expect(snapshots.length, 2);
-      expect(snapshots.last['user_1']?.dataOrNull, 42);
+        keyed.emitData('user_1', 42);
+        await Future<void>.delayed(Duration.zero);
+        expect(snapshots.length, 2);
+        expect(snapshots.last['user_1']?.dataOrNull, 42);
 
-      keyed.emitData('user_2', 99);
-      await Future<void>.delayed(Duration.zero);
-      expect(snapshots.length, 3);
-      expect(snapshots.last.length, 2);
+        keyed.emitData('user_2', 99);
+        await Future<void>.delayed(Duration.zero);
+        expect(snapshots.length, 3);
+        expect(snapshots.last.length, 2);
 
-      await sub.cancel();
-      await keyed.close();
-    });
+        await sub.cancel();
+        await keyed.close();
+      },
+    );
 
     test('watchKeys emits set of keys on additions and removals', () async {
       final keyed = KeyedStatefulStream<String, String>();
@@ -113,25 +116,28 @@ void main() {
       await keyed.close();
     });
 
-    test('clearAll and close cleanly tear down all child controllers', () async {
-      final keyed = KeyedStatefulStream<int, String>();
-      keyed.emitData(1, 'One');
-      keyed.emitData(2, 'Two');
+    test(
+      'clearAll and close cleanly tear down all child controllers',
+      () async {
+        final keyed = KeyedStatefulStream<int, String>();
+        keyed.emitData(1, 'One');
+        keyed.emitData(2, 'Two');
 
-      expect(keyed.count, 2);
+        expect(keyed.count, 2);
 
-      await keyed.clearAll();
-      expect(keyed.count, 0);
-      expect(keyed.activeKeys, isEmpty);
+        await keyed.clearAll();
+        expect(keyed.count, 0);
+        expect(keyed.activeKeys, isEmpty);
 
-      keyed.emitData(3, 'Three');
-      expect(keyed.count, 1);
+        keyed.emitData(3, 'Three');
+        expect(keyed.count, 1);
 
-      await keyed.dispose();
-      expect(keyed.isClosed, isTrue);
+        await keyed.dispose();
+        expect(keyed.isClosed, isTrue);
 
-      // Subsequent emissions on closed manager are safely dropped
-      keyed.emitData(3, 'After close');
-    });
+        // Subsequent emissions on closed manager are safely dropped
+        keyed.emitData(3, 'After close');
+      },
+    );
   });
 }

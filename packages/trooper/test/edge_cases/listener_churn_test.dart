@@ -6,85 +6,89 @@ import '../fixtures/mock_stream_source.dart';
 
 void main() {
   group('Edge Case: Listener Churn and Stream Subscription Safety', () {
-    test('1000 rapid listen and cancel cycles on QueryTrooper leave stream controller healthy',
-        () async {
-      final query = QueryTrooper<int, ()>(
-        namespace: 'churn_counter',
-        fetch: (_) async => 42,
-        config: const TrooperConfig(timeToLive: Duration(minutes: 5)),
-      );
+    test(
+      '1000 rapid listen and cancel cycles on QueryTrooper leave stream controller healthy',
+      () async {
+        final query = QueryTrooper<int, ()>(
+          namespace: 'churn_counter',
+          fetch: (_) async => 42,
+          config: const TrooperConfig(timeToLive: Duration(minutes: 5)),
+        );
 
-      final stream = query.watch();
+        final stream = query.watch();
 
-      for (var i = 0; i < 1000; i++) {
-        final sub = stream.listen((_) {});
-        await sub.cancel();
-      }
-
-      // Stream should still work normally after 1000 cancels
-      final stateCompleter = Completer<StatefulData<int>>();
-      final finalSub = stream.listen((state) {
-        if (!stateCompleter.isCompleted && state.isLoaded) {
-          stateCompleter.complete(state);
+        for (var i = 0; i < 1000; i++) {
+          final sub = stream.listen((_) {});
+          await sub.cancel();
         }
-      });
 
-      await query.get(const ());
-      final loadedState = await stateCompleter.future.timeout(
-        const Duration(seconds: 2),
-      );
+        // Stream should still work normally after 1000 cancels
+        final stateCompleter = Completer<StatefulData<int>>();
+        final finalSub = stream.listen((state) {
+          if (!stateCompleter.isCompleted && state.isLoaded) {
+            stateCompleter.complete(state);
+          }
+        });
 
-      expect(loadedState, isA<DataLoaded<int>>());
-      expect((loadedState as DataLoaded<int>).data, 42);
+        await query.get(const ());
+        final loadedState = await stateCompleter.future.timeout(
+          const Duration(seconds: 2),
+        );
 
-      await finalSub.cancel();
-      query.dispose();
-    });
+        expect(loadedState, isA<DataLoaded<int>>());
+        expect((loadedState as DataLoaded<int>).data, 42);
 
-    test('rapid listen and cancel cycles on StreamTrooper with keepAlive false handle connect/disconnect cleanly',
-        () async {
-      final source = MockStreamSource<String>();
-      var connects = 0;
-      var disconnects = 0;
+        await finalSub.cancel();
+        query.dispose();
+      },
+    );
 
-      final streamTrooper = StreamTrooper<String, ()>(
-        namespace: 'churn_stream',
-        streamFactory: (_, _) => source.stream,
-        onConnect: (_, _) => connects++,
-        onDisconnect: () => disconnects++,
-        keepAlive: false,
-      );
+    test(
+      'rapid listen and cancel cycles on StreamTrooper with keepAlive false handle connect/disconnect cleanly',
+      () async {
+        final source = MockStreamSource<String>();
+        var connects = 0;
+        var disconnects = 0;
 
-      final watcher = streamTrooper.watch(initialParameter: const ());
+        final streamTrooper = StreamTrooper<String, ()>(
+          namespace: 'churn_stream',
+          streamFactory: (_, _) => source.stream,
+          onConnect: (_, _) => connects++,
+          onDisconnect: () => disconnects++,
+          keepAlive: false,
+        );
 
-      for (var i = 0; i < 50; i++) {
-        final sub = watcher.listen((_) {});
+        final watcher = streamTrooper.watch(initialParameter: const ());
+
+        for (var i = 0; i < 50; i++) {
+          final sub = watcher.listen((_) {});
+          await Future<void>.delayed(Duration.zero);
+          await sub.cancel();
+          await Future<void>.delayed(Duration.zero);
+        }
+
+        // After all cancels, it should be disconnected
+        expect(streamTrooper.isConnected, isFalse);
+        expect(connects, greaterThanOrEqualTo(1));
+        expect(disconnects, greaterThanOrEqualTo(1));
+
+        // Final subscription connects and receives events
+        final eventCompleter = Completer<String>();
+        final finalSub = watcher.dataStream.listen(eventCompleter.complete);
+
         await Future<void>.delayed(Duration.zero);
-        await sub.cancel();
-        await Future<void>.delayed(Duration.zero);
-      }
+        expect(streamTrooper.isConnected, isTrue);
 
-      // After all cancels, it should be disconnected
-      expect(streamTrooper.isConnected, isFalse);
-      expect(connects, greaterThanOrEqualTo(1));
-      expect(disconnects, greaterThanOrEqualTo(1));
+        source.emit('Event after churn');
+        final received = await eventCompleter.future.timeout(
+          const Duration(seconds: 1),
+        );
+        expect(received, 'Event after churn');
 
-      // Final subscription connects and receives events
-      final eventCompleter = Completer<String>();
-      final finalSub = watcher.dataStream.listen(eventCompleter.complete);
-
-      await Future<void>.delayed(Duration.zero);
-      expect(streamTrooper.isConnected, isTrue);
-
-      source.emit('Event after churn');
-      final received = await eventCompleter.future.timeout(
-        const Duration(seconds: 1),
-      );
-      expect(received, 'Event after churn');
-
-      await finalSub.cancel();
-      await streamTrooper.dispose();
-      await source.close();
-    });
+        await finalSub.cancel();
+        await streamTrooper.dispose();
+        await source.close();
+      },
+    );
   });
 }

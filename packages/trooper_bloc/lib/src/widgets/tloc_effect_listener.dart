@@ -82,15 +82,13 @@ class _TlocEffectListenerState<B extends Effects<F>, F>
 
   void _subscribe() {
     _subscription?.cancel();
-    _subscription = _resolvedBloc?.effects.listen(
-      (effect) {
-        if (mounted) {
-          if (widget.listenWhen == null || widget.listenWhen!(effect)) {
-            widget.onEffect(context, effect);
-          }
+    _subscription = _resolvedBloc?.effects.listen((effect) {
+      if (mounted) {
+        if (widget.listenWhen == null || widget.listenWhen!(effect)) {
+          widget.onEffect(context, effect);
         }
-      },
-    );
+      }
+    });
   }
 
   @override
