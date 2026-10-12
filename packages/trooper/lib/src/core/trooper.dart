@@ -124,24 +124,23 @@ abstract class Trooper<T, P extends Parameter>
   }
 
   @override
-  StatefulStream<T> watch([P? parameter, bool eager = true]) {
-    final effective = parameter ?? (const () is P ? const () as P : null);
-    if (eager && effective != null) {
-      final state = current(effective);
+  StatefulStream<T> watch({P? initialParameter, bool eager = false}) {
+    if (eager && initialParameter != null) {
+      final state = current(initialParameter);
       if (state is DataInitial ||
-          isParamChanged(effective) ||
-          (config.hasCache && cache.isStale(buildQueryKey(effective)))) {
-        get(effective).ignore();
+          isParamChanged(initialParameter) ||
+          (config.hasCache && cache.isStale(buildQueryKey(initialParameter)))) {
+        get(initialParameter).ignore();
       }
     }
     return streamController.stream;
   }
 
   @override
-  StatefulData<T> current([P? parameter]) => streamController.currentState;
+  StatefulData<T> current(P parameter) => streamController.currentState;
 
   @override
-  T? currentData([P? parameter]) => streamController.currentData;
+  T? currentData(P parameter) => streamController.currentData;
 
   /// Manually sets data in cache and emits [DataLoaded], returning the set [data].
   ///
@@ -172,30 +171,20 @@ abstract class Trooper<T, P extends Parameter>
   @override
   void invalidate() {
     queryQueue.cancelNamespace(namespace);
-    final param = _lastParam;
-    if (param != null) {
-      final key = buildQueryKey(param);
-      cache.remove(key);
-      final storage = config.storage;
-      if (storage != null) {
-        storage.delete(key.storageKey).ignore();
-      }
-      if (telemetry.hasListeners) {
-        telemetry.emit(CacheInvalidatedEvent(key));
-      }
-    } else {
-      cache.removeName(namespace);
-    }
+    cache.removeName(namespace);
     _lastParam = null;
     streamController.emitInitial();
+    if (telemetry.hasListeners) {
+      telemetry.emit(CacheInvalidatedEvent(QueryKey(namespace, const ())));
+    }
   }
 
   @override
-  Future<T> refresh([P? parameter]) => get(parameter, true);
+  Future<T> refresh(P parameter) => get(parameter, forceRefresh: true);
 
   @override
-  void trigger([P? parameter, bool forceRefresh = false]) {
-    get(parameter, forceRefresh).ignore();
+  void trigger(P parameter, {bool forceRefresh = false}) {
+    get(parameter, forceRefresh: forceRefresh).ignore();
   }
 
   @override
@@ -264,25 +253,25 @@ class _BoundTrooperAccessor<T, P extends Parameter> implements Accessor<T, P> {
   StatefulStream<T> get stream => _trooper.stream;
 
   @override
-  StatefulStream<T> watch([P? parameter, bool eager = true]) =>
-      _trooper.watch(parameter, eager);
+  StatefulStream<T> watch({P? initialParameter, bool eager = false}) =>
+      _trooper.watch(initialParameter: initialParameter, eager: eager);
 
   @override
-  Future<T> get([P? parameter, bool forceRefresh = false]) =>
-      _trooper.get(parameter, forceRefresh);
+  Future<T> get(P parameter, {bool forceRefresh = false}) =>
+      _trooper.get(parameter, forceRefresh: forceRefresh);
 
   @override
-  Future<T> refresh([P? parameter]) => _trooper.refresh(parameter);
+  Future<T> refresh(P parameter) => _trooper.refresh(parameter);
 
   @override
-  void trigger([P? parameter, bool forceRefresh = false]) =>
-      _trooper.trigger(parameter, forceRefresh);
+  void trigger(P parameter, {bool forceRefresh = false}) =>
+      _trooper.trigger(parameter, forceRefresh: forceRefresh);
 
   @override
-  StatefulData<T> current([P? parameter]) => _trooper.current(parameter);
+  StatefulData<T> current(P parameter) => _trooper.current(parameter);
 
   @override
-  T? currentData([P? parameter]) => _trooper.currentData(parameter);
+  T? currentData(P parameter) => _trooper.currentData(parameter);
 
   @override
   void invalidate() => _trooper.invalidate();

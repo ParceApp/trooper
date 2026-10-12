@@ -8,7 +8,7 @@ import 'package:trooper/types/parameter.dart';
 ///
 /// ### Example:
 /// ```dart
-/// final userQuery = TrooperQuery<User, ({int id})>(
+/// final userQuery = QueryTrooper<User, ({int id})>(
 ///   namespace: 'user',
 ///   fetch: (param) => api.getUser(param.id),
 ///   sideEffects: TrooperSideEffects(

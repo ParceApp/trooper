@@ -1,13 +1,13 @@
 import 'dart:async';
 import 'package:trooper/types/parameter.dart';
 
-/// Side-effect callbacks for keyed KeyedTrooperQuery collections.
+/// Side-effect callbacks for keyed KeyedQueryTrooper collections.
 ///
 /// Each callback receives the specific entity key along with the payload and parameters.
 ///
 /// ### Example:
 /// ```dart
-/// final lectureQuery = KeyedTrooperQuery<String, Lecture, ()>(
+/// final lectureQuery = KeyedQueryTrooper<String, Lecture, ()>(
 ///   namespace: 'lecture',
 ///   fetch: (id, _) => api.getLecture(id),
 ///   sideEffects: KeyedTrooperSideEffects(

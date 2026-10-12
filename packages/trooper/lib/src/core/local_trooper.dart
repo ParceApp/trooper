@@ -256,13 +256,9 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
   ///
   /// [forceRefresh] is ignored for local troopers, as they are authoritative in-memory state.
   @override
-  Future<T> get([P? parameter, bool forceRefresh = false]) async {
-    final effective = parameter ?? (const () is P ? const () as P : lastParam);
-    if (effective == null) {
-      throw ArgumentError.notNull('parameter');
-    }
-    recordParam(effective);
-    final key = buildQueryKey(effective);
+  Future<T> get(P parameter, {bool forceRefresh = false}) async {
+    recordParam(parameter);
+    final key = buildQueryKey(parameter);
 
     // Hydrate from L2 storage if configured and not yet hydrated
     if (!_isHydrated && config.storage != null && codec != null) {
@@ -288,7 +284,7 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
             );
             cache.putEntry(key, entry);
             streamController.emitData(decoded, metadata: entry.metadata);
-            runSideEffect(() => sideEffects?.onData?.call(decoded, effective));
+            runSideEffect(() => sideEffects?.onData?.call(decoded, parameter));
             _isHydrated = true;
             return decoded;
           }
@@ -301,14 +297,13 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
       _isHydrated = true;
     }
 
-    return currentData(effective) ?? initialValue;
+    return currentData(parameter) ?? initialValue;
   }
 
   @override
-  StatefulStream<T> watch([P? parameter, bool eager = true]) {
-    final effective = parameter ?? (const () is P ? const () as P : null);
-    if (eager && effective != null && !_isHydrated && config.storage != null && codec != null) {
-      get(effective).ignore();
+  StatefulStream<T> watch({P? initialParameter, bool eager = false}) {
+    if (eager && initialParameter != null && !_isHydrated && config.storage != null && codec != null) {
+      get(initialParameter).ignore();
     }
     return streamController.stream;
   }

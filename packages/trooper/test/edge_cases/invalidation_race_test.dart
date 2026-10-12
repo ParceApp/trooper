@@ -7,7 +7,7 @@ void main() {
     test('calling invalidate() during in-flight fetch cancels queue and prevents cache overwrite',
         () async {
       final completer = Completer<String>();
-      final query = TrooperQuery<String, ()>(
+      final query = QueryTrooper<String, ()>(
         namespace: 'race_invalidation',
         fetch: (_) => completer.future,
         config: const TrooperConfig(timeToLive: Duration(minutes: 5)),
@@ -46,7 +46,7 @@ void main() {
       final compA = Completer<String>();
       final compB = Completer<String>();
 
-      final keyedQuery = KeyedTrooperQuery<String, String, ()>(
+      final keyedQuery = KeyedQueryTrooper<String, String, ()>(
         namespace: 'keyed_race_invalidation',
         fetch: (key, _) => key == 'A' ? compA.future : compB.future,
         config: const TrooperConfig(timeToLive: Duration(minutes: 5)),

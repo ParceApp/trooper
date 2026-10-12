@@ -13,7 +13,7 @@ void main() {
       final hub = TelemetryHub.isolated();
       final sub = hub.events.listen(events.add);
 
-      final query = TrooperQuery<String, ({int id})>(
+      final query = QueryTrooper<String, ({int id})>(
         namespace: 'safe_items',
         fetch: (param) async => 'Data ${param.id}',
         codec: TrooperCodec.string,
@@ -42,7 +42,7 @@ void main() {
         () async {
       final storage = MockStorageBackend(failOnRead: true);
 
-      final query = TrooperQuery<String, ()>(
+      final query = QueryTrooper<String, ()>(
         namespace: 'resilient_read',
         fetch: (_) async => 'Fresh from network',
         codec: TrooperCodec.string,
@@ -131,7 +131,7 @@ void main() {
       );
       await storage.write(key.storageKey, envelope.encode());
 
-      final query = TrooperQuery<int, ()>(
+      final query = QueryTrooper<int, ()>(
         namespace: 'corrupt_codec',
         fetch: (_) async => 999,
         codec: TrooperCodec.integer,

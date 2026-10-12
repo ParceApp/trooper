@@ -41,7 +41,7 @@ void main() {
     test('emitLoading and emitRefreshing update state and stream', () async {
       final fake = FakeAccessor<String, ()>();
       final states = <StatefulData<String>>[];
-      final stream = fake.watch(const ());
+      final stream = fake.watch();
       expect(stream.currentState, isA<DataInitial<String>>());
       final sub = stream.listen(states.add);
 

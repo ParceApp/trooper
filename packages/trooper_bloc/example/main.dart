@@ -117,8 +117,8 @@ class LectureTloc extends Tloc<LectureEvent, LectureState>
       emitEffect(const ShowToastEffect('Bookmark toggled!'));
     });
     on<RefreshLectureEvent>((event, emit) async {
-      await lectureAccessor.refresh();
-      await bookmarkAccessor.refresh();
+      await lectureAccessor.refresh(const ());
+      await bookmarkAccessor.refresh(const ());
     });
   }
 }
@@ -160,8 +160,8 @@ class LectureTubit extends Tubit<LectureState> {
       emit(LectureErrorState(error.toString()));
 
   Future<void> reload() async {
-    await lectureAccessor.refresh();
-    await bookmarkAccessor.refresh();
+    await lectureAccessor.refresh(const ());
+    await bookmarkAccessor.refresh(const ());
   }
 }
 

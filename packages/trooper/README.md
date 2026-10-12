@@ -62,7 +62,7 @@ Trooper separates concerns into three clear layers:
                                ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                       TROOPER ENGINE                        │
-│   • TrooperQuery (SWR Caching)   • KeyedTrooperQuery        │
+│   • QueryTrooper (SWR Caching)   • KeyedQueryTrooper        │
 │   • LocalTrooper (Memory State)  • KeyedLocalTrooper        │
 │   • StreamTrooper (Push/Sockets) • KeyedStreamTrooper       │
 │   • TrooperMutation (Commands)   • TrooperQueryQueue        │
@@ -151,8 +151,8 @@ Trooper provides seven specialized building blocks depending on what kind of dat
 
 | Building Block | Controller Method | What it is for |
 | :--- | :--- | :--- |
-| **`TrooperQuery<T, P>`** | `query(...)` | Asynchronous reads with caching, SWR background refresh, and request deduplication. |
-| **`KeyedTrooperQuery<K, T, P>`** | `keyedQuery(...)` | Queries partitioned dynamically by entity key `K` (e.g. ID, slug, category). |
+| **`QueryTrooper<T, P>`** | `query(...)` | Asynchronous reads with caching, SWR background refresh, and request deduplication. |
+| **`KeyedQueryTrooper<K, T, P>`** | `keyedQuery(...)` | Queries partitioned dynamically by entity key `K` (e.g. ID, slug, category). |
 | **`LocalTrooper<T, P>`** | `local(...)` | In-memory reactive state with optional persistent storage backing. |
 | **`KeyedLocalTrooper<K, T, P>`** | `keyedLocal(...)` | In-memory state partitioned by key (e.g. drafts or dynamic filters per item). |
 | **`StreamTrooper<T, P>`** | `stream(...)` | Connects push-based streams (WebSockets, SSE, event buses) into `StatefulData`. |
@@ -218,7 +218,7 @@ When users click an "Add to Cart" or "Save" button rapidly, mutations are placed
 
 ## Batch Operations for Keyed Troopers
 
-All keyed troopers (`KeyedTrooperQuery`, `KeyedLocalTrooper`, `KeyedStreamTrooper`, and `KeyedAccessor`) support first-class batch operations:
+All keyed troopers (`KeyedQueryTrooper`, `KeyedLocalTrooper`, `KeyedStreamTrooper`, and `KeyedAccessor`) support first-class batch operations:
 
 ```dart
 // Read multiple items concurrently

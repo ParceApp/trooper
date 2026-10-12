@@ -6,7 +6,7 @@ void main() {
   group('Edge Case: Out of Order and Rapid Requests', () {
     test('QueryConflictPolicy.forward: rapid consecutive searches forward and prevent cache pollution',
         () async {
-      final query = TrooperQuery<String, ({String text})>(
+      final query = QueryTrooper<String, ({String text})>(
         namespace: 'search_forward',
         fetch: (param) async {
           // If searching 'a', simulate slow response; if 'ab', simulate fast response
@@ -57,7 +57,7 @@ void main() {
 
     test('QueryConflictPolicy.cancel: previous in-flight request is aborted with TrooperCancelledException',
         () async {
-      final query = TrooperQuery<String, ({String text})>(
+      final query = QueryTrooper<String, ({String text})>(
         namespace: 'search_cancel',
         fetch: (param) async {
           await Future<void>.delayed(const Duration(milliseconds: 40));
@@ -84,9 +84,9 @@ void main() {
       query.dispose();
     });
 
-    test('KeyedTrooperQuery forward policy prevents cache pollution across parameters for same entity key',
+    test('KeyedQueryTrooper forward policy prevents cache pollution across parameters for same entity key',
         () async {
-      final keyedQuery = KeyedTrooperQuery<int, String, ({String filter})>(
+      final keyedQuery = KeyedQueryTrooper<int, String, ({String filter})>(
         namespace: 'keyed_forward',
         fetch: (id, param) async {
           if (param.filter == 'all') {

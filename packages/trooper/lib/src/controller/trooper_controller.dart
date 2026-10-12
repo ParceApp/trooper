@@ -10,11 +10,11 @@ import 'package:trooper/src/concurrency/query_queue.dart';
 import 'package:trooper/src/config/trooper_config.dart';
 import 'package:trooper/src/core/keyed_local_trooper.dart';
 import 'package:trooper/src/core/keyed_stream_trooper.dart';
-import 'package:trooper/src/core/keyed_trooper_query.dart';
+import 'package:trooper/src/core/keyed_query_trooper.dart';
 import 'package:trooper/src/core/local_trooper.dart';
 import 'package:trooper/src/core/stream_trooper.dart';
 import 'package:trooper/src/core/trooper_mutation.dart';
-import 'package:trooper/src/core/trooper_query.dart';
+import 'package:trooper/src/core/query_trooper.dart';
 import 'package:trooper/src/lifecycle/lifecycle_aware.dart';
 import 'package:trooper/src/state/stateful_data.dart';
 import 'package:trooper/src/stream/keyed_stateful_stream.dart';
@@ -227,7 +227,7 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
     return resolved;
   }
 
-  /// Creates and registers a new [TrooperQuery] managed by this controller.
+  /// Creates and registers a new [QueryTrooper] managed by this controller.
   ///
   /// Shares [defaultCache], [defaultQueryQueue], and [defaultTelemetry] with the controller
   /// unless explicitly overridden. Disposing the query individually will not dispose
@@ -241,7 +241,7 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
   ///   );
   /// }
   /// ```
-  TrooperQuery<T, P> query<T, P extends Record>({
+  QueryTrooper<T, P> query<T, P extends Record>({
     required String namespace,
     Future<T> Function(P param)? fetch,
     Future<T> Function(P param, TrooperCancelToken token)? cancellableFetch,
@@ -259,7 +259,7 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
     );
     final resolvedConfig = _resolveConfig(config);
     final trooper = cancellableFetch != null
-        ? TrooperQuery<T, P>.cancellable(
+        ? QueryTrooper<T, P>.cancellable(
             namespace: namespace,
             fetch: cancellableFetch,
             codec: codec,
@@ -270,7 +270,7 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
             telemetry: telemetry ?? defaultTelemetry,
             streamController: streamController,
           )
-        : TrooperQuery<T, P>(
+        : QueryTrooper<T, P>(
             namespace: namespace,
             fetch: fetch!,
             codec: codec,
@@ -284,7 +284,7 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
     return manage(trooper);
   }
 
-  /// Creates and registers a new [KeyedTrooperQuery] managed by this controller.
+  /// Creates and registers a new [KeyedQueryTrooper] managed by this controller.
   ///
   /// Partitioned by entity key [K]. Shares [defaultCache], [defaultQueryQueue],
   /// and [defaultTelemetry] with the controller unless overridden.
@@ -297,7 +297,7 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
   ///   );
   /// }
   /// ```
-  KeyedTrooperQuery<K, T, P> keyedQuery<K extends Object, T, P extends Record>({
+  KeyedQueryTrooper<K, T, P> keyedQuery<K extends Object, T, P extends Record>({
     required String namespace,
     Future<T> Function(K key, P param)? fetch,
     Future<T> Function(K key, P param, TrooperCancelToken token)?
@@ -316,7 +316,7 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
     );
     final resolvedConfig = _resolveConfig(config);
     final trooper = cancellableFetch != null
-        ? KeyedTrooperQuery<K, T, P>.cancellable(
+        ? KeyedQueryTrooper<K, T, P>.cancellable(
             namespace: namespace,
             fetch: cancellableFetch,
             codec: codec,
@@ -327,7 +327,7 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
             telemetry: telemetry ?? defaultTelemetry,
             stream: stream,
           )
-        : KeyedTrooperQuery<K, T, P>(
+        : KeyedQueryTrooper<K, T, P>(
             namespace: namespace,
             fetch: fetch!,
             codec: codec,
@@ -616,7 +616,7 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
   void clearAll() {
     defaultCache?.clear();
     for (final child in _allLifecycleChildren()) {
-      if (child is KeyedTrooperQuery) {
+      if (child is KeyedQueryTrooper) {
         child.clearAll().ignore();
       } else if (child is KeyedLocalTrooper) {
         child.clearAll().ignore();

@@ -4,11 +4,11 @@ import 'package:trooper/trooper.dart';
 
 void main() {
   group('Edge Case: SWR Exact Transition Sequences & Error Retention', () {
-    test('TrooperQuery stream emits deterministic sequence on fresh fetch, SWR refresh, and SWR error',
+    test('QueryTrooper stream emits deterministic sequence on fresh fetch, SWR refresh, and SWR error',
         () async {
       var fetchCount = 0;
       var shouldThrow = false;
-      final query = TrooperQuery<String, ()>(
+      final query = QueryTrooper<String, ()>(
         namespace: 'swr_sequence',
         fetch: (_) async {
           fetchCount++;
@@ -78,12 +78,12 @@ void main() {
       query.dispose();
     });
 
-    test('KeyedTrooperQuery stream emits deterministic sequence per key on SWR refresh and error',
+    test('KeyedQueryTrooper stream emits deterministic sequence per key on SWR refresh and error',
         () async {
       var callCount = 0;
       var fail = false;
 
-      final keyed = KeyedTrooperQuery<int, String, ()>(
+      final keyed = KeyedQueryTrooper<int, String, ()>(
         namespace: 'keyed_swr_seq',
         fetch: (id, _) async {
           callCount++;

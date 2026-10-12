@@ -84,7 +84,7 @@ void main() {
         initialValue: 'default',
       );
 
-      final keyWatcher = trooper.watchKey('k1', const ());
+      final keyWatcher = trooper.watchKey('k1');
       final allWatcher = trooper.watchAll();
       final keysWatcher = trooper.watchKeys();
 
@@ -138,7 +138,7 @@ void main() {
       accessor.trigger(const ());
       accessor.invalidate();
 
-      final watcher = accessor.watch(const (), false);
+      final watcher = accessor.watch();
       expect(watcher.currentData, isNull);
 
       trooper.dispose();

@@ -9,7 +9,7 @@ void main() {
       final fake = FakeAccessor<String, ()>(initialData: 'hello');
       final handle = WatchedHandle<String, ()>(
         accessor: fake,
-        parameter: const (),
+        initialParameter: const (),
         onUpdate: (_) {},
       );
 
@@ -25,7 +25,7 @@ void main() {
       var updateCalls = 0;
       final handle = WatchedHandle<String, ()>(
         accessor: fake,
-        parameter: const (),
+        initialParameter: const (),
         onUpdate: (_) => updateCalls++,
       );
       handle.attach();
@@ -43,7 +43,7 @@ void main() {
       final fake = FakeAccessor<String, ()>(initialData: 'initial');
       final handle = WatchedHandle<String, ()>(
         accessor: fake,
-        parameter: const (),
+        initialParameter: const (),
         onUpdate: (_) {},
       );
       handle.attach();
@@ -91,7 +91,7 @@ void main() {
       var updateCalls = 0;
       final handle = WatchedHandle<int, ()>(
         accessor: fake,
-        parameter: const (),
+        initialParameter: const (),
         onUpdate: (_) => updateCalls++,
       );
       handle.attach();
@@ -114,7 +114,7 @@ void main() {
       var updateCalls = 0;
       final handle = WatchedHandle<String, ()>(
         accessor: fake,
-        parameter: const (),
+        initialParameter: const (),
         onUpdate: (_) => updateCalls++,
       );
       handle.attach();
@@ -131,7 +131,7 @@ void main() {
       var updateCalls = 0;
       final handle = WatchedHandle<String, ()>(
         accessor: fake,
-        parameter: const (),
+        initialParameter: const (),
         onUpdate: (_) => updateCalls++,
       );
       handle.attach();

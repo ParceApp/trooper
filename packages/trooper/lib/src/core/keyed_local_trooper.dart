@@ -312,20 +312,16 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
   }) async {
     final keyList = keys.toList();
     final results = await Future.wait(
-      keyList.map((k) => getKey(k, parameter, forceRefresh)),
+      keyList.map((k) => getKey(k, parameter, forceRefresh: forceRefresh)),
     );
     return Map<K, T>.fromIterables(keyList, results);
   }
 
   /// Reads the value for [key], returning cached data if fresh, hydrating from L2
   /// storage if configured, or falling back to [initialValueFactory].
-  Future<T> getKey(K key, [P? parameter, bool forceRefresh = false]) async {
-    final effective =
-        parameter ?? (const () is P ? const () as P : lastParamOf(key));
-    if (effective == null) {
-      throw ArgumentError.notNull('parameter');
-    }
-    final qKey = buildQueryKey(key, effective);
+  Future<T> getKey(K key, P parameter, {bool forceRefresh = false}) async {
+    recordParam(key, parameter);
+    final qKey = buildQueryKey(key, parameter);
 
     // 1. Check L1 Memory Cache (local state is always kept in memory)
     if (!forceRefresh) {
@@ -373,7 +369,7 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
             }
             stream.emitData(key, decoded, metadata: entry.metadata);
             runSideEffect(
-              () => sideEffects?.onData?.call(key, decoded, effective),
+              () => sideEffects?.onData?.call(key, decoded, parameter),
             );
             _hydratedKeys.add(key);
             return decoded;
@@ -404,21 +400,20 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
   }
 
   /// Refreshes the value for [key] by re-reading from storage.
-  Future<T> refreshKey(K key, [P? parameter]) =>
-      getKey(key, parameter, true);
+  Future<T> refreshKey(K key, P parameter) =>
+      getKey(key, parameter, forceRefresh: true);
 
   /// Triggers reading or hydrating data for [key] without awaiting the result.
-  void triggerKey(K key, [P? parameter, bool forceRefresh = false]) {
-    getKey(key, parameter, forceRefresh).ignore();
+  void triggerKey(K key, P parameter, {bool forceRefresh = false}) {
+    getKey(key, parameter, forceRefresh: forceRefresh).ignore();
   }
 
   /// Watches state updates for a single [key].
-  StatefulStream<T> watchKey(K key, [P? parameter, bool eager = true]) {
-    final effective = parameter ?? (const () is P ? const () as P : null);
+  StatefulStream<T> watchKey(K key, {P? initialParameter, bool eager = false}) {
     if (!stream.containsKey(key)) {
       final initial = initialValueFactory(key);
-      if (effective != null) {
-        final qKey = buildQueryKey(key, effective);
+      if (initialParameter != null) {
+        final qKey = buildQueryKey(key, initialParameter);
         cache.put(
           qKey,
           initial,
@@ -437,11 +432,11 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
     }
 
     if (eager &&
-        effective != null &&
+        initialParameter != null &&
         !_hydratedKeys.contains(key) &&
         config.storage != null &&
         codec != null) {
-      getKey(key, effective).ignore();
+      getKey(key, initialParameter).ignore();
     }
 
     return stream.streamOf(key);
@@ -464,8 +459,8 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
       : initialValueFactory(key);
 
   @override
-  void invalidateKey(K key, [P? parameter]) {
-    super.invalidateKey(key, parameter);
+  void invalidateKey(K key) {
+    super.invalidateKey(key);
     _hydratedKeys.remove(key);
   }
 
@@ -476,9 +471,9 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
   }
 
   @override
-  Future<void> removeKey(K key, [P? parameter]) async {
+  Future<void> removeKey(K key) async {
     _hydratedKeys.remove(key);
-    await super.removeKey(key, parameter);
+    await super.removeKey(key);
   }
 
   @override
@@ -513,25 +508,25 @@ class _KeyedLocalBoundAccessor<K extends Object, T, P extends Parameter>
   StatefulStream<T> get stream => _parent.stream.streamOf(_key);
 
   @override
-  StatefulStream<T> watch([P? parameter, bool eager = true]) =>
-      _parent.watchKey(_key, parameter, eager);
+  StatefulStream<T> watch({P? initialParameter, bool eager = false}) =>
+      _parent.watchKey(_key, initialParameter: initialParameter, eager: eager);
 
   @override
-  Future<T> get([P? parameter, bool forceRefresh = false]) =>
-      _parent.getKey(_key, parameter, forceRefresh);
+  Future<T> get(P parameter, {bool forceRefresh = false}) =>
+      _parent.getKey(_key, parameter, forceRefresh: forceRefresh);
 
   @override
-  void trigger([P? parameter, bool forceRefresh = false]) =>
-      _parent.triggerKey(_key, parameter, forceRefresh);
+  void trigger(P parameter, {bool forceRefresh = false}) =>
+      _parent.triggerKey(_key, parameter, forceRefresh: forceRefresh);
 
   @override
-  Future<T> refresh([P? parameter]) => _parent.refreshKey(_key, parameter);
+  Future<T> refresh(P parameter) => _parent.refreshKey(_key, parameter);
 
   @override
-  StatefulData<T> current([P? parameter]) => _parent.currentKeyState(_key);
+  StatefulData<T> current(P parameter) => _parent.currentKeyState(_key);
 
   @override
-  T? currentData([P? parameter]) => _parent.currentKeyData(_key);
+  T? currentData(P parameter) => _parent.currentKeyData(_key);
 
   @override
   void invalidate() => _parent.invalidateKey(_key);
@@ -542,7 +537,7 @@ extension ParameterlessKeyedLocalTrooper<K extends Object, T>
     on KeyedLocalTrooper<K, T, ()> {
   /// Reads or hydrates data for [key] without requiring an explicit `()` parameter.
   Future<T> getKey(K key, {bool forceRefresh = false}) =>
-      this.getKey(key, const (), forceRefresh);
+      this.getKey(key, const (), forceRefresh: forceRefresh);
 
   /// Sets data for [key] without requiring an explicit `()` parameter.
   T setKey(K key, T value) => this.setKey(key, value, const ());
@@ -565,7 +560,7 @@ extension ParameterlessKeyedLocalTrooper<K extends Object, T>
 
   /// Triggers reading or hydrating data for [key] without requiring an explicit `()` parameter.
   void triggerKey(K key, {bool forceRefresh = false}) =>
-      this.triggerKey(key, const (), forceRefresh);
+      this.triggerKey(key, const (), forceRefresh: forceRefresh);
 
   /// Sets multiple key-value pairs without requiring an explicit `()` parameter.
   Map<K, T> setAll(Map<K, T> entries) => this.setAll(entries, const ());
@@ -592,6 +587,6 @@ extension ParameterlessKeyedLocalTrooper<K extends Object, T>
   }) => this.getAll(keys, const (), forceRefresh: forceRefresh);
 
   /// Watches state updates for a single [key] without requiring an explicit `()` parameter.
-  StatefulStream<T> watchKey(K key, {bool eager = true}) =>
-      this.watchKey(key, const (), eager);
+  StatefulStream<T> watchKey(K key, {bool eager = false}) =>
+      this.watchKey(key, initialParameter: const (), eager: eager);
 }

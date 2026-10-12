@@ -397,18 +397,17 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
   }
 
   @override
-  StatefulStream<T> watch([P? parameter, bool eager = true]) {
-    final effective = parameter ?? (const () is P ? const () as P : null);
-    if (eager && effective != null && !isConnected) {
-      connect(effective).ignore();
+  StatefulStream<T> watch({P? initialParameter, bool eager = false}) {
+    if (eager && initialParameter != null && !isConnected) {
+      connect(initialParameter).ignore();
     }
 
     // Wrap the returned stream to track active watcher lifecycle
     return StatefulStream<T>(
       Stream<StatefulData<T>>.multi((listener) {
         _activeWatchers++;
-        if (effective != null && !isConnected) {
-          connect(effective).ignore();
+        if (initialParameter != null && !isConnected) {
+          connect(initialParameter).ignore();
         }
         final sub = streamController.stream.listen(
           listener.addSync,
@@ -431,13 +430,9 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
   }
 
   @override
-  Future<T> get([P? parameter, bool forceRefresh = false]) async {
-    final effective = parameter ?? (const () is P ? const () as P : lastParam);
-    if (effective == null) {
-      throw ArgumentError.notNull('parameter');
-    }
-    recordParam(effective);
-    final qKey = buildQueryKey(effective);
+  Future<T> get(P parameter, {bool forceRefresh = false}) async {
+    recordParam(parameter);
+    final qKey = buildQueryKey(parameter);
 
     if (!forceRefresh && config.hasCache) {
       final cached = cache.get<T>(qKey);
@@ -512,11 +507,11 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
     try {
       if (forceRefresh && onRefresh != null) {
         if (!isConnected) {
-          await connect(effective);
+          await connect(parameter);
         }
-        await onRefresh!(effective);
+        await onRefresh!(parameter);
       } else if (forceRefresh || !isConnected) {
-        await connect(effective);
+        await connect(parameter);
       }
 
       final state = await stateFuture;
@@ -538,7 +533,7 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
   }
 
   @override
-  Future<T> refresh([P? parameter]) => get(parameter, true);
+  Future<T> refresh(P parameter) => get(parameter, forceRefresh: true);
 
   @override
   T set(T data, P parameter) {

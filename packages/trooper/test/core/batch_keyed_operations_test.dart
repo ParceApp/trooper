@@ -107,10 +107,10 @@ void main() {
     });
   });
 
-  group('KeyedTrooperQuery Batch Operations', () {
+  group('KeyedQueryTrooper Batch Operations', () {
     test('getAll and refreshKeys fetch multiple keys concurrently', () async {
       var fetchCounts = <String, int>{};
-      final query = KeyedTrooperQuery<String, String, ()>(
+      final query = KeyedQueryTrooper<String, String, ()>(
         namespace: 'batch_query',
         fetch: (key, param) async {
           fetchCounts[key] = (fetchCounts[key] ?? 0) + 1;
@@ -154,19 +154,19 @@ void main() {
       await query.dispose();
     });
 
-    test('ParameterlessKeyedTrooperQuery batch extension methods', () async {
-      final query = KeyedTrooperQuery<String, int, ()>(
+    test('ParameterlessKeyedQueryTrooper batch extension methods', () async {
+      final query = KeyedQueryTrooper<String, int, ()>(
         namespace: 'paramless_batch_query',
         fetch: (key, param) async => key.length,
       );
 
-      final res = await ParameterlessKeyedTrooperQuery(query).getAll(['apple', 'banana']);
+      final res = await ParameterlessKeyedQueryTrooper(query).getAll(['apple', 'banana']);
       expect(res, {'apple': 5, 'banana': 6});
 
-      final refreshed = await ParameterlessKeyedTrooperQuery(query).refreshKeys(['apple']);
+      final refreshed = await ParameterlessKeyedQueryTrooper(query).refreshKeys(['apple']);
       expect(refreshed, {'apple': 5});
 
-      ParameterlessKeyedTrooperQuery(query).triggerKeys(['banana']);
+      ParameterlessKeyedQueryTrooper(query).triggerKeys(['banana']);
       await query.dispose();
     });
   });
@@ -238,7 +238,7 @@ void main() {
 
   group('KeyedAccessor Batch Operations', () {
     test('KeyedAccessor facade delegates batch calls correctly', () async {
-      final query = KeyedTrooperQuery<String, int, ()>(
+      final query = KeyedQueryTrooper<String, int, ()>(
         namespace: 'accessor_batch',
         fetch: (key, param) async => key.hashCode,
       );

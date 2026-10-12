@@ -6,7 +6,7 @@ import '../fixtures/mock_api_client.dart';
 import '../fixtures/mock_storage_backend.dart';
 
 void main() {
-  group('TrooperQuery', () {
+  group('QueryTrooper', () {
     late MockApiClient<({int id}), String> api;
     late MockStorageBackend storage;
 
@@ -18,7 +18,7 @@ void main() {
     test('fresh cache hit returns immediately without second network call',
         () async {
       api.defaultResponse = 'User Alice';
-      final query = TrooperQuery<String, ({int id})>(
+      final query = QueryTrooper<String, ({int id})>(
         namespace: 'users',
         fetch: api.fetch,
         config: const TrooperConfig(timeToLive: Duration(minutes: 5)),
@@ -39,7 +39,7 @@ void main() {
       final completer = Completer<String>();
       api.deferredCompleter = completer;
 
-      final query = TrooperQuery<String, ({int id})>(
+      final query = QueryTrooper<String, ({int id})>(
         namespace: 'users',
         fetch: api.fetch,
         config: const TrooperConfig(deduplicate: true),
@@ -62,7 +62,7 @@ void main() {
     test('SWR background revalidation emits DataRefreshing and preserves data',
         () async {
       var call = 0;
-      final query = TrooperQuery<String, ()>(
+      final query = QueryTrooper<String, ()>(
         namespace: 'clock',
         fetch: (_) async {
           call++;
@@ -111,7 +111,7 @@ void main() {
       final completer2 = Completer<String>();
 
       var callNum = 0;
-      final query = TrooperQuery<String, ({String query})>.cancellable(
+      final query = QueryTrooper<String, ({String query})>.cancellable(
         namespace: 'search',
         fetch: (param, token) {
           callNum++;
@@ -149,7 +149,7 @@ void main() {
       final completer2 = Completer<String>();
 
       var callNum = 0;
-      final query = TrooperQuery<String, ({String filter})>.cancellable(
+      final query = QueryTrooper<String, ({String filter})>.cancellable(
         namespace: 'items',
         fetch: (param, token) {
           callNum++;
@@ -176,7 +176,7 @@ void main() {
     test('persists to L2 with StorageEnvelope and hydratizes correctly',
         () async {
       api.defaultResponse = 'Saved Payload';
-      final query = TrooperQuery<String, ({int id})>(
+      final query = QueryTrooper<String, ({int id})>(
         namespace: 'persisted_user',
         fetch: api.fetch,
         codec: TrooperCodec.string,
@@ -196,7 +196,7 @@ void main() {
       expect(envelope.isExpired, isFalse);
 
       // Simulate app restart with a fresh query instance sharing the same storage
-      final restoredQuery = TrooperQuery<String, ({int id})>(
+      final restoredQuery = QueryTrooper<String, ({int id})>(
         namespace: 'persisted_user',
         fetch: (_) async => throw StateError('Should not hit API'),
         codec: TrooperCodec.string,
@@ -225,7 +225,7 @@ void main() {
       await storage.write(key.storageKey, expiredEnvelope.encode());
 
       var refreshed = false;
-      final query = TrooperQuery<String, ()>(
+      final query = QueryTrooper<String, ()>(
         namespace: 'swr_user',
         fetch: (_) async {
           refreshed = true;
@@ -262,7 +262,7 @@ void main() {
       final key = const QueryKey('discard_user', ());
       await storage.write(key.storageKey, expiredEnvelope.encode());
 
-      final query = TrooperQuery<String, ()>(
+      final query = QueryTrooper<String, ()>(
         namespace: 'discard_user',
         fetch: (_) async => 'Fresh Network Data',
         codec: TrooperCodec.string,
@@ -281,7 +281,7 @@ void main() {
     test('emits DataError on failure and retains staleData when available',
         () async {
       var shouldFail = false;
-      final query = TrooperQuery<String, ()>(
+      final query = QueryTrooper<String, ()>(
         namespace: 'error_user',
         fetch: (_) async {
           if (shouldFail) throw Exception('API Outage');
@@ -317,7 +317,7 @@ void main() {
 
     test('trigger background fetch and lifecycle hooks', () async {
       var fetchCount = 0;
-      final query = TrooperQuery<String, ()>(
+      final query = QueryTrooper<String, ()>(
         namespace: 'trigger_ns',
         fetch: (_) async {
           fetchCount++;
@@ -342,7 +342,7 @@ void main() {
       var transformed = false;
       var dataCallback = false;
 
-      final query = TrooperQuery<String, ()>(
+      final query = QueryTrooper<String, ()>(
         namespace: 'callbacks_ns',
         fetch: (_) async => 'Callback Payload',
         sideEffects: TrooperSideEffects(
@@ -365,7 +365,7 @@ void main() {
     });
 
     test('conflict policy parallel allows simultaneous execution', () async {
-      final query = TrooperQuery<String, ({int delay})>(
+      final query = QueryTrooper<String, ({int delay})>(
         namespace: 'parallel_ns',
         fetch: (p) async {
           await Future<void>.delayed(Duration(milliseconds: p.delay));
@@ -386,11 +386,11 @@ void main() {
       query.dispose();
     });
 
-    test('TrooperQuery.set persists to L2 storage', () async {
+    test('QueryTrooper.set persists to L2 storage', () async {
       final storage = InMemoryStorageBackend();
       final codec = TrooperCodec.string;
 
-      final query = TrooperQuery<String, ()>(
+      final query = QueryTrooper<String, ()>(
         namespace: 'set_storage_ns',
         fetch: (_) async => 'Network',
         codec: codec,

@@ -48,17 +48,25 @@ abstract interface class Watched<T> {
 /// Concrete implementation of [Watched] supporting snapshot-locking and lifecycle events.
 class WatchedHandle<T, P extends Parameter>
     implements Watched<T> {
-  /// Creates a [WatchedHandle] bound to [accessor] with an optional [parameter].
+  /// Creates a [WatchedHandle] bound to [accessor] with an optional [initialParameter].
   WatchedHandle({
     required Accessor<T, P> accessor,
     required this._onUpdate,
-    P? parameter,
+    P? initialParameter,
+    this.eager = false,
   }) : _accessor = accessor,
-       _parameter = parameter,
-       _liveState = accessor.current(parameter);
+       _initialParameter = initialParameter,
+       _liveState = initialParameter != null
+           ? accessor.current(initialParameter)
+           : (const () is P
+               ? accessor.current(const () as P)
+               : accessor.stream.currentState);
 
   final Accessor<T, P> _accessor;
-  final P? _parameter;
+  final P? _initialParameter;
+
+  /// Whether watching is eager (triggers initial fetch).
+  final bool eager;
   final WatchedUpdateCallback _onUpdate;
 
   StreamSubscription<StatefulData<T>>? _subscription;
@@ -72,7 +80,7 @@ class WatchedHandle<T, P extends Parameter>
   Accessor<T, P> get accessor => _accessor;
 
   /// The parameter passed when watching, or `null` if watched passively.
-  P? get parameter => _parameter;
+  P? get parameter => _initialParameter;
 
   /// The authoritative live state of the underlying accessor.
   StatefulData<T> get liveState => _liveState;
@@ -112,8 +120,15 @@ class WatchedHandle<T, P extends Parameter>
     _subscription?.cancel();
     _subscription = null;
 
-    final stream = _accessor.watch(_parameter, _parameter != null);
-    _liveState = _accessor.current(_parameter);
+    final stream = _accessor.watch(
+      initialParameter: _initialParameter,
+      eager: eager,
+    );
+    _liveState = _initialParameter != null
+        ? _accessor.current(_initialParameter)
+        : (const () is P
+            ? _accessor.current(const () as P)
+            : _accessor.stream.currentState);
 
     _subscription = stream.listen(
       (data) {
@@ -142,7 +157,11 @@ class WatchedHandle<T, P extends Parameter>
     if (!_isPaused) return;
     _isPaused = false;
     _subscription?.resume();
-    final fresh = _accessor.current(_parameter);
+    final fresh = _initialParameter != null
+        ? _accessor.current(_initialParameter)
+        : (const () is P
+            ? _accessor.current(const () as P)
+            : _accessor.stream.currentState);
     if (_liveState != fresh) {
       _liveState = fresh;
     }

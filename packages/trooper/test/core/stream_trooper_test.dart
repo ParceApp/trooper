@@ -34,7 +34,7 @@ void main() {
 
       expect(trooper.isConnected, isFalse);
 
-      final watcher = trooper.watch(const ());
+      final watcher = trooper.watch(initialParameter: const ());
       final sub = watcher.listen((_) {});
 
       // Allow microtask to connect
@@ -61,7 +61,7 @@ void main() {
         keepAlive: true,
       );
 
-      final watcher = trooper.watch(const ());
+      final watcher = trooper.watch(initialParameter: const ());
       final sub = watcher.listen((_) {});
       await Future<void>.delayed(Duration.zero);
       expect(trooper.isConnected, isTrue);
@@ -108,7 +108,7 @@ void main() {
         ),
       );
 
-      final watcher = trooper.watch(const ());
+      final watcher = trooper.watch(initialParameter: const ());
       final sub = watcher.listen((_) {});
       await Future<void>.delayed(Duration.zero);
 
@@ -172,7 +172,7 @@ void main() {
         ),
       );
 
-      final sub = trooper.watch(const ()).listen((_) {});
+      final sub = trooper.watch(initialParameter: const ()).listen((_) {});
       await Future<void>.delayed(Duration.zero);
       expect(trooper.isConnected, isTrue);
 
@@ -196,7 +196,7 @@ void main() {
         streamFactory: (_, _) => source.stream,
       );
 
-      final sub = trooper.watch(const ()).listen((_) {});
+      final sub = trooper.watch(initialParameter: const ()).listen((_) {});
       await Future<void>.delayed(Duration.zero);
       expect(trooper.isConnected, isTrue);
 

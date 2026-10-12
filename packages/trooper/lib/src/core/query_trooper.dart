@@ -28,7 +28,7 @@ import 'package:trooper/types/parameter.dart';
 ///
 /// ### Example:
 /// ```dart
-/// final userQuery = TrooperQuery<User, ({int id})>(
+/// final userQuery = QueryTrooper<User, ({int id})>(
 ///   namespace: 'user',
 ///   fetch: (param) => fetchUserFromApi(param.id),
 ///   config: const TrooperConfig(timeToLive: Duration(minutes: 10)),
@@ -38,13 +38,13 @@ import 'package:trooper/types/parameter.dart';
 /// final user = await userQuery.get((id: 42));
 ///
 /// // Watch reactively:
-/// userQuery.watch((id: 42)).listen((state) {
+/// userQuery.watch().listen((state) {
 ///   print(state);
 /// });
 /// ```
-class TrooperQuery<T, P extends Parameter> extends Trooper<T, P> {
-  /// Creates a [TrooperQuery] with a standard fetch function.
-  factory TrooperQuery({
+class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
+  /// Creates a [QueryTrooper] with a standard fetch function.
+  factory QueryTrooper({
     required String namespace,
     required Future<T> Function(P param) fetch,
     TrooperCodec<T>? codec,
@@ -54,7 +54,7 @@ class TrooperQuery<T, P extends Parameter> extends Trooper<T, P> {
     TrooperQueryQueue? queryQueue,
     TelemetryHub? telemetry,
     StatefulStreamController<T>? streamController,
-  }) => TrooperQuery.cancellable(
+  }) => QueryTrooper.cancellable(
     namespace: namespace,
     fetch: (param, _) => fetch(param),
     codec: codec,
@@ -66,8 +66,8 @@ class TrooperQuery<T, P extends Parameter> extends Trooper<T, P> {
     streamController: streamController,
   );
 
-  /// Creates a [TrooperQuery] with cooperative cancellation support via [TrooperCancelToken].
-  TrooperQuery.cancellable({
+  /// Creates a [QueryTrooper] with cooperative cancellation support via [TrooperCancelToken].
+  QueryTrooper.cancellable({
     required super.namespace,
     required this.fetch,
     this.codec,
@@ -86,14 +86,10 @@ class TrooperQuery<T, P extends Parameter> extends Trooper<T, P> {
   final TrooperCodec<T>? codec;
 
   @override
-  Future<T> get([P? parameter, bool forceRefresh = false]) async {
-    final effective = parameter ?? (const () is P ? const () as P : lastParam);
-    if (effective == null) {
-      throw ArgumentError.notNull('parameter');
-    }
-    final paramChanged = isParamChanged(effective);
-    recordParam(effective);
-    final key = buildQueryKey(effective);
+  Future<T> get(P parameter, {bool forceRefresh = false}) async {
+    final paramChanged = isParamChanged(parameter);
+    recordParam(parameter);
+    final key = buildQueryKey(parameter);
 
     // 1. Check L1 Memory Cache
     if (!forceRefresh && !paramChanged && config.hasCache) {
@@ -125,7 +121,7 @@ class TrooperQuery<T, P extends Parameter> extends Trooper<T, P> {
           // Background revalidation (deduplicated by orchestrator)
           _executeFetch(
             key: key,
-            param: effective,
+            param: parameter,
             forceRefresh: false,
             staleData: entry.data,
           ).ignore();
@@ -176,7 +172,7 @@ class TrooperQuery<T, P extends Parameter> extends Trooper<T, P> {
 
                   _executeFetch(
                     key: key,
-                    param: effective,
+                    param: parameter,
                     forceRefresh: false,
                     staleData: restoredData,
                   ).ignore();
@@ -232,7 +228,7 @@ class TrooperQuery<T, P extends Parameter> extends Trooper<T, P> {
 
     return await _executeFetch(
       key: key,
-      param: effective,
+      param: parameter,
       forceRefresh: forceRefresh,
       staleData: staleData,
     );

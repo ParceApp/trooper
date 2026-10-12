@@ -4,7 +4,7 @@ import 'package:trooper/trooper.dart';
 import '../fixtures/mock_storage_backend.dart';
 
 void main() {
-  group('KeyedTrooperQuery', () {
+  group('KeyedQueryTrooper', () {
     late MockStorageBackend storage;
 
     setUp(() {
@@ -13,7 +13,7 @@ void main() {
 
     test('key isolation: actions on key A do not impact key B', () async {
       final counts = <String, int>{};
-      final query = KeyedTrooperQuery<String, String, ()>(
+      final query = KeyedQueryTrooper<String, String, ()>(
         namespace: 'users',
         fetch: (key, _) async {
           counts[key] = (counts[key] ?? 0) + 1;
@@ -43,7 +43,7 @@ void main() {
 
     test('bound accessor operator [] behaves identically to an Accessor',
         () async {
-      final query = KeyedTrooperQuery<int, String, ()>(
+      final query = KeyedQueryTrooper<int, String, ()>(
         namespace: 'orders',
         fetch: (id, _) async => 'Order #$id',
         config: const TrooperConfig(timeToLive: Duration(minutes: 5)),
@@ -60,7 +60,7 @@ void main() {
 
     test('getMany fetches multiple keys concurrently and aggregates states',
         () async {
-      final query = KeyedTrooperQuery<String, int, ()>(
+      final query = KeyedQueryTrooper<String, int, ()>(
         namespace: 'scores',
         fetch: (player, _) async => player.length * 10,
       );
@@ -77,7 +77,7 @@ void main() {
     });
 
     test('removeKey cleans up cache, storage, and stream state', () async {
-      final query = KeyedTrooperQuery<String, String, ()>(
+      final query = KeyedQueryTrooper<String, String, ()>(
         namespace: 'products',
         fetch: (sku, _) async => 'Product $sku',
         codec: TrooperCodec.string,
@@ -100,7 +100,7 @@ void main() {
 
     test('persists keyed data with StorageEnvelope and restores on hydration',
         () async {
-      final query = KeyedTrooperQuery<int, String, ()>(
+      final query = KeyedQueryTrooper<int, String, ()>(
         namespace: 'cached_items',
         fetch: (id, _) async => 'Item #$id',
         codec: TrooperCodec.string,
@@ -122,7 +122,7 @@ void main() {
       expect(envelope!.payload, 'Item #42');
 
       // Hydrate via fresh instance
-      final restoredQuery = KeyedTrooperQuery<int, String, ()>(
+      final restoredQuery = KeyedQueryTrooper<int, String, ()>(
         namespace: 'cached_items',
         fetch: (_, _) async => throw StateError('Should hit L2 storage'),
         codec: TrooperCodec.string,
@@ -141,7 +141,7 @@ void main() {
     });
 
     test('getMany reads multiple keys in parallel', () async {
-      final query = KeyedTrooperQuery<int, String, ()>(
+      final query = KeyedQueryTrooper<int, String, ()>(
         namespace: 'batch_items',
         fetch: (id, _) async => 'Batch $id',
       );
@@ -155,9 +155,9 @@ void main() {
       query.dispose();
     });
 
-    test('refreshKey and triggerKey on KeyedTrooperQuery', () async {
+    test('refreshKey and triggerKey on KeyedQueryTrooper', () async {
       var fetchCount = 0;
-      final query = KeyedTrooperQuery<int, String, ()>(
+      final query = KeyedQueryTrooper<int, String, ()>(
         namespace: 'refresh_test',
         fetch: (id, _) async {
           fetchCount++;
@@ -174,7 +174,7 @@ void main() {
       expect(fetchCount, 2);
 
       // triggerKey triggers background fetch
-      query.triggerKey(1, const (), true);
+      query.triggerKey(1, const (), forceRefresh: true);
       await Future<void>.delayed(const Duration(milliseconds: 10));
       expect(fetchCount, 3);
 
@@ -183,7 +183,7 @@ void main() {
 
     test('lifecycle hooks pause, resume, recover, and didChangeDependencies', () async {
       var shouldFail = true;
-      final query = KeyedTrooperQuery<int, String, ()>(
+      final query = KeyedQueryTrooper<int, String, ()>(
         namespace: 'lifecycle_keyed',
         fetch: (id, _) async {
           if (shouldFail) throw StateError('Fetch failed');
@@ -213,7 +213,7 @@ void main() {
 
     test('operator [] returns functional KeyedBoundAccessor', () async {
       var fetchCount = 0;
-      final query = KeyedTrooperQuery<String, String, ()>(
+      final query = KeyedQueryTrooper<String, String, ()>(
         namespace: 'subscript_query',
         fetch: (key, _) async => 'Val-$key-${++fetchCount}',
       );
@@ -229,11 +229,11 @@ void main() {
       final refreshed = await accessor.refresh(const ());
       expect(refreshed, 'Val-item-1-2');
 
-      accessor.trigger(const (), true);
+      accessor.trigger(const (), forceRefresh: true);
       await Future<void>.delayed(const Duration(milliseconds: 10));
       expect(accessor.currentData(const ()), 'Val-item-1-3');
 
-      final stream = accessor.watch(const (), false);
+      final stream = accessor.watch();
       expect(stream.currentData, 'Val-item-1-3');
 
       accessor.invalidate();
@@ -242,31 +242,31 @@ void main() {
       query.dispose();
     });
 
-    test('ParameterlessKeyedTrooperQuery extension methods', () async {
+    test('ParameterlessKeyedQueryTrooper extension methods', () async {
       var count = 0;
-      final query = KeyedTrooperQuery<int, String, ()>(
+      final query = KeyedQueryTrooper<int, String, ()>(
         namespace: 'paramless_kq',
         fetch: (id, _) async => 'Result $id (${++count})',
       );
 
-      final val = await ParameterlessKeyedTrooperQuery(query).getKey(10);
+      final val = await ParameterlessKeyedQueryTrooper(query).getKey(10);
       expect(val, 'Result 10 (1)');
 
-      final refreshed = await ParameterlessKeyedTrooperQuery(query).refreshKey(10);
+      final refreshed = await ParameterlessKeyedQueryTrooper(query).refreshKey(10);
       expect(refreshed, 'Result 10 (2)');
 
-      ParameterlessKeyedTrooperQuery(query).triggerKey(10, forceRefresh: true);
+      ParameterlessKeyedQueryTrooper(query).triggerKey(10, forceRefresh: true);
       await Future<void>.delayed(const Duration(milliseconds: 10));
       expect(query.currentKeyData(10), 'Result 10 (3)');
 
-      ParameterlessKeyedTrooperQuery(query).setKey(10, 'Manual 10');
+      ParameterlessKeyedQueryTrooper(query).setKey(10, 'Manual 10');
       expect(query.currentKeyData(10), 'Manual 10');
 
-      final many = await ParameterlessKeyedTrooperQuery(query).getMany([10, 20]);
+      final many = await ParameterlessKeyedQueryTrooper(query).getMany([10, 20]);
       expect(many[10]?.dataOrNull, 'Manual 10');
       expect(many[20]?.dataOrNull, 'Result 20 (4)');
 
-      final watchStream = ParameterlessKeyedTrooperQuery(query).watchKey(10, eager: false);
+      final watchStream = ParameterlessKeyedQueryTrooper(query).watchKey(10, eager: false);
       expect(watchStream.currentData, 'Manual 10');
 
       query.dispose();
@@ -276,7 +276,7 @@ void main() {
       final storage = InMemoryStorageBackend();
       final codec = TrooperCodec.string;
 
-      final query1 = KeyedTrooperQuery<String, String, ()>(
+      final query1 = KeyedQueryTrooper<String, String, ()>(
         namespace: 'persisted_kq',
         fetch: (id, _) async => 'FromNetwork-$id',
         codec: codec,
@@ -293,7 +293,7 @@ void main() {
       query1.dispose();
 
       // Query 2 without L1 cache should hydrate from L2 storage
-      final query2 = KeyedTrooperQuery<String, String, ()>(
+      final query2 = KeyedQueryTrooper<String, String, ()>(
         namespace: 'persisted_kq',
         fetch: (id, _) async => 'NetworkReloaded-$id',
         codec: codec,
@@ -321,7 +321,7 @@ void main() {
       final corruptedKey = QueryKey.keyed('corrupted_kq', key: 'bad', parameter: (id: 'bad'));
       await storage.write(corruptedKey.storageKey, 'not-valid-json');
 
-      final query3 = KeyedTrooperQuery<String, String, ({String id})>(
+      final query3 = KeyedQueryTrooper<String, String, ({String id})>(
         namespace: 'corrupted_kq',
         fetch: (id, _) async => 'Fallback-$id',
         codec: codec,
@@ -340,12 +340,12 @@ void main() {
       query3.dispose();
     });
 
-    test('KeyedTrooperQuery sideEffects callbacks and error handling', () async {
+    test('KeyedQueryTrooper sideEffects callbacks and error handling', () async {
       var started = false;
       var dataCallback = false;
       var errorCallback = false;
 
-      final query = KeyedTrooperQuery<int, String, ()>(
+      final query = KeyedQueryTrooper<int, String, ()>(
         namespace: 'effects_kq',
         fetch: (id, _) async {
           if (id < 0) throw ArgumentError('Negative ID');

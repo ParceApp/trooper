@@ -9,7 +9,7 @@ void main() {
       var networkFetches = 0;
       final completer = Completer<String>();
 
-      final query = TrooperQuery<String, ()>(
+      final query = QueryTrooper<String, ()>(
         namespace: 'popular_item',
         fetch: (_) async {
           networkFetches++;
@@ -43,7 +43,7 @@ void main() {
       var networkFetches = 0;
       final revalidationCompleter = Completer<String>();
 
-      final query = TrooperQuery<String, ()>(
+      final query = QueryTrooper<String, ()>(
         namespace: 'swr_stampede',
         fetch: (_) async {
           networkFetches++;
@@ -91,12 +91,12 @@ void main() {
       query.dispose();
     });
 
-    test('Keyed SWR stampede: 100 simultaneous requests on expired key in KeyedTrooperQuery coalesce into 1 fetch',
+    test('Keyed SWR stampede: 100 simultaneous requests on expired key in KeyedQueryTrooper coalesce into 1 fetch',
         () async {
       var fetches = 0;
       final revalCompleter = Completer<String>();
 
-      final keyedQuery = KeyedTrooperQuery<int, String, ()>(
+      final keyedQuery = KeyedQueryTrooper<int, String, ()>(
         namespace: 'keyed_swr_stampede',
         fetch: (key, _) async {
           fetches++;

@@ -37,7 +37,7 @@ void main() {
 
     test('invalidateOnSuccess invalidates specified invalidatables', () async {
       var queryFetches = 0;
-      final query = TrooperQuery<String, ()>(
+      final query = QueryTrooper<String, ()>(
         namespace: 'user_bio',
         fetch: (_) async => 'Bio v${++queryFetches}',
         config: const TrooperConfig(timeToLive: Duration(hours: 1)),

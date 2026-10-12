@@ -5,7 +5,7 @@ import 'package:trooper/trooper.dart';
 void main() {
   group('Accessor & ParameterlessAccessor', () {
     test('trooper.accessor provides valid Accessor and ParameterlessAccessor extensions', () async {
-      final query = TrooperQuery<String, ()>(
+      final query = QueryTrooper<String, ()>(
         namespace: 'app_title',
         fetch: (_) async => 'My Application',
       );
@@ -49,7 +49,7 @@ void main() {
 
   group('KeyedAccessor & KeyedTrooperAccessor', () {
     test('keyedTrooper.accessor provides full KeyedAccessor functionality', () async {
-      final keyedQuery = KeyedTrooperQuery<int, String, ()>(
+      final keyedQuery = KeyedQueryTrooper<int, String, ()>(
         namespace: 'users',
         fetch: (id, _) async => 'User $id',
       );
@@ -82,7 +82,7 @@ void main() {
       expect(keyedQuery.currentKey(1), isA<DataInitial<String>>());
 
       // Watch entire collection contains key 2
-      final collectionStream = accessor.watch(const ());
+      final collectionStream = accessor.watch();
       expect(collectionStream.currentState.dataOrNull, containsPair(2, 'User 2'));
 
       // Collection-level read
@@ -119,7 +119,7 @@ void main() {
       final readData = await customAccessor.get(const ());
       expect(readData, {'custom': 999});
 
-      final refreshedData = await customAccessor.get(const (), true);
+      final refreshedData = await customAccessor.get(const (), forceRefresh: true);
       expect(refreshedData, {'refreshed': 1000});
       expect(refreshed, isTrue);
 

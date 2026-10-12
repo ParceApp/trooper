@@ -39,9 +39,9 @@ class ThrowingStorageBackend extends InMemoryStorageBackend {
 }
 
 void main() {
-  group('TrooperTimeoutException in TrooperQuery and KeyedTrooperQuery', () {
-    test('TrooperQuery throws TrooperTimeoutException when query exceeds timeout', () async {
-      final query = TrooperQuery<String, ()>(
+  group('TrooperTimeoutException in QueryTrooper and KeyedQueryTrooper', () {
+    test('QueryTrooper throws TrooperTimeoutException when query exceeds timeout', () async {
+      final query = QueryTrooper<String, ()>(
         namespace: 'timeout_query',
         config: const TrooperConfig(
           timeout: Duration(milliseconds: 50),
@@ -70,8 +70,8 @@ void main() {
       await query.dispose();
     });
 
-    test('KeyedTrooperQuery throws TrooperTimeoutException when query exceeds timeout', () async {
-      final query = KeyedTrooperQuery<String, String, ()>(
+    test('KeyedQueryTrooper throws TrooperTimeoutException when query exceeds timeout', () async {
+      final query = KeyedQueryTrooper<String, String, ()>(
         namespace: 'keyed_timeout_query',
         config: const TrooperConfig(
           timeout: Duration(milliseconds: 50),

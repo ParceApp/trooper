@@ -31,24 +31,24 @@ import 'package:trooper/types/parameter.dart';
 ///
 /// ### Example:
 /// ```dart
-/// final lectureQuery = KeyedTrooperQuery<String, Lecture, ()>(
+/// final lectureQuery = KeyedQueryTrooper<String, Lecture, ()>(
 ///   namespace: 'lecture',
 ///   fetch: (id, _) => fetchLecture(id),
 /// );
 ///
 /// // Access single lecture via subscript operator:
 /// final lecture101 = lectureQuery['math-101'];
-/// final data = await lecture101.get(());
+/// final data = await lecture101.get();
 ///
 /// // Watch all lectures collectively:
 /// lectureQuery.watchAll().listen((map) {
 ///   print('Loaded ${map.length} lectures');
 /// });
 /// ```
-class KeyedTrooperQuery<K extends Object, T, P extends Parameter>
+class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
     extends KeyedTrooper<K, T, P> {
-  /// Creates a [KeyedTrooperQuery] with a standard fetch function.
-  factory KeyedTrooperQuery({
+  /// Creates a [KeyedQueryTrooper] with a standard fetch function.
+  factory KeyedQueryTrooper({
     required String namespace,
     required Future<T> Function(K key, P param) fetch,
     TrooperCodec<T>? codec,
@@ -58,7 +58,7 @@ class KeyedTrooperQuery<K extends Object, T, P extends Parameter>
     TrooperQueryQueue? queryQueue,
     TelemetryHub? telemetry,
     KeyedStatefulStream<K, T>? stream,
-  }) => KeyedTrooperQuery.cancellable(
+  }) => KeyedQueryTrooper.cancellable(
     namespace: namespace,
     fetch: (key, param, _) => fetch(key, param),
     codec: codec,
@@ -70,8 +70,8 @@ class KeyedTrooperQuery<K extends Object, T, P extends Parameter>
     stream: stream,
   );
 
-  /// Creates a [KeyedTrooperQuery] with cooperative cancellation support via [TrooperCancelToken].
-  KeyedTrooperQuery.cancellable({
+  /// Creates a [KeyedQueryTrooper] with cooperative cancellation support via [TrooperCancelToken].
+  KeyedQueryTrooper.cancellable({
     required super.namespace,
     required this.fetch,
     this.codec,
@@ -94,14 +94,9 @@ class KeyedTrooperQuery<K extends Object, T, P extends Parameter>
   Accessor<T, P> operator [](K key) => _KeyedBoundAccessor<K, T, P>(this, key);
 
   /// Reads the value for [key], returning cached data if fresh or fetching from source.
-  Future<T> getKey(K key, [P? parameter, bool forceRefresh = false]) async {
-    final effective =
-        parameter ?? (const () is P ? const () as P : lastParamOf(key));
-    if (effective == null) {
-      throw ArgumentError.notNull('parameter');
-    }
-    final paramChanged = isParamChanged(key, effective);
-    final qKey = buildQueryKey(key, effective);
+  Future<T> getKey(K key, P parameter, {bool forceRefresh = false}) async {
+    final paramChanged = isParamChanged(key, parameter);
+    final qKey = buildQueryKey(key, parameter);
 
     // 1. Check L1 Cache
     if (!forceRefresh && !paramChanged && config.hasCache) {
@@ -133,7 +128,7 @@ class KeyedTrooperQuery<K extends Object, T, P extends Parameter>
           // Background revalidation
           _executeFetch(
             key: key,
-            param: effective,
+            param: parameter,
             qKey: qKey,
             forceNew: false,
             staleData: entry.data,
@@ -186,7 +181,7 @@ class KeyedTrooperQuery<K extends Object, T, P extends Parameter>
 
                   _executeFetch(
                     key: key,
-                    param: effective,
+                    param: parameter,
                     qKey: qKey,
                     forceNew: false,
                     staleData: restoredData,
@@ -244,7 +239,7 @@ class KeyedTrooperQuery<K extends Object, T, P extends Parameter>
 
     return await _executeFetch(
       key: key,
-      param: effective,
+      param: parameter,
       qKey: qKey,
       forceNew: forceRefresh,
       staleData: staleData,
@@ -252,12 +247,12 @@ class KeyedTrooperQuery<K extends Object, T, P extends Parameter>
   }
 
   /// Forces a fresh get of [key], bypassing cache freshness.
-  Future<T> refreshKey(K key, [P? parameter]) =>
-      getKey(key, parameter, true);
+  Future<T> refreshKey(K key, P parameter) =>
+      getKey(key, parameter, forceRefresh: true);
 
   /// Triggers a fetch of [key] in the background without awaiting the result.
-  void triggerKey(K key, [P? parameter, bool forceRefresh = false]) {
-    getKey(key, parameter, forceRefresh).ignore();
+  void triggerKey(K key, P parameter, {bool forceRefresh = false}) {
+    getKey(key, parameter, forceRefresh: forceRefresh).ignore();
   }
 
   @override
@@ -268,7 +263,7 @@ class KeyedTrooperQuery<K extends Object, T, P extends Parameter>
   }) async {
     final keyList = keys.toList();
     final results = await Future.wait(
-      keyList.map((key) => getKey(key, parameter, forceRefresh)),
+      keyList.map((key) => getKey(key, parameter, forceRefresh: forceRefresh)),
     );
     return Map<K, T>.fromIterables(keyList, results);
   }
@@ -284,7 +279,7 @@ class KeyedTrooperQuery<K extends Object, T, P extends Parameter>
     bool forceRefresh = false,
   }) {
     for (final key in keys) {
-      triggerKey(key, parameter, forceRefresh);
+      triggerKey(key, parameter, forceRefresh: forceRefresh);
     }
   }
 
@@ -299,7 +294,7 @@ class KeyedTrooperQuery<K extends Object, T, P extends Parameter>
         (key) => getKey(
           key,
           parameter,
-          forceRefresh,
+          forceRefresh: forceRefresh,
         ).then<void>((_) => null).catchError((_) => null),
       ),
     );
@@ -308,14 +303,13 @@ class KeyedTrooperQuery<K extends Object, T, P extends Parameter>
   }
 
   /// Watches state updates for a single [key].
-  StatefulStream<T> watchKey(K key, [P? parameter, bool eager = true]) {
-    final effective = parameter ?? (const () is P ? const () as P : null);
-    if (eager && effective != null) {
+  StatefulStream<T> watchKey(K key, {P? initialParameter, bool eager = false}) {
+    if (eager && initialParameter != null) {
       final state = currentKey(key);
       if (state is DataInitial ||
-          isParamChanged(key, effective) ||
-          (config.hasCache && cache.isStale(buildQueryKey(key, effective)))) {
-        getKey(key, effective).ignore();
+          isParamChanged(key, initialParameter) ||
+          (config.hasCache && cache.isStale(buildQueryKey(key, initialParameter)))) {
+        getKey(key, initialParameter).ignore();
       }
     }
     return stream.streamOf(key);
@@ -541,54 +535,54 @@ class KeyedTrooperQuery<K extends Object, T, P extends Parameter>
 class _KeyedBoundAccessor<K extends Object, T, P extends Parameter>
     implements Accessor<T, P> {
   const _KeyedBoundAccessor(this._parent, this._key);
-  final KeyedTrooperQuery<K, T, P> _parent;
+  final KeyedQueryTrooper<K, T, P> _parent;
   final K _key;
 
   @override
   StatefulStream<T> get stream => _parent.stream.streamOf(_key);
 
   @override
-  StatefulStream<T> watch([P? parameter, bool eager = true]) =>
-      _parent.watchKey(_key, parameter, eager);
+  StatefulStream<T> watch({P? initialParameter, bool eager = false}) =>
+      _parent.watchKey(_key, initialParameter: initialParameter, eager: eager);
 
   @override
-  Future<T> get([P? parameter, bool forceRefresh = false]) =>
-      _parent.getKey(_key, parameter, forceRefresh);
+  Future<T> get(P parameter, {bool forceRefresh = false}) =>
+      _parent.getKey(_key, parameter, forceRefresh: forceRefresh);
 
   @override
-  Future<T> refresh([P? parameter]) => _parent.refreshKey(_key, parameter);
+  Future<T> refresh(P parameter) => _parent.refreshKey(_key, parameter);
 
   @override
-  void trigger([P? parameter, bool forceRefresh = false]) =>
-      _parent.triggerKey(_key, parameter, forceRefresh);
+  void trigger(P parameter, {bool forceRefresh = false}) =>
+      _parent.triggerKey(_key, parameter, forceRefresh: forceRefresh);
 
   @override
-  StatefulData<T> current([P? parameter]) => _parent.currentKey(_key);
+  StatefulData<T> current(P parameter) => _parent.currentKey(_key);
 
   @override
-  T? currentData([P? parameter]) => _parent.currentKeyData(_key);
+  T? currentData(P parameter) => _parent.currentKeyData(_key);
 
   @override
   void invalidate() => _parent.invalidateKey(_key);
 }
 
-/// Convenience extension for parameterless [KeyedTrooperQuery] instances where `P` is `()`.
-extension ParameterlessKeyedTrooperQuery<K extends Object, T>
-    on KeyedTrooperQuery<K, T, ()> {
+/// Convenience extension for parameterless [KeyedQueryTrooper] instances where `P` is `()`.
+extension ParameterlessKeyedQueryTrooper<K extends Object, T>
+    on KeyedQueryTrooper<K, T, ()> {
   /// Reads the value for [key] without requiring an explicit `()` parameter.
   Future<T> getKey(K key, {bool forceRefresh = false}) =>
-      this.getKey(key, const (), forceRefresh);
+      this.getKey(key, const (), forceRefresh: forceRefresh);
 
   /// Forces a fresh get of [key] without requiring an explicit `()` parameter.
   Future<T> refreshKey(K key) => this.refreshKey(key, const ());
 
   /// Triggers a fetch of [key] in the background without requiring an explicit `()` parameter.
   void triggerKey(K key, {bool forceRefresh = false}) =>
-      this.triggerKey(key, const (), forceRefresh);
+      this.triggerKey(key, const (), forceRefresh: forceRefresh);
 
   /// Watches state updates for a single [key] without requiring an explicit `()` parameter.
-  StatefulStream<T> watchKey(K key, {bool eager = true}) =>
-      this.watchKey(key, const (), eager);
+  StatefulStream<T> watchKey(K key, {bool eager = false}) =>
+      this.watchKey(key, initialParameter: const (), eager: eager);
 
   /// Reads multiple keys concurrently without requiring an explicit `()` parameter.
   Future<Map<K, StatefulData<T>>> getMany(

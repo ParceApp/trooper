@@ -49,7 +49,7 @@ class CounterTubit extends Tubit<TubitTestState> {
   void onAnyError(Object error, StackTrace? st, Emit<TubitTestState> emit) =>
       emit(TubitErrorState(error));
 
-  Future<void> refresh() => accessor.refresh();
+  Future<void> refresh() => accessor.refresh(const ());
 }
 
 void main() {

@@ -135,10 +135,10 @@ void main() {
     });
   });
 
-  group('RetryPolicy Integration with TrooperQuery', () {
-    test('TrooperQuery retries automatically according to config.retryPolicy', () async {
+  group('RetryPolicy Integration with QueryTrooper', () {
+    test('QueryTrooper retries automatically according to config.retryPolicy', () async {
       var fetchCount = 0;
-      final query = TrooperQuery<String, ()>(
+      final query = QueryTrooper<String, ()>(
         namespace: 'retry_query',
         config: const TrooperConfig(
           timeToLive: Duration(minutes: 5),

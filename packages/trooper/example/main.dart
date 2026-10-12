@@ -106,7 +106,7 @@ void main() async {
   print('1. Controller initialized.\n');
 
   // Step 1: Subscribe to reactive stream via modern pattern matching
-  final subscription = controller.feed.watch(const ()).listen((state) {
+  final subscription = controller.feed.watch().listen((state) {
     switch (state) {
       case DataInitial():
         print('   [Stream Event] State: Idle (DataInitial)');

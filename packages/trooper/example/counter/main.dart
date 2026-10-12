@@ -34,7 +34,7 @@ void main() async {
   await controller.initialize();
 
   // Watch state updates reactively
-  final subscription = controller.count.watch(const ()).listen((state) {
+  final subscription = controller.count.watch().listen((state) {
     if (state case DataLoaded(:final data)) {
       print('Current Count: $data');
     }

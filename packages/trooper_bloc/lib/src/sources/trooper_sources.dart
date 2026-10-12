@@ -52,21 +52,24 @@ mixin TrooperSources<S> {
 
   /// Watches an [Accessor].
   ///
-  /// If [parameter] is omitted or `null`:
+  /// If [initialParameter] is omitted or `null`:
   /// - If `P` is `()`, defaults to `const ()`.
   /// - Otherwise, passively listens to the underlying resource stream without triggering an initial fetch.
   ///
+  /// Set [eager] to `true` to immediately trigger a fetch with [initialParameter] upon watching.
   /// Any background fetch, refresh, or trigger on the accessor (regardless of parameter)
   /// will emit on this stream and trigger [matchSources].
   Watched<T> watch<T, P extends Parameter>(
-    Accessor<T, P> accessor, [
-    P? parameter,
-  ]) {
+    Accessor<T, P> accessor, {
+    P? initialParameter,
+    bool eager = false,
+  }) {
     final effectiveParam =
-        parameter ?? (P == const ().runtimeType ? const () as P : null);
+        initialParameter ?? (const () is P ? const () as P : null);
     final handle = WatchedHandle<T, P>(
       accessor: accessor,
-      parameter: effectiveParam,
+      initialParameter: effectiveParam,
+      eager: eager,
       onUpdate: _onSourceUpdate,
     );
     _managedHandles.add(handle);

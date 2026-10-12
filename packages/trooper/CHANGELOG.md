@@ -3,8 +3,8 @@
 Initial public release of Trooper, an architectural blueprint and reactive data-flow framework for Dart applications.
 
 ### Core Reactive Engine
-* **`TrooperQuery<T, P>`**: Asynchronous data queries with multi-tier caching, Stale-While-Revalidate background updates, and automatic request deduplication.
-* **`KeyedTrooperQuery<K, T, P>`**: Dynamic collection of queries partitioned by entity key `K` (e.g. ID, slug) with batch reading support (`getAll`, `getMany`).
+* **`QueryTrooper<T, P>`**: Asynchronous data queries with multi-tier caching, Stale-While-Revalidate background updates, and automatic request deduplication.
+* **`KeyedQueryTrooper<K, T, P>`**: Dynamic collection of queries partitioned by entity key `K` (e.g. ID, slug) with batch reading support (`getAll`, `getMany`).
 * **`LocalTrooper<T, P>`**: In-memory reactive state management with optional persistent L2 storage synchronization.
 * **`KeyedLocalTrooper<K, T, P>`**: In-memory state collections partitioned dynamically by key with batch operations (`setAll`, `updateAll`, `resetKeys`, `getAll`).
 * **`StreamTrooper<T, P>`**: Push stream bridge for WebSockets, Server-Sent Events, and broadcast channels with connection lifecycle control.

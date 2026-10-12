@@ -31,14 +31,14 @@ void main() {
         keepAlive: false,
       );
 
-      final watcherA = trooper.watchKey('roomA', const ());
+      final watcherA = trooper.watchKey('roomA', initialParameter: const ());
       final subA = watcherA.listen((_) {});
       await Future<void>.delayed(Duration.zero);
 
       expect(trooper.isConnectedKey('roomA'), isTrue);
       expect(trooper.isConnectedKey('roomB'), isFalse);
 
-      final watcherB = trooper.watchKey('roomB', const ());
+      final watcherB = trooper.watchKey('roomB', initialParameter: const ());
       final subB = watcherB.listen((_) {});
       await Future<void>.delayed(Duration.zero);
 
@@ -171,7 +171,7 @@ void main() {
         ),
       );
 
-      final sub = trooper.watchKey('ch1', const ()).listen((_) {});
+      final sub = trooper.watchKey('ch1', initialParameter: const ()).listen((_) {});
       await Future<void>.delayed(Duration.zero);
 
       getSource('ch1').emitError(StateError('Stream drop'));

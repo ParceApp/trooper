@@ -40,19 +40,19 @@ class FakeAccessor<T, P extends Parameter> implements Accessor<T, P> {
       );
 
   @override
-  StatefulData<T> current([P? parameter]) => _state;
+  StatefulData<T> current(P parameter) => _state;
 
   @override
-  T? currentData([P? parameter]) => _state.dataOrNull;
+  T? currentData(P parameter) => _state.dataOrNull;
 
   @override
-  StatefulStream<T> watch([P? parameter, bool eager = true]) {
+  StatefulStream<T> watch({P? initialParameter, bool eager = false}) {
     watchCount++;
     return stream;
   }
 
   @override
-  Future<T> get([P? parameter, bool forceRefresh = false]) async {
+  Future<T> get(P parameter, {bool forceRefresh = false}) async {
     getCount++;
     final data = _state.dataOrNull;
     if (data != null && !forceRefresh) return data;
@@ -60,7 +60,7 @@ class FakeAccessor<T, P extends Parameter> implements Accessor<T, P> {
   }
 
   @override
-  Future<T> refresh([P? parameter]) async {
+  Future<T> refresh(P parameter) async {
     refreshCount++;
     final data = _state.dataOrNull;
     if (data != null) return data;
@@ -68,7 +68,7 @@ class FakeAccessor<T, P extends Parameter> implements Accessor<T, P> {
   }
 
   @override
-  void trigger([P? parameter, bool forceRefresh = false]) {
+  void trigger(P parameter, {bool forceRefresh = false}) {
     triggerCount++;
   }
 

@@ -14,8 +14,8 @@ Initial public release of the Trooper framework monorepo.
 ### Added
 
 #### Core Framework (`packages/trooper`)
-- **`TrooperQuery<T, P>`**: Asynchronous query manager with multi-tier caching, SWR (Stale-While-Revalidate) background revalidation, and automated request deduplication.
-- **`KeyedTrooperQuery<K, T, P>`**: Dynamic collection of queries partitioned by entity key `K` with batch reading support (`getAll`, `getMany`).
+- **`QueryTrooper<T, P>`**: Asynchronous query manager with multi-tier caching, SWR (Stale-While-Revalidate) background revalidation, and automated request deduplication.
+- **`KeyedQueryTrooper<K, T, P>`**: Dynamic collection of queries partitioned by entity key `K` with batch reading support (`getAll`, `getMany`).
 - **`LocalTrooper<T, P>`**: In-memory reactive state manager with optional persistent L2 storage synchronization.
 - **`KeyedLocalTrooper<K, T, P>`**: In-memory state collections partitioned dynamically by key with bulk operations (`setAll`, `updateAll`, `resetKeys`, `getAll`).
 - **`StreamTrooper<T, P>`**: Push stream bridge for WebSockets, Server-Sent Events, and broadcast channels with connection lifecycle management.

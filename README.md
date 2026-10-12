@@ -29,7 +29,7 @@ An architectural blueprint and high-performance reactive data-flow framework for
                                       ▼
        ┌─────────────────────────────────────────────────────────────┐
        │                       TROOPER ENGINE                        │
-       │   • TrooperQuery (SWR Caching)   • KeyedTrooperQuery        │
+       │   • QueryTrooper (SWR Caching)   • KeyedQueryTrooper        │
        │   • LocalTrooper (Memory State)  • KeyedLocalTrooper        │
        │   • StreamTrooper (Push/Sockets) • KeyedStreamTrooper       │
        │   • TrooperMutation (Commands)   • TrooperQueryQueue        │

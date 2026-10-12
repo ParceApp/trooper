@@ -87,7 +87,7 @@ Future<BenchmarkResult> benchmarkL1CacheHit() async {
 /// Target: < 0.05ms (50 us) overhead per concurrent caller.
 Future<BenchmarkResult> benchmarkRequestCoalescing() async {
   final completer = Completer<String>();
-  final query = TrooperQuery<String, ()>(
+  final query = QueryTrooper<String, ()>(
     namespace: 'coalesce_bench',
     fetch: (_) => completer.future,
     config: const TrooperConfig(timeToLive: Duration(seconds: 10)),
@@ -172,10 +172,10 @@ Future<BenchmarkResult> benchmarkStatefulStreamThroughput() async {
   );
 }
 
-/// 4. Memory Footprint for 10,000 active keys in KeyedTrooperQuery
+/// 4. Memory Footprint for 10,000 active keys in KeyedQueryTrooper
 /// Target: Under 30 MB for 10,000 cached records with metadata.
 Future<BenchmarkResult> benchmarkMemoryFootprint() async {
-  final query = KeyedTrooperQuery<int, String, ()>(
+  final query = KeyedQueryTrooper<int, String, ()>(
     namespace: 'memory_bench',
     fetch: (key, _) async => 'Cached Item #$key',
     config: const TrooperConfig(timeToLive: Duration(hours: 1)),

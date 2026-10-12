@@ -76,7 +76,7 @@ class SimpleTloc extends Tloc<TestEvent, TestState> {
 
   @override
   void handlers() {
-    on<TestRefreshEvent>((_, _) => fakeAccessor.refresh());
+    on<TestRefreshEvent>((_, _) => fakeAccessor.refresh(const ()));
     on<TestSetCustomEvent>((event, emit) => emit(TestLoadedState(event.value)));
   }
 }
@@ -581,7 +581,9 @@ class ParameterizedTloc extends Tloc<TestEvent, TestState> {
   late final Watched<String> item;
 
   @override
-  List<Watched<Object?>> get sources => [item = watch(accessor, (id: 1))];
+  List<Watched<Object?>> get sources => [
+    item = watch(accessor, initialParameter: (id: 1), eager: true),
+  ];
 
   @override
   FutureOr<MatchResult> matchSources(Emit<TestState> emit) {

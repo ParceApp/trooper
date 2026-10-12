@@ -152,20 +152,20 @@ abstract class KeyedTrooper<K extends Object, T, P extends Parameter>
 
   // --- Collection-level Accessor<Map<K, T>, ()> delegation ---
 
-  StatefulStream<Map<K, T>> watch([() ? parameter, bool eager = true]) =>
-      accessor.watch(parameter, eager);
+  StatefulStream<Map<K, T>> watch({() ? initialParameter, bool eager = false}) =>
+      accessor.watch(initialParameter: initialParameter, eager: eager);
 
-  Future<Map<K, T>> get([()? parameter, bool forceRefresh = false]) =>
-      accessor.get(parameter, forceRefresh);
+  Future<Map<K, T>> get(() parameter, {bool forceRefresh = false}) =>
+      accessor.get(parameter, forceRefresh: forceRefresh);
 
-  Future<Map<K, T>> refresh([()? parameter]) => accessor.refresh(parameter);
+  Future<Map<K, T>> refresh(() parameter) => accessor.refresh(parameter);
 
-  void trigger([()? parameter, bool forceRefresh = false]) =>
-      accessor.trigger(parameter, forceRefresh);
+  void trigger(() parameter, {bool forceRefresh = false}) =>
+      accessor.trigger(parameter, forceRefresh: forceRefresh);
 
-  StatefulData<Map<K, T>> current([()? parameter]) => accessor.current(parameter);
+  StatefulData<Map<K, T>> current(() parameter) => accessor.current(parameter);
 
-  Map<K, T>? currentData([()? parameter]) => accessor.currentData(parameter);
+  Map<K, T>? currentData(() parameter) => accessor.currentData(parameter);
 
   // --- Single Key State Queries ---
 
@@ -178,17 +178,13 @@ abstract class KeyedTrooper<K extends Object, T, P extends Parameter>
   // --- Invalidation & Cleanup ---
 
   /// Invalidates the cache entry, clears persistent storage, and resets state to [DataInitial] for [key].
-  ///
-  /// If [parameter] is provided, the specific storage entry is deleted.
-  /// Otherwise, entries matching this key are pruned from cache via wildcard.
-  void invalidateKey(K key, [P? parameter]) {
+  void invalidateKey(K key) {
     queryQueue.cancelWhere(
       (k) => k.matchesNameAndKey(name: namespace, entityKey: key),
     );
-    final param = parameter ?? _lastParams.remove(key);
+    final param = _lastParams.remove(key);
     if (param != null) {
       final qKey = QueryKey.keyed(namespace, key: key, parameter: param);
-      cache.remove(qKey);
       final storage = config.storage;
       if (storage != null) {
         storage.delete(qKey.storageKey).ignore();
@@ -196,11 +192,10 @@ abstract class KeyedTrooper<K extends Object, T, P extends Parameter>
       if (telemetry.hasListeners) {
         telemetry.emit(CacheInvalidatedEvent(qKey));
       }
-    } else {
-      cache.removeWhere(
-        (k) => k.matchesNameAndKey(name: namespace, entityKey: key),
-      );
     }
+    cache.removeWhere(
+      (k) => k.matchesNameAndKey(name: namespace, entityKey: key),
+    );
     stream.emitInitial(key);
   }
 
@@ -243,25 +238,25 @@ abstract class KeyedTrooper<K extends Object, T, P extends Parameter>
   }) => accessor.triggerKeys(keys, parameter, forceRefresh: forceRefresh);
 
   /// Invalidates the cache entry and resets state to [DataInitial] for multiple [keys].
-  void invalidateKeys(Iterable<K> keys, [P? parameter]) {
+  void invalidateKeys(Iterable<K> keys) {
     for (final key in keys) {
-      invalidateKey(key, parameter);
+      invalidateKey(key);
     }
   }
 
   /// Removes multiple [keys] from the stream, cache, and optional persistent storage.
-  Future<void> removeKeys(Iterable<K> keys, [P? parameter]) async {
+  Future<void> removeKeys(Iterable<K> keys) async {
     for (final key in keys) {
-      await removeKey(key, parameter);
+      await removeKey(key);
     }
   }
 
   /// Removes [key] from the stream, cache, and optional persistent storage.
-  Future<void> removeKey(K key, [P? parameter]) async {
+  Future<void> removeKey(K key) async {
     queryQueue.cancelWhere(
       (k) => k.matchesNameAndKey(name: namespace, entityKey: key),
     );
-    final param = parameter ?? _lastParams.remove(key);
+    final param = _lastParams.remove(key);
     cache.removeWhere(
       (k) => k.matchesNameAndKey(name: namespace, entityKey: key),
     );

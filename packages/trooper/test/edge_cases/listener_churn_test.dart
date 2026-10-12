@@ -6,15 +6,15 @@ import '../fixtures/mock_stream_source.dart';
 
 void main() {
   group('Edge Case: Listener Churn and Stream Subscription Safety', () {
-    test('1000 rapid listen and cancel cycles on TrooperQuery leave stream controller healthy',
+    test('1000 rapid listen and cancel cycles on QueryTrooper leave stream controller healthy',
         () async {
-      final query = TrooperQuery<int, ()>(
+      final query = QueryTrooper<int, ()>(
         namespace: 'churn_counter',
         fetch: (_) async => 42,
         config: const TrooperConfig(timeToLive: Duration(minutes: 5)),
       );
 
-      final stream = query.watch(const ());
+      final stream = query.watch();
 
       for (var i = 0; i < 1000; i++) {
         final sub = stream.listen((_) {});
@@ -55,7 +55,7 @@ void main() {
         keepAlive: false,
       );
 
-      final watcher = streamTrooper.watch(const ());
+      final watcher = streamTrooper.watch(initialParameter: const ());
 
       for (var i = 0; i < 50; i++) {
         final sub = watcher.listen((_) {});
