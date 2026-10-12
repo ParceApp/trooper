@@ -155,13 +155,13 @@ abstract class KeyedTrooper<K extends Object, T, P extends Parameter>
   StatefulStream<Map<K, T>> watch([() ? parameter, bool eager = true]) =>
       accessor.watch(parameter, eager);
 
-  Future<Map<K, T>> get(() parameter, {bool forceRefresh = false}) =>
-      accessor.get(parameter, forceRefresh: forceRefresh);
+  Future<Map<K, T>> get([()? parameter, bool forceRefresh = false]) =>
+      accessor.get(parameter, forceRefresh);
 
-  Future<Map<K, T>> refresh(() parameter) => accessor.refresh(parameter);
+  Future<Map<K, T>> refresh([()? parameter]) => accessor.refresh(parameter);
 
-  void trigger(() parameter, {bool forceRefresh = false}) =>
-      accessor.trigger(parameter, forceRefresh: forceRefresh);
+  void trigger([()? parameter, bool forceRefresh = false]) =>
+      accessor.trigger(parameter, forceRefresh);
 
   StatefulData<Map<K, T>> current([()? parameter]) => accessor.current(parameter);
 

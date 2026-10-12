@@ -9,8 +9,8 @@ Initial public release of Trooper BLoC, high-performance Flutter BLoC and Cubit 
 
 ### Reactive Sources & Derivation
 * **`TrooperSources<S>`**: Core derivation mixin providing microtask batching, generation-based restartable concurrency, and automatic lifecycle management.
-* **`watch(accessor)` & `watchWith(accessor, parameter)`**: Declarative registration of watched sources with strong typing.
-* **`Watched<T>` & `DynamicWatched<T, P>`**: Reactive source handles providing synchronous state inspection and dynamic parameter or source switching.
+* **`watch(accessor, [parameter])`**: Declarative registration of watched sources with strong typing.
+* **`Watched<T>`**: Reactive source handles providing synchronous snapshot state inspection, pattern matching, and SWR guarantees.
 * **Snapshot-Locking**: Freezes `source.state` throughout `matchSources` evaluation, preventing state tearing across asynchronous `await` steps.
 * **`MatchResult`**: Type-safe derivation result (`.handled`, `.unhandled`) with automatic cascade to `onAnyError` and `onAnyLoading`.
 * **Zero-Flicker SWR Guarantee**: Preserves existing rendered state during background refreshes without reverting to loading indicators.

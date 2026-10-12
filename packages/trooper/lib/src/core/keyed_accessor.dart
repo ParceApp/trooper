@@ -142,7 +142,7 @@ class KeyedTrooperAccessor<K extends Object, T, P extends Parameter>
   }) async {
     final keyList = keys.toList();
     final results = await Future.wait(
-      keyList.map((k) => this[k].get(parameter, forceRefresh: forceRefresh)),
+      keyList.map((k) => this[k].get(parameter, forceRefresh)),
     );
     return Map<K, T>.fromIterables(keyList, results);
   }
@@ -163,7 +163,7 @@ class KeyedTrooperAccessor<K extends Object, T, P extends Parameter>
     bool forceRefresh = false,
   }) {
     for (final k in keys) {
-      this[k].trigger(parameter, forceRefresh: forceRefresh);
+      this[k].trigger(parameter, forceRefresh);
     }
   }
 
@@ -195,7 +195,7 @@ class KeyedTrooperAccessor<K extends Object, T, P extends Parameter>
   StatefulStream<Map<K, T>> watch([() ? parameter, bool eager = true]) => stream;
 
   @override
-  Future<Map<K, T>> get(() parameter, {bool forceRefresh = false}) async {
+  Future<Map<K, T>> get([()? parameter, bool forceRefresh = false]) async {
     if (forceRefresh && onRefresh != null) {
       return await onRefresh!();
     }
@@ -206,7 +206,7 @@ class KeyedTrooperAccessor<K extends Object, T, P extends Parameter>
   }
 
   @override
-  Future<Map<K, T>> refresh(() parameter) async {
+  Future<Map<K, T>> refresh([()? parameter]) async {
     if (onRefresh != null) {
       return await onRefresh!();
     }
@@ -215,8 +215,8 @@ class KeyedTrooperAccessor<K extends Object, T, P extends Parameter>
   }
 
   @override
-  void trigger(() parameter, {bool forceRefresh = false}) {
-    get(parameter, forceRefresh: forceRefresh).ignore();
+  void trigger([()? parameter, bool forceRefresh = false]) {
+    get(parameter, forceRefresh).ignore();
   }
 
   @override

@@ -53,7 +53,10 @@ import 'package:trooper_bloc/src/sources/trooper_sources.dart';
 ///
 ///   @override
 ///   void handlers() {
-///     on<LectureRefreshEvent>((_, _) => refreshAll());
+///     on<LectureRefreshEvent>((_, _) async {
+///       await store.lectures.refreshKey(lectureId);
+///       await store.timetableEntries.refreshKey(lectureId);
+///     });
 ///   }
 /// }
 /// ```

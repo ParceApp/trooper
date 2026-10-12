@@ -50,9 +50,7 @@ class SimpleTloc extends Tloc<TestEvent, TestState> {
   late final Watched<String> source;
 
   @override
-  List<Watched<Object?>> get sources => [
-    source = watch(fakeAccessor),
-  ];
+  List<Watched<Object?>> get sources => [source = watch(fakeAccessor)];
 
   @override
   FutureOr<MatchResult> matchSources(Emit<TestState> emit) {
@@ -77,17 +75,15 @@ class SimpleTloc extends Tloc<TestEvent, TestState> {
 
   @override
   void handlers() {
-    on<TestRefreshEvent>((_, _) => refreshAll());
+    on<TestRefreshEvent>((_, _) => fakeAccessor.refresh());
     on<TestSetCustomEvent>((event, emit) => emit(TestLoadedState(event.value)));
   }
 }
 
 // Multi-source Tloc implementation
 class MultiSourceTloc extends Tloc<TestEvent, TestState> {
-  MultiSourceTloc({
-    required this.accessorA,
-    required this.accessorB,
-  }) : super(const TestLoadingState());
+  MultiSourceTloc({required this.accessorA, required this.accessorB})
+    : super(const TestLoadingState());
 
   final FakeAccessor<String, ()> accessorA;
   final FakeAccessor<int, ()> accessorB;
@@ -136,9 +132,7 @@ class AsyncTloc extends Tloc<TestEvent, TestState> {
   final observedSnapshots = <String>[];
 
   @override
-  List<Watched<Object?>> get sources => [
-    source = watch(accessor),
-  ];
+  List<Watched<Object?>> get sources => [source = watch(accessor)];
 
   @override
   Future<MatchResult> matchSources(Emit<TestState> emit) async {
@@ -174,34 +168,40 @@ class AsyncTloc extends Tloc<TestEvent, TestState> {
 
 void main() {
   group('Tloc', () {
-    test('initializes and emits loaded state when source has warm cache', () async {
-      final fake = FakeAccessor<String, ()>(initialData: 'cached');
-      final bloc = SimpleTloc(fake);
+    test(
+      'initializes and emits loaded state when source has warm cache',
+      () async {
+        final fake = FakeAccessor<String, ()>(initialData: 'cached');
+        final bloc = SimpleTloc(fake);
 
-      // Microtask pump
-      await pumpEventQueue();
+        // Microtask pump
+        await pumpEventQueue();
 
-      expect(bloc.state, isA<TestLoadedState>());
-      expect((bloc.state as TestLoadedState).data, 'cached');
+        expect(bloc.state, isA<TestLoadedState>());
+        expect((bloc.state as TestLoadedState).data, 'cached');
 
-      await bloc.close();
-    });
+        await bloc.close();
+      },
+    );
 
-    test('emits loading fallback on cold start and updates when source resolves', () async {
-      final fake = FakeAccessor<String, ()>(); // DataInitial
-      final bloc = SimpleTloc(fake);
+    test(
+      'emits loading fallback on cold start and updates when source resolves',
+      () async {
+        final fake = FakeAccessor<String, ()>(); // DataInitial
+        final bloc = SimpleTloc(fake);
 
-      await pumpEventQueue();
-      expect(bloc.state, isA<TestLoadingState>());
+        await pumpEventQueue();
+        expect(bloc.state, isA<TestLoadingState>());
 
-      fake.emitData('fresh');
-      await pumpEventQueue();
+        fake.emitData('fresh');
+        await pumpEventQueue();
 
-      expect(bloc.state, isA<TestLoadedState>());
-      expect((bloc.state as TestLoadedState).data, 'fresh');
+        expect(bloc.state, isA<TestLoadedState>());
+        expect((bloc.state as TestLoadedState).data, 'fresh');
 
-      await bloc.close();
-    });
+        await bloc.close();
+      },
+    );
 
     test('fallback cascade invokes onAnyError when source fails', () async {
       final fake = FakeAccessor<String, ()>();
@@ -260,30 +260,33 @@ void main() {
       await bloc.close();
     });
 
-    test('snapshot-locking preserves source.state across asynchronous await', () async {
-      final fake = FakeAccessor<String, ()>(initialData: 'version_1');
-      final bloc = AsyncTloc(fake);
-      final barrier = Completer<void>();
-      bloc.barrier = barrier;
+    test(
+      'snapshot-locking preserves source.state across asynchronous await',
+      () async {
+        final fake = FakeAccessor<String, ()>(initialData: 'version_1');
+        final bloc = AsyncTloc(fake);
+        final barrier = Completer<void>();
+        bloc.barrier = barrier;
 
-      // Kick off derivation
-      await pumpEventQueue();
+        // Kick off derivation
+        await pumpEventQueue();
 
-      // While AsyncTloc is suspended awaiting barrier:
-      // mutate source in background!
-      fake.emitData('version_2_mutated');
+        // While AsyncTloc is suspended awaiting barrier:
+        // mutate source in background!
+        fake.emitData('version_2_mutated');
 
-      // Release barrier
-      barrier.complete();
-      await pumpEventQueue();
+        // Release barrier
+        barrier.complete();
+        await pumpEventQueue();
 
-      // Inside matchSources after await, source.state was locked to 'version_1' for the first run,
-      // and then re-derived with 'version_2_mutated'
-      expect(bloc.observedSnapshots, ['version_1', 'version_2_mutated']);
-      expect((bloc.state as TestLoadedState).data, 'version_2_mutated');
+        // Inside matchSources after await, source.state was locked to 'version_1' for the first run,
+        // and then re-derived with 'version_2_mutated'
+        expect(bloc.observedSnapshots, ['version_1', 'version_2_mutated']);
+        expect((bloc.state as TestLoadedState).data, 'version_2_mutated');
 
-      await bloc.close();
-    });
+        await bloc.close();
+      },
+    );
 
     test('processes user events registered via handlers()', () async {
       final fake = FakeAccessor<String, ()>(initialData: 'initial');
@@ -303,17 +306,20 @@ void main() {
       await bloc.close();
     });
 
-    test('close disposes subscriptions without disposing the shared Accessor', () async {
-      final fake = FakeAccessor<String, ()>(initialData: 'data');
-      final bloc = SimpleTloc(fake);
-      await pumpEventQueue();
+    test(
+      'close disposes subscriptions without disposing the shared Accessor',
+      () async {
+        final fake = FakeAccessor<String, ()>(initialData: 'data');
+        final bloc = SimpleTloc(fake);
+        await pumpEventQueue();
 
-      await bloc.close();
-      expect(bloc.isClosed, isTrue);
+        await bloc.close();
+        expect(bloc.isClosed, isTrue);
 
-      // Fake accessor is still functional
-      expect(fake.currentData(const ()), 'data');
-    });
+        // Fake accessor is still functional
+        expect(fake.currentData(const ()), 'data');
+      },
+    );
 
     test('pause and resume lifecycle controls source stream updates', () async {
       final fake = FakeAccessor<String, ()>(initialData: 'v1');
@@ -355,39 +361,44 @@ void main() {
       await bloc.close();
     });
 
-    test('watchWith supports dynamic parameter switching in Tloc', () async {
-      final fake = FakeAccessor<String, ({int id})>(initialData: 'first_id');
-      final bloc = ParameterizedTloc(fake);
-      await pumpEventQueue();
+    test(
+      'watch initializes parameterized accessor with initial parameter and receives subsequent background updates',
+      () async {
+        final fake = FakeAccessor<String, ({int id})>(initialData: 'first_id');
+        final bloc = ParameterizedTloc(fake);
+        await pumpEventQueue();
 
-      expect((bloc.state as TestLoadedState).data, 'first_id');
+        expect((bloc.state as TestLoadedState).data, 'first_id');
 
-      bloc.item.parameter = (id: 2);
-      fake.emitData('second_id');
-      await pumpEventQueue();
+        fake.emitData('second_id');
+        await pumpEventQueue();
 
-      expect((bloc.state as TestLoadedState).data, 'second_id');
+        expect((bloc.state as TestLoadedState).data, 'second_id');
 
-      await bloc.close();
-    });
+        await bloc.close();
+      },
+    );
 
-    test('watch passively listens to parameterized accessor without initial parameter', () async {
-      final fake = FakeAccessor<String, ({String query})>();
-      final bloc = PassiveParameterizedTloc(fake);
-      await pumpEventQueue();
+    test(
+      'watch passively listens to parameterized accessor without initial parameter',
+      () async {
+        final fake = FakeAccessor<String, ({String query})>();
+        final bloc = PassiveParameterizedTloc(fake);
+        await pumpEventQueue();
 
-      // Initially loading fallback
-      expect(bloc.state, isA<TestLoadingState>());
+        // Initially loading fallback
+        expect(bloc.state, isA<TestLoadingState>());
 
-      // Trigger a parameterized fetch or emission in the background
-      fake.emitData('result_for_query');
-      await pumpEventQueue();
+        // Trigger a parameterized fetch or emission in the background
+        fake.emitData('result_for_query');
+        await pumpEventQueue();
 
-      expect(bloc.state, isA<TestLoadedState>());
-      expect((bloc.state as TestLoadedState).data, 'result_for_query');
+        expect(bloc.state, isA<TestLoadedState>());
+        expect((bloc.state as TestLoadedState).data, 'result_for_query');
 
-      await bloc.close();
-    });
+        await bloc.close();
+      },
+    );
 
     test('matchSources exception invokes onAnyError and onError', () async {
       final fake = FakeAccessor<String, ()>(initialData: 'ready');
@@ -395,34 +406,40 @@ void main() {
       await pumpEventQueue();
 
       expect(bloc.state, isA<TestErrorState>());
-      expect((bloc.state as TestErrorState).error, 'Simulated derivation crash');
+      expect(
+        (bloc.state as TestErrorState).error,
+        'Simulated derivation crash',
+      );
       expect(bloc.capturedError, 'Simulated derivation crash');
 
       await bloc.close();
     });
 
-    test('uses default mixin implementations when optional methods are omitted', () async {
-      final fakeLoading = FakeAccessor<String, ()>();
-      final blocLoading = MinimalTloc(fake: fakeLoading);
-      await pumpEventQueue();
-      expect(blocLoading.state, 0);
-      await blocLoading.close();
+    test(
+      'uses default mixin implementations when optional methods are omitted',
+      () async {
+        final fakeLoading = FakeAccessor<String, ()>();
+        final blocLoading = MinimalTloc(fake: fakeLoading);
+        await pumpEventQueue();
+        expect(blocLoading.state, 0);
+        await blocLoading.close();
 
-      final fakeError = FakeAccessor<String, ()>();
-      fakeError.emitError('err');
-      final blocError = MinimalTloc(fake: fakeError);
-      await pumpEventQueue();
-      expect(blocError.state, 0);
-      await blocError.close();
+        final fakeError = FakeAccessor<String, ()>();
+        fakeError.emitError('err');
+        final blocError = MinimalTloc(fake: fakeError);
+        await pumpEventQueue();
+        expect(blocError.state, 0);
+        await blocError.close();
 
-      final bloc = EmptySourcesTloc();
-      await pumpEventQueue();
+        final bloc = EmptySourcesTloc();
+        await pumpEventQueue();
 
-      expect(bloc.state, 0);
-      expect(bloc.sources, isEmpty);
+        expect(bloc.state, 0);
+        expect(bloc.sources, isEmpty);
 
-      await bloc.close();
-    });
+        await bloc.close();
+      },
+    );
   });
 }
 
@@ -430,10 +447,13 @@ class EmptySourcesTloc extends Tloc<TestEvent, int> {
   EmptySourcesTloc() : super(0);
 
   @override
-  MatchResult matchSources(Emit<int> emit) => unhandled;
+  MatchResult matchSources(Emit<int> emit) => .unhandled;
 
   @override
   void handlers() {}
+
+  @override
+  List<Watched<Object?>> get sources => [];
 }
 
 class MinimalTloc extends Tloc<TestEvent, int> {
@@ -442,12 +462,10 @@ class MinimalTloc extends Tloc<TestEvent, int> {
   final FakeAccessor<String, ()>? fake;
 
   @override
-  List<Watched<Object?>> get sources => [
-    if (fake != null) watch(fake!),
-  ];
+  List<Watched<Object?>> get sources => [if (fake != null) watch(fake!)];
 
   @override
-  MatchResult matchSources(Emit<int> emit) => unhandled;
+  MatchResult matchSources(Emit<int> emit) => .unhandled;
 
   @override
   void handlers() {}
@@ -457,21 +475,19 @@ class ParameterizedTloc extends Tloc<TestEvent, TestState> {
   ParameterizedTloc(this.accessor) : super(const TestLoadingState());
 
   final FakeAccessor<String, ({int id})> accessor;
-  late final DynamicWatched<String, ({int id})> item;
+  late final Watched<String> item;
 
   @override
-  List<Watched<Object?>> get sources => [
-    item = watchWith(accessor, (id: 1)),
-  ];
+  List<Watched<Object?>> get sources => [item = watch(accessor, (id: 1))];
 
   @override
   FutureOr<MatchResult> matchSources(Emit<TestState> emit) {
     switch (item.state) {
       case DataLoaded(data: final d):
         emit(TestLoadedState(d));
-        return handled;
+        return .handled;
       default:
-        return unhandled;
+        return .unhandled;
     }
   }
 
@@ -493,18 +509,16 @@ class PassiveParameterizedTloc extends Tloc<TestEvent, TestState> {
   late final Watched<String> item;
 
   @override
-  List<Watched<Object?>> get sources => [
-    item = watch(accessor),
-  ];
+  List<Watched<Object?>> get sources => [item = watch(accessor)];
 
   @override
   FutureOr<MatchResult> matchSources(Emit<TestState> emit) {
     switch (item.state) {
       case DataLoaded(data: final d):
         emit(TestLoadedState(d));
-        return handled;
+        return .handled;
       default:
-        return unhandled;
+        return .unhandled;
     }
   }
 

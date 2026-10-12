@@ -49,7 +49,7 @@ class CounterTubit extends Tubit<TubitTestState> {
   void onAnyError(Object error, StackTrace? st, Emit<TubitTestState> emit) =>
       emit(TubitErrorState(error));
 
-  Future<void> refresh() => refreshAll();
+  Future<void> refresh() => accessor.refresh();
 }
 
 void main() {
@@ -84,7 +84,7 @@ void main() {
       await tubit.close();
     });
 
-    test('refresh invokes refresh on watched sources', () async {
+    test('refresh invokes refresh on accessor', () async {
       final fake = FakeAccessor<String, ()>(initialData: 'init');
       final tubit = CounterTubit(fake);
       await pumpEventQueue();

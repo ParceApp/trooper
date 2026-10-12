@@ -36,17 +36,21 @@ abstract interface class Accessor<T, P extends Parameter>
   /// Reads the value for [parameter], returning immediately from cache if fresh,
   /// or fetching from the underlying source if stale or uncached.
   ///
+  /// If [parameter] is omitted and `P` is `()`, defaults to `const ()`.
   /// If [forceRefresh] is `true`, cache freshness is bypassed and a fresh fetch is performed.
-  Future<T> get(P parameter, {bool forceRefresh = false});
+  Future<T> get([P? parameter, bool forceRefresh = false]);
 
   /// Forces a fresh get from the underlying source, bypassing cache freshness.
-  Future<T> refresh(P parameter);
+  ///
+  /// If [parameter] is omitted and `P` is `()`, defaults to `const ()`.
+  Future<T> refresh([P? parameter]);
 
   /// Triggers a fetch in the background without awaiting the result.
   ///
   /// Ideal for reactive architectures where state updates and errors are observed via [watch].
+  /// If [parameter] is omitted and `P` is `()`, defaults to `const ()`.
   /// If [forceRefresh] is `true`, cache freshness is bypassed.
-  void trigger(P parameter, {bool forceRefresh = false});
+  void trigger([P? parameter, bool forceRefresh = false]);
 
   /// Returns the current state synchronously.
   StatefulData<T> current([P? parameter]);
@@ -73,12 +77,12 @@ extension ParameterlessAccessor<T> on Accessor<T, ()> {
 
   /// Reads the value without requiring an explicit `()` parameter.
   Future<T> get({bool forceRefresh = false}) =>
-      this.get(const (), forceRefresh: forceRefresh);
+      this.get(const (), forceRefresh);
 
   /// Forces a fresh get without requiring an explicit `()` parameter.
   Future<T> refresh() => this.refresh(const ());
 
   /// Triggers a fetch in the background without requiring an explicit `()` parameter.
   void trigger({bool forceRefresh = false}) =>
-      this.trigger(const (), forceRefresh: forceRefresh);
+      this.trigger(const (), forceRefresh);
 }

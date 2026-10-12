@@ -106,7 +106,8 @@ class ProfileTloc extends Tloc<ProfileEvent, ProfileState> {
   @override
   void handlers() {
     on<RefreshProfileEvent>((event, emit) async {
-      await refreshAll();
+      await userAccessor.refresh();
+      await settingsAccessor.refresh();
     });
   }
 }
@@ -178,23 +179,25 @@ TlocEffectListener<ProfileTloc, ProfileEffect>(
 
 ---
 
-## Dynamic Parameters
+## Parameterized Accessors
 
-For queries that depend on dynamic keys (e.g. pagination, user IDs), use `watchWith`:
+For parameterized queries (such as search filters or pagination), declare `watch(itemAccessor)` to passively observe state updates. Triggering fetches with different parameters from event handlers automatically emits to the single underlying stream and updates `matchSources`:
 
 ```dart
-class DetailTloc extends Tloc<DetailEvent, DetailState> {
-  DetailTloc(this.itemAccessor) : super(const DetailLoadingState());
+class SearchTloc extends Tloc<SearchEvent, SearchState> {
+  SearchTloc(this.itemAccessor) : super(const SearchInitialState());
 
-  final Accessor<Item, ({int id})> itemAccessor;
-  late final DynamicWatched<Item, ({int id})> item =
-      watchWith(itemAccessor, (id: 1));
+  final Accessor<ItemList, ({String query})> itemAccessor;
+  late final Watched<ItemList> items = watch(itemAccessor);
 
   @override
-  List<Watched<Object?>> get sources => [item];
+  List<Watched<Object?>> get sources => [items];
 
-  void changeId(int newId) {
-    item.parameter = (id: newId); // Reconnects stream and schedules re-derivation
+  @override
+  void handlers() {
+    on<SearchQueryChangedEvent>((event, emit) {
+      itemAccessor.trigger((query: event.query));
+    });
   }
 }
 ```

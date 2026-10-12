@@ -174,7 +174,7 @@ void main() {
       expect(fetchCount, 2);
 
       // triggerKey triggers background fetch
-      query.triggerKey(1, const (), forceRefresh: true);
+      query.triggerKey(1, const (), true);
       await Future<void>.delayed(const Duration(milliseconds: 10));
       expect(fetchCount, 3);
 
@@ -229,7 +229,7 @@ void main() {
       final refreshed = await accessor.refresh(const ());
       expect(refreshed, 'Val-item-1-2');
 
-      accessor.trigger(const (), forceRefresh: true);
+      accessor.trigger(const (), true);
       await Future<void>.delayed(const Duration(milliseconds: 10));
       expect(accessor.currentData(const ()), 'Val-item-1-3');
 

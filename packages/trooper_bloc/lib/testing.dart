@@ -52,7 +52,7 @@ class FakeAccessor<T, P extends Parameter> implements Accessor<T, P> {
   }
 
   @override
-  Future<T> get(P parameter, {bool forceRefresh = false}) async {
+  Future<T> get([P? parameter, bool forceRefresh = false]) async {
     getCount++;
     final data = _state.dataOrNull;
     if (data != null && !forceRefresh) return data;
@@ -60,7 +60,7 @@ class FakeAccessor<T, P extends Parameter> implements Accessor<T, P> {
   }
 
   @override
-  Future<T> refresh(P parameter) async {
+  Future<T> refresh([P? parameter]) async {
     refreshCount++;
     final data = _state.dataOrNull;
     if (data != null) return data;
@@ -68,7 +68,7 @@ class FakeAccessor<T, P extends Parameter> implements Accessor<T, P> {
   }
 
   @override
-  void trigger(P parameter, {bool forceRefresh = false}) {
+  void trigger([P? parameter, bool forceRefresh = false]) {
     triggerCount++;
   }
 

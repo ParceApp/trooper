@@ -68,42 +68,21 @@ void main() {
       expect(handle.state.dataOrNull, 'background_update');
     });
 
-    test('supports dynamic parameter switching', () async {
+    test('passively listens to parameterized accessor and receives background updates', () async {
       final fake = FakeAccessor<String, ({int id})>();
       var updateCalls = 0;
       final handle = WatchedHandle<String, ({int id})>(
         accessor: fake,
-        parameter: (id: 1),
         onUpdate: (_) => updateCalls++,
       );
       handle.attach();
 
-      expect(handle.parameter, (id: 1));
-
-      handle.parameter = (id: 2);
-      expect(handle.parameter, (id: 2));
-      expect(updateCalls, 1);
+      expect(handle.parameter, isNull);
+      expect(handle.state, isA<DataInitial<String>>());
 
       fake.emitData('item-2');
       await pumpEventQueue();
       expect(handle.dataOrNull, 'item-2');
-    });
-
-    test('supports dynamic source switching', () async {
-      final fake1 = FakeAccessor<String, ()>(initialData: 'source-1');
-      final fake2 = FakeAccessor<String, ()>(initialData: 'source-2');
-      var updateCalls = 0;
-      final handle = WatchedHandle<String, ()>(
-        accessor: fake1,
-        parameter: const (),
-        onUpdate: (_) => updateCalls++,
-      );
-      handle.attach();
-
-      expect(handle.dataOrNull, 'source-1');
-
-      handle.source = fake2;
-      expect(handle.dataOrNull, 'source-2');
       expect(updateCalls, 1);
     });
 
@@ -145,13 +124,6 @@ void main() {
       await pumpEventQueue();
 
       expect(updateCalls, 0);
-
-      // Refresh on disposed handle throws StateError
-      expect(handle.refresh, throwsStateError);
-
-      // Assigning parameter or source when disposed is a no-op
-      handle.parameter = const ();
-      handle.source = fake;
     });
 
     test('exposes backing accessor and handles stream errors', () async {
@@ -165,11 +137,6 @@ void main() {
       handle.attach();
 
       expect(identical(handle.accessor, fake), isTrue);
-
-      // Setting identical parameter or source is a no-op
-      handle.parameter = const ();
-      handle.source = fake;
-      expect(updateCalls, 0);
 
       fake.emitError('network-failure');
       await pumpEventQueue();

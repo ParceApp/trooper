@@ -125,12 +125,13 @@ abstract class Trooper<T, P extends Parameter>
 
   @override
   StatefulStream<T> watch([P? parameter, bool eager = true]) {
-    if (eager && parameter != null) {
-      final state = current(parameter);
+    final effective = parameter ?? (const () is P ? const () as P : null);
+    if (eager && effective != null) {
+      final state = current(effective);
       if (state is DataInitial ||
-          isParamChanged(parameter) ||
-          (config.hasCache && cache.isStale(buildQueryKey(parameter)))) {
-        get(parameter).ignore();
+          isParamChanged(effective) ||
+          (config.hasCache && cache.isStale(buildQueryKey(effective)))) {
+        get(effective).ignore();
       }
     }
     return streamController.stream;
@@ -190,11 +191,11 @@ abstract class Trooper<T, P extends Parameter>
   }
 
   @override
-  Future<T> refresh(P parameter) => get(parameter, forceRefresh: true);
+  Future<T> refresh([P? parameter]) => get(parameter, true);
 
   @override
-  void trigger(P parameter, {bool forceRefresh = false}) {
-    get(parameter, forceRefresh: forceRefresh).ignore();
+  void trigger([P? parameter, bool forceRefresh = false]) {
+    get(parameter, forceRefresh).ignore();
   }
 
   @override
@@ -267,15 +268,15 @@ class _BoundTrooperAccessor<T, P extends Parameter> implements Accessor<T, P> {
       _trooper.watch(parameter, eager);
 
   @override
-  Future<T> get(P parameter, {bool forceRefresh = false}) =>
-      _trooper.get(parameter, forceRefresh: forceRefresh);
+  Future<T> get([P? parameter, bool forceRefresh = false]) =>
+      _trooper.get(parameter, forceRefresh);
 
   @override
-  Future<T> refresh(P parameter) => _trooper.refresh(parameter);
+  Future<T> refresh([P? parameter]) => _trooper.refresh(parameter);
 
   @override
-  void trigger(P parameter, {bool forceRefresh = false}) =>
-      _trooper.trigger(parameter, forceRefresh: forceRefresh);
+  void trigger([P? parameter, bool forceRefresh = false]) =>
+      _trooper.trigger(parameter, forceRefresh);
 
   @override
   StatefulData<T> current([P? parameter]) => _trooper.current(parameter);

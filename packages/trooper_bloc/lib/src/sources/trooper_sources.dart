@@ -24,7 +24,7 @@ mixin TrooperSources<S> {
   /// @override
   /// List<Watched<Object?>> get sources => [user, settings];
   /// ```
-  List<Watched<Object?>> get sources => const [];
+  List<Watched<Object?>> get sources;
 
   /// Evaluates current source snapshots and performs state transitions.
   ///
@@ -48,17 +48,7 @@ mixin TrooperSources<S> {
 
   /// Fallback handler invoked when [matchSources] returns [MatchResult.unhandled]
   /// and at least one watched source is in a [DataError] state, or [matchSources] throws.
-  void onAnyError(
-    Object error,
-    StackTrace? stackTrace,
-    Emit<S> emit,
-  ) {}
-
-  /// Convenient shortcut property returning [MatchResult.handled].
-  MatchResult get handled => MatchResult.handled;
-
-  /// Convenient shortcut property returning [MatchResult.unhandled].
-  MatchResult get unhandled => MatchResult.unhandled;
+  void onAnyError(Object error, StackTrace? stackTrace, Emit<S> emit) {}
 
   /// Watches an [Accessor].
   ///
@@ -68,11 +58,12 @@ mixin TrooperSources<S> {
   ///
   /// Any background fetch, refresh, or trigger on the accessor (regardless of parameter)
   /// will emit on this stream and trigger [matchSources].
-  DynamicWatched<T, P> watch<T, P extends Parameter>(
+  Watched<T> watch<T, P extends Parameter>(
     Accessor<T, P> accessor, [
     P? parameter,
   ]) {
-    final effectiveParam = parameter ?? (P == const ().runtimeType ? const () as P : null);
+    final effectiveParam =
+        parameter ?? (P == const ().runtimeType ? const () as P : null);
     final handle = WatchedHandle<T, P>(
       accessor: accessor,
       parameter: effectiveParam,
@@ -84,15 +75,6 @@ mixin TrooperSources<S> {
     }
     return handle;
   }
-
-  /// Watches an [Accessor] with an explicit [parameter].
-  ///
-  /// Convenience alias for `watch(accessor, parameter)`.
-  DynamicWatched<T, P> watchWith<T, P extends Parameter>(
-    Accessor<T, P> accessor,
-    P parameter,
-  ) =>
-      watch<T, P>(accessor, parameter);
 
   List<Watched<Object?>> _cachedSources = const [];
 
@@ -142,16 +124,16 @@ mixin TrooperSources<S> {
 
   /// Executes source evaluation with snapshot locking and generation tracking.
   @protected
-  Future<void> executeSourceEvaluation(void Function(S state) emitTarget) async {
+  Future<void> executeSourceEvaluation(
+    void Function(S state) emitTarget,
+  ) async {
     if (isClosed) return;
     final currentGen = ++_generation;
 
-    // 1. Lock snapshots on all managed handles
     for (final handle in _managedHandles) {
       handle.lockSnapshot();
     }
 
-    // 2. Create guarded emitter
     void guardedEmit(S state) {
       if (currentGen == _generation && !isClosed) {
         emitTarget(state);
@@ -174,7 +156,6 @@ mixin TrooperSources<S> {
       }
       onSourceException(error, stackTrace);
     } finally {
-      // 3. Unlock snapshots once evaluation completes
       for (final handle in _managedHandles) {
         handle.unlockSnapshot();
       }
@@ -189,11 +170,10 @@ mixin TrooperSources<S> {
       return;
     }
 
-    // Evaluate fallback cascade
-    final currentSources =
-        _cachedSources.isNotEmpty ? _cachedSources : _managedHandles;
+    final currentSources = _cachedSources.isNotEmpty
+        ? _cachedSources
+        : _managedHandles;
 
-    // 1. Error check
     for (final s in currentSources) {
       final state = s.state;
       if (state is DataError) {
@@ -202,7 +182,6 @@ mixin TrooperSources<S> {
       }
     }
 
-    // 2. Loading check
     for (final s in currentSources) {
       final state = s.state;
       if (state is DataLoading || state is DataInitial) {
@@ -210,15 +189,6 @@ mixin TrooperSources<S> {
         return;
       }
     }
-  }
-
-  /// Refreshes all watched sources concurrently.
-  Future<void> refreshAll() async {
-    final futures = <Future<dynamic>>[];
-    for (final handle in _managedHandles) {
-      futures.add(handle.refresh());
-    }
-    await Future.wait(futures);
   }
 
   /// Manually forces a new execution of [matchSources].

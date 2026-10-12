@@ -50,7 +50,7 @@ Initial public release of the Trooper framework monorepo.
 - **`Tloc<Event, State>`**: Enterprise BLoC base class combining `flutter_bloc` with Trooper reactive caching and snapshot-locking.
 - **`Tubit<State>`**: Lightweight Cubit alternative for reactive state derivation without events.
 - **`TrooperSources`**: Core derivation mixin with snapshot-locking, microtask batching, and restartable async concurrency.
-- **`watch` & `watchWith`**: Declarative source watching with dynamic parameter switching.
+- **`watch`**: Declarative source watching with passive and parameterized observation.
 - **`MatchResult`**: Type-safe derivation result (`.handled`, `.unhandled`) with automated loading and error fallback cascades.
 - **`Effects<F>` & `TlocEffectListener`**: One-off presentation side-effects pipeline for snackbars, toasts, and navigation.
 - **`FakeAccessor<T, P>`**: In-memory test utility for testing BLoC derivation states.

@@ -38,7 +38,7 @@ import 'package:trooper_bloc/src/sources/trooper_sources.dart';
 ///   void onAnyError(Object error, StackTrace? st, Emit<ProfileState> emit) =>
 ///       emit(ProfileErrorState(error));
 ///
-///   Future<void> refresh() => refreshAll();
+///   Future<void> refresh() => store.users.refreshKey(userId);
 /// }
 /// ```
 abstract class Tubit<State> extends Cubit<State>

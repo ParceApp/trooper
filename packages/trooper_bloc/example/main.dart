@@ -77,7 +77,7 @@ class LectureTloc extends Tloc<LectureEvent, LectureState>
   final Accessor<Lecture, ()> lectureAccessor;
   final Accessor<bool, ()> bookmarkAccessor;
 
-  late final DynamicWatched<Lecture, ()> lectureSource = watch(lectureAccessor);
+  late final Watched<Lecture> lectureSource = watch(lectureAccessor);
   late final Watched<bool> bookmarkSource = watch(bookmarkAccessor);
 
   @override
@@ -117,7 +117,8 @@ class LectureTloc extends Tloc<LectureEvent, LectureState>
       emitEffect(const ShowToastEffect('Bookmark toggled!'));
     });
     on<RefreshLectureEvent>((event, emit) async {
-      await refreshAll();
+      await lectureAccessor.refresh();
+      await bookmarkAccessor.refresh();
     });
   }
 }
@@ -158,7 +159,10 @@ class LectureTubit extends Tubit<LectureState> {
   void onAnyError(Object error, StackTrace? st, Emit<LectureState> emit) =>
       emit(LectureErrorState(error.toString()));
 
-  Future<void> reload() => refreshAll();
+  Future<void> reload() async {
+    await lectureAccessor.refresh();
+    await bookmarkAccessor.refresh();
+  }
 }
 
 // ---------------------------------------------------------------------------

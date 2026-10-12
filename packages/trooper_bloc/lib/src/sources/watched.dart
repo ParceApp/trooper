@@ -6,8 +6,7 @@ typedef WatchedUpdateCallback = void Function(Watched<dynamic> source);
 
 /// Strongly-typed reactive handle over a watched [Accessor].
 ///
-/// Created by calling `watch(accessor)` or `watchWith(accessor, parameter)`
-/// inside a `Tloc` or `Tubit`.
+/// Created by calling `watch(accessor)` inside a `Tloc` or `Tubit`.
 ///
 /// Exposes synchronous snapshot access via [state] for idiomatic Dart 3.5+ pattern matching:
 /// ```dart
@@ -33,9 +32,6 @@ abstract interface class Watched<T> {
   /// within that execution context.
   StatefulData<T> get state;
 
-  /// Forces an immediate background refresh of this source, bypassing cache freshness.
-  Future<T> refresh();
-
   /// Synchronously returns whether this source currently holds loaded or refreshing data.
   bool get hasData;
 
@@ -49,31 +45,9 @@ abstract interface class Watched<T> {
   T? get dataOrNull;
 }
 
-/// Extended interface for [Watched] handles that support dynamic parameter and source switching.
-abstract interface class DynamicWatched<T, P extends Parameter>
-    implements Watched<T> {
-  /// The current parameter passed to the underlying [accessor], or `null` if watching passively.
-  P? get parameter;
-
-  /// Updates the parameter for this source.
-  ///
-  /// Cancels the existing stream subscription, subscribes to the new parameter
-  /// with an eager fetch, and schedules a new derivation cycle.
-  set parameter(P? newParameter);
-
-  /// The underlying [Accessor] being watched.
-  Accessor<T, P> get accessor;
-
-  /// Replaces the underlying [accessor] with a new instance.
-  ///
-  /// Cancels the existing stream subscription, subscribes to the new accessor,
-  /// and schedules a new derivation cycle.
-  set source(Accessor<T, P> newAccessor);
-}
-
-/// Concrete implementation of [DynamicWatched] supporting snapshot-locking and lifecycle events.
+/// Concrete implementation of [Watched] supporting snapshot-locking and lifecycle events.
 class WatchedHandle<T, P extends Parameter>
-    implements DynamicWatched<T, P> {
+    implements Watched<T> {
   /// Creates a [WatchedHandle] bound to [accessor] with an optional [parameter].
   WatchedHandle({
     required Accessor<T, P> accessor,
@@ -83,8 +57,8 @@ class WatchedHandle<T, P extends Parameter>
        _parameter = parameter,
        _liveState = accessor.current(parameter);
 
-  Accessor<T, P> _accessor;
-  P? _parameter;
+  final Accessor<T, P> _accessor;
+  final P? _parameter;
   final WatchedUpdateCallback _onUpdate;
 
   StreamSubscription<StatefulData<T>>? _subscription;
@@ -94,10 +68,10 @@ class WatchedHandle<T, P extends Parameter>
   bool _isDisposed = false;
   bool _isPaused = false;
 
-  @override
+  /// The underlying [Accessor] being watched.
   Accessor<T, P> get accessor => _accessor;
 
-  @override
+  /// The parameter passed when watching, or `null` if watched passively.
   P? get parameter => _parameter;
 
   /// The authoritative live state of the underlying accessor.
@@ -117,40 +91,6 @@ class WatchedHandle<T, P extends Parameter>
 
   @override
   T? get dataOrNull => state.dataOrNull;
-
-  @override
-  set parameter(P? newParameter) {
-    if (_isDisposed) return;
-    if (_parameter == newParameter) return;
-    _parameter = newParameter;
-    _reconnect();
-  }
-
-  @override
-  set source(Accessor<T, P> newAccessor) {
-    if (_isDisposed) return;
-    if (identical(_accessor, newAccessor)) return;
-    _accessor = newAccessor;
-    _reconnect();
-  }
-
-  @override
-  Future<T> refresh() {
-    if (_isDisposed) {
-      throw StateError('Cannot refresh a disposed Watched source.');
-    }
-    final param = _parameter;
-    if (param != null) {
-      return _accessor.refresh(param);
-    }
-    if (P == const ().runtimeType) {
-      return _accessor.refresh(const () as P);
-    }
-    throw StateError(
-      'Cannot refresh a Watched source without a parameter when type is $P. '
-      'Provide a parameter via handle.parameter = ... or accessor.refresh(param).',
-    );
-  }
 
   /// Freezes [state] to the current [liveState] for the duration of a `matchSources` run.
   void lockSnapshot() {
@@ -172,7 +112,7 @@ class WatchedHandle<T, P extends Parameter>
     _subscription?.cancel();
     _subscription = null;
 
-    final stream = _accessor.watch(_parameter, true);
+    final stream = _accessor.watch(_parameter, _parameter != null);
     _liveState = _accessor.current(_parameter);
 
     _subscription = stream.listen(
@@ -189,12 +129,6 @@ class WatchedHandle<T, P extends Parameter>
         }
       },
     );
-  }
-
-  void _reconnect() {
-    _liveState = _accessor.current(_parameter);
-    _subscribe();
-    _onUpdate(this);
   }
 
   /// Pauses event propagation from this handle.

@@ -403,8 +403,9 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
 
   /// Watches state updates for a single [key], managing automatic connection.
   StatefulStream<T> watchKey(K key, [P? parameter, bool eager = true]) {
-    if (eager && parameter != null && !isConnectedKey(key)) {
-      connectKey(key, parameter).ignore();
+    final effective = parameter ?? (const () is P ? const () as P : null);
+    if (eager && effective != null && !isConnectedKey(key)) {
+      connectKey(key, effective).ignore();
     }
 
     final keyStream = stream.streamOf(key);
@@ -412,8 +413,8 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
     return StatefulStream<T>(
       Stream.multi((controller) {
         _activeWatchers[key] = (_activeWatchers[key] ?? 0) + 1;
-        if (parameter != null && !isConnectedKey(key)) {
-          connectKey(key, parameter).ignore();
+        if (effective != null && !isConnectedKey(key)) {
+          connectKey(key, effective).ignore();
         }
         final sub = keyStream.listen(
           controller.add,
@@ -440,8 +441,13 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
 
   /// Reads the value for [key], returning immediately from cache if fresh,
   /// or waiting for the next upstream stream event.
-  Future<T> getKey(K key, P parameter, {bool forceRefresh = false}) async {
-    final qKey = buildQueryKey(key, parameter);
+  Future<T> getKey(K key, [P? parameter, bool forceRefresh = false]) async {
+    final effective =
+        parameter ?? (const () is P ? const () as P : lastParamOf(key));
+    if (effective == null) {
+      throw ArgumentError.notNull('parameter');
+    }
+    final qKey = buildQueryKey(key, effective);
 
     if (!forceRefresh && config.hasCache) {
       final cached = cache.get<T>(qKey);
@@ -518,11 +524,11 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
     try {
       if (forceRefresh && onRefresh != null) {
         if (!isConnectedKey(key)) {
-          await connectKey(key, parameter);
+          await connectKey(key, effective);
         }
-        await onRefresh!(key, parameter);
+        await onRefresh!(key, effective);
       } else if (forceRefresh || !isConnectedKey(key)) {
-        await connectKey(key, parameter);
+        await connectKey(key, effective);
       }
 
       final state = await stateFuture;
@@ -544,13 +550,13 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
   }
 
   /// Triggers reading or hydrating data for [key] without awaiting the result.
-  void triggerKey(K key, P parameter, {bool forceRefresh = false}) {
-    getKey(key, parameter, forceRefresh: forceRefresh).ignore();
+  void triggerKey(K key, [P? parameter, bool forceRefresh = false]) {
+    getKey(key, parameter, forceRefresh).ignore();
   }
 
   /// Refreshes the value for [key] by reconnecting and awaiting the next fresh event.
-  Future<T> refreshKey(K key, P parameter) =>
-      getKey(key, parameter, forceRefresh: true);
+  Future<T> refreshKey(K key, [P? parameter]) =>
+      getKey(key, parameter, true);
 
   @override
   Future<Map<K, T>> getAll(
@@ -560,7 +566,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
   }) async {
     final keyList = keys.toList();
     final results = await Future.wait(
-      keyList.map((k) => getKey(k, parameter, forceRefresh: forceRefresh)),
+      keyList.map((k) => getKey(k, parameter, forceRefresh)),
     );
     return Map<K, T>.fromIterables(keyList, results);
   }
@@ -576,7 +582,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
     bool forceRefresh = false,
   }) {
     for (final k in keys) {
-      triggerKey(k, parameter, forceRefresh: forceRefresh);
+      triggerKey(k, parameter, forceRefresh);
     }
   }
 
@@ -746,15 +752,15 @@ class _KeyedStreamBoundAccessor<K extends Object, T, P extends Parameter>
       _parent.watchKey(_key, parameter, eager);
 
   @override
-  Future<T> get(P parameter, {bool forceRefresh = false}) =>
-      _parent.getKey(_key, parameter, forceRefresh: forceRefresh);
+  Future<T> get([P? parameter, bool forceRefresh = false]) =>
+      _parent.getKey(_key, parameter, forceRefresh);
 
   @override
-  void trigger(P parameter, {bool forceRefresh = false}) =>
-      _parent.triggerKey(_key, parameter, forceRefresh: forceRefresh);
+  void trigger([P? parameter, bool forceRefresh = false]) =>
+      _parent.triggerKey(_key, parameter, forceRefresh);
 
   @override
-  Future<T> refresh(P parameter) => _parent.refreshKey(_key, parameter);
+  Future<T> refresh([P? parameter]) => _parent.refreshKey(_key, parameter);
 
   @override
   StatefulData<T> current([P? parameter]) => _parent.currentKey(_key);
@@ -774,14 +780,14 @@ extension ParameterlessKeyedStreamTrooper<K extends Object, T>
 
   /// Reads the value for [key] without requiring an explicit `()` parameter.
   Future<T> getKey(K key, {bool forceRefresh = false}) =>
-      this.getKey(key, const (), forceRefresh: forceRefresh);
+      this.getKey(key, const (), forceRefresh);
 
   /// Refreshes the value for [key] without requiring an explicit `()` parameter.
   Future<T> refreshKey(K key) => this.refreshKey(key, const ());
 
   /// Triggers a fetch of [key] without requiring an explicit `()` parameter.
   void triggerKey(K key, {bool forceRefresh = false}) =>
-      this.triggerKey(key, const (), forceRefresh: forceRefresh);
+      this.triggerKey(key, const (), forceRefresh);
 
   /// Connects to upstream streams for multiple [keys] without requiring an explicit `()` parameter.
   Future<void> connectKeys(Iterable<K> keys) => this.connectKeys(keys, const ());

@@ -119,7 +119,7 @@ void main() {
       final readData = await customAccessor.get(const ());
       expect(readData, {'custom': 999});
 
-      final refreshedData = await customAccessor.get(const (), forceRefresh: true);
+      final refreshedData = await customAccessor.get(const (), true);
       expect(refreshedData, {'refreshed': 1000});
       expect(refreshed, isTrue);
 

@@ -86,10 +86,14 @@ class TrooperQuery<T, P extends Parameter> extends Trooper<T, P> {
   final TrooperCodec<T>? codec;
 
   @override
-  Future<T> get(P parameter, {bool forceRefresh = false}) async {
-    final paramChanged = isParamChanged(parameter);
-    recordParam(parameter);
-    final key = buildQueryKey(parameter);
+  Future<T> get([P? parameter, bool forceRefresh = false]) async {
+    final effective = parameter ?? (const () is P ? const () as P : lastParam);
+    if (effective == null) {
+      throw ArgumentError.notNull('parameter');
+    }
+    final paramChanged = isParamChanged(effective);
+    recordParam(effective);
+    final key = buildQueryKey(effective);
 
     // 1. Check L1 Memory Cache
     if (!forceRefresh && !paramChanged && config.hasCache) {
@@ -121,7 +125,7 @@ class TrooperQuery<T, P extends Parameter> extends Trooper<T, P> {
           // Background revalidation (deduplicated by orchestrator)
           _executeFetch(
             key: key,
-            param: parameter,
+            param: effective,
             forceRefresh: false,
             staleData: entry.data,
           ).ignore();
@@ -172,7 +176,7 @@ class TrooperQuery<T, P extends Parameter> extends Trooper<T, P> {
 
                   _executeFetch(
                     key: key,
-                    param: parameter,
+                    param: effective,
                     forceRefresh: false,
                     staleData: restoredData,
                   ).ignore();
@@ -228,7 +232,7 @@ class TrooperQuery<T, P extends Parameter> extends Trooper<T, P> {
 
     return await _executeFetch(
       key: key,
-      param: parameter,
+      param: effective,
       forceRefresh: forceRefresh,
       staleData: staleData,
     );
