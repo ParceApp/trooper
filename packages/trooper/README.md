@@ -38,13 +38,8 @@ In growing codebases, data handling often fragments when every feature invents i
 - **Type-Safe Records**: Query keys and parameters use native Dart 3 records like `({int id})` or `(String query, int page)`. Everything is strictly typed without generating extra model classes.
 - **Reliable Lifecycles**: Controllers take care of their children. When a controller is disposed, all active stream subscriptions, cache watchers, and cancellation tokens are cleaned up automatically.
 
-## Architecture at a Glance (visualized by AI 🙃)
 
-<p align="center">
-  <img src="doc/trooper_architecture_flow.gif" alt="Trooper Architecture Flow" width="880"/>
-</p>
-
-Trooper separates concerns into three clear layers:
+### Trooper separates concerns into three clear layers:
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
@@ -312,6 +307,13 @@ test('fetches user and serves subsequent read from cache', () async {
   await controller.dispose();
 });
 ```
+
+
+## Architecture at a Glance (visualized by AI 🙃)
+
+<p align="center">
+  <img src="doc/trooper_architecture_flow.gif" alt="Trooper Architecture Flow" width="880"/>
+</p>
 
 ## Ecosystem
 
