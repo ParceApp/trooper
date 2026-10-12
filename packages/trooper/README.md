@@ -210,7 +210,7 @@ Queries and mutations support `TrooperCancelToken`. If the user leaves a screen 
 final token = TrooperCancelToken();
 
 // Cancel if user navigates away
-token.cancel('User navigated away');
+token.cancel(reason: 'User navigated away');
 ```
 
 ### Sequential Mutation Queuing

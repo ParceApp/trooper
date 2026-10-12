@@ -165,7 +165,7 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
     }
 
     _isConnecting = true;
-    _cancelToken?.cancel('Stream reconnected');
+    _cancelToken?.cancel(reason: 'Stream reconnected');
     _cancelToken = null;
     final oldSub = _subscription;
     _subscription = null;
@@ -387,7 +387,7 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
   /// Disconnects the upstream stream subscription and cancels the associated [TrooperCancelToken].
   Future<void> disconnect() async {
     onDisconnect?.call();
-    _cancelToken?.cancel('Stream disconnected');
+    _cancelToken?.cancel(reason: 'Stream disconnected');
     _cancelToken = null;
     _isConnecting = false;
     final sub = _subscription;

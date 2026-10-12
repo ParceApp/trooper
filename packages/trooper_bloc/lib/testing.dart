@@ -103,7 +103,7 @@ class FakeAccessor<T, P extends Parameter> implements Accessor<T, P> {
       emitState(StatefulData.error(error, stackTrace: stackTrace, staleData: staleData));
 
   /// Manually pushes an unhandled error to the underlying stream.
-  void emitStreamError(Object error, [StackTrace? stackTrace]) {
+  void emitStreamError(Object error, {StackTrace? stackTrace}) {
     if (!_streamController.isClosed) {
       _streamController.addError(error, stackTrace);
     }

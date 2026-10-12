@@ -380,7 +380,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
 
   void _cleanupKey(K key) {
     _connectingKeys.remove(key);
-    _cancelTokens.remove(key)?.cancel('Stream reconnected');
+    _cancelTokens.remove(key)?.cancel(reason: 'Stream reconnected');
     _subscriptions.remove(key)?.cancel().ignore();
   }
 
@@ -388,7 +388,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
   Future<void> disconnectKey(K key) async {
     onDisconnect?.call(key);
     _connectingKeys.remove(key);
-    _cancelTokens.remove(key)?.cancel('Stream disconnected');
+    _cancelTokens.remove(key)?.cancel(reason: 'Stream disconnected');
     final sub = _subscriptions.remove(key);
     await sub?.cancel();
   }
@@ -717,7 +717,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
   @override
   Future<void> dispose() async {
     for (final token in _cancelTokens.values) {
-      token.cancel('KeyedStreamTrooper disposed');
+      token.cancel(reason: 'KeyedStreamTrooper disposed');
     }
     for (final sub in _subscriptions.values) {
       await sub.cancel();

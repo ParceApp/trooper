@@ -33,7 +33,7 @@ class ConsoleTrooperLogger implements TrooperLogger {
   /// Attaches this logger to [hub] (defaults to [TelemetryHub.global]).
   ///
   /// Returns a [StreamSubscription] that can be cancelled to stop logging.
-  StreamSubscription<TrooperEvent> attach([TelemetryHub? hub]) {
+  StreamSubscription<TrooperEvent> attach({TelemetryHub? hub}) {
     final targetHub = hub ?? TelemetryHub.global;
     return targetHub.events.listen(log);
   }

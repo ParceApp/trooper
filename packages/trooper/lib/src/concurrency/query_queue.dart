@@ -88,7 +88,7 @@ class TrooperQueryQueue with LifecycleAware {
       switch (conflictPolicy) {
         case QueryConflictPolicy.cancel:
           existing.cancelToken.cancel(
-            'Replaced by newer request for ${key.describe()}',
+            reason: 'Replaced by newer request for ${key.describe()}',
           );
           if (!existing.completer.isCompleted) {
             existing.completer.completeError(
@@ -102,7 +102,7 @@ class TrooperQueryQueue with LifecycleAware {
 
         case QueryConflictPolicy.forward:
           existing.cancelToken.cancel(
-            'Superseded by newer request for ${key.describe()}',
+            reason: 'Superseded by newer request for ${key.describe()}',
           );
           _linkCompleter(existing.completer, completer.future);
           _ongoingList.remove(existing);
@@ -180,7 +180,7 @@ class TrooperQueryQueue with LifecycleAware {
   }
 
   /// Cancels any active in-flight request matching the exact [key].
-  void cancel(QueryKey key, [String? reason]) {
+  void cancel(QueryKey key, {String? reason}) {
     if (_isDisposed) return;
     final matching = _ongoingList
         .where(
@@ -194,7 +194,9 @@ class TrooperQueryQueue with LifecycleAware {
 
     for (final ongoing in matching) {
       _ongoingList.remove(ongoing);
-      ongoing.cancelToken.cancel(reason ?? 'Cancelled for ${key.describe()}');
+      ongoing.cancelToken.cancel(
+        reason: reason ?? 'Cancelled for ${key.describe()}',
+      );
       if (!ongoing.completer.isCompleted) {
         ongoing.completer.completeError(
           TrooperCancelledException(
@@ -206,7 +208,7 @@ class TrooperQueryQueue with LifecycleAware {
   }
 
   /// Cancels all active in-flight requests matching query [namespace].
-  void cancelNamespace(String namespace, [String? reason]) {
+  void cancelNamespace(String namespace, {String? reason}) {
     if (_isDisposed) return;
     final matching = _ongoingList
         .where((r) => r.key.matchesName(namespace))
@@ -215,7 +217,7 @@ class TrooperQueryQueue with LifecycleAware {
     for (final ongoing in matching) {
       _ongoingList.remove(ongoing);
       ongoing.cancelToken.cancel(
-        reason ?? 'Cancelled query namespace $namespace',
+        reason: reason ?? 'Cancelled query namespace $namespace',
       );
       if (!ongoing.completer.isCompleted) {
         ongoing.completer.completeError(
@@ -228,12 +230,14 @@ class TrooperQueryQueue with LifecycleAware {
   }
 
   /// Cancels all active in-flight requests satisfying [predicate].
-  void cancelWhere(bool Function(QueryKey key) predicate, [String? reason]) {
+  void cancelWhere(bool Function(QueryKey key) predicate, {String? reason}) {
     if (_isDisposed) return;
     final matching = _ongoingList.where((r) => predicate(r.key)).toList();
     for (final ongoing in matching) {
       _ongoingList.remove(ongoing);
-      ongoing.cancelToken.cancel(reason ?? 'Cancelled by query queue');
+      ongoing.cancelToken.cancel(
+        reason: reason ?? 'Cancelled by query queue',
+      );
       if (!ongoing.completer.isCompleted) {
         ongoing.completer.completeError(
           TrooperCancelledException(
@@ -245,13 +249,15 @@ class TrooperQueryQueue with LifecycleAware {
   }
 
   /// Cancels all active in-flight requests.
-  void cancelAll([String? reason]) {
+  void cancelAll({String? reason}) {
     if (_isDisposed) return;
     final entries = List<_OngoingRequest<dynamic>>.of(_ongoingList);
     _ongoingList.clear();
 
     for (final ongoing in entries) {
-      ongoing.cancelToken.cancel(reason ?? 'Cancelled all requests');
+      ongoing.cancelToken.cancel(
+        reason: reason ?? 'Cancelled all requests',
+      );
       if (!ongoing.completer.isCompleted) {
         ongoing.completer.completeError(
           TrooperCancelledException(
@@ -290,7 +296,7 @@ class TrooperQueryQueue with LifecycleAware {
   @override
   Future<void> dispose() async {
     if (_isDisposed) return;
-    cancelAll('TrooperQueryQueue disposed');
+    cancelAll(reason: 'TrooperQueryQueue disposed');
     _isDisposed = true;
   }
 }

@@ -16,7 +16,7 @@ import 'package:trooper/src/error/trooper_exception.dart';
 /// }
 ///
 /// // Cancel when no longer needed:
-/// token.cancel('User navigated away');
+/// token.cancel(reason: 'User navigated away');
 /// ```
 class TrooperCancelToken {
   /// Creates a new uncancelled [TrooperCancelToken].
@@ -35,7 +35,7 @@ class TrooperCancelToken {
   /// Cancels this token with an optional [reason] and invokes registered listeners.
   ///
   /// Calling this method on an already cancelled token is a no-op.
-  void cancel([String? reason]) {
+  void cancel({String? reason}) {
     if (_isCancelled) return;
     _isCancelled = true;
     _reason = reason;

@@ -18,7 +18,7 @@ void main() {
         called = true;
       });
 
-      token.cancel('User navigated away');
+      token.cancel(reason: 'User navigated away');
 
       expect(token.isCancelled, isTrue);
       expect(token.reason, 'User navigated away');
@@ -43,8 +43,8 @@ void main() {
         count++;
       });
 
-      token.cancel('First cancellation');
-      token.cancel('Second cancellation');
+      token.cancel(reason: 'First cancellation');
+      token.cancel(reason: 'Second cancellation');
 
       expect(count, 1);
       expect(token.reason, 'First cancellation');
@@ -52,7 +52,7 @@ void main() {
 
     test('registering listener on already cancelled token executes immediately', () {
       final token = TrooperCancelToken();
-      token.cancel('Already dead');
+      token.cancel(reason: 'Already dead');
 
       var invoked = false;
       token.onCancel(() {
@@ -71,7 +71,7 @@ void main() {
       });
 
       unsubscribe();
-      token.cancel('Cancelled');
+      token.cancel(reason: 'Cancelled');
 
       expect(invoked, isFalse);
     });

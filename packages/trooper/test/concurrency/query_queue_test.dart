@@ -60,7 +60,7 @@ void main() {
       final f1Expectation = expectLater(f1, throwsA(isA<TrooperCancelledException>()));
       final f2Expectation = expectLater(f2, throwsA(isA<TrooperCancelledException>()));
 
-      queue.cancelNamespace('auth', 'Auth expired');
+      queue.cancelNamespace('auth', reason: 'Auth expired');
 
       await Future.wait([f1Expectation, f2Expectation]);
 

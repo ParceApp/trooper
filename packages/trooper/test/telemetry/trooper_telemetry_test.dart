@@ -50,7 +50,7 @@ void main() {
       );
 
       final hub = TelemetryHub.isolated();
-      final sub = logger.attach(hub);
+      final sub = logger.attach(hub: hub);
 
       hub.emit(RequestStartedEvent(testKey));
       await Future<void>.delayed(Duration.zero);

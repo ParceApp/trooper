@@ -181,7 +181,7 @@ void main() {
 
       final future = mutation.execute((data: 'Important'), cancelToken: token);
       // Cancel mid-execution
-      token.cancel('User cancelled mutation');
+      token.cancel(reason: 'User cancelled mutation');
 
       expect(future, throwsA(isA<TrooperCancelledException>()));
       await Future<void>.delayed(const Duration(milliseconds: 40));
