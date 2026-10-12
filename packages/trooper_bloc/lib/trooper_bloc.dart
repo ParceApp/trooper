@@ -16,7 +16,7 @@ export 'package:trooper/trooper.dart'
         StatefulData;
 
 export 'src/effects/effects.dart';
-export 'src/events.dart' show TlocEvent;
+export 'src/events.dart' show TlocEvent, TlocSourceUpdateEvent;
 export 'src/match_result.dart';
 export 'src/sources/trooper_sources.dart';
 export 'src/sources/watched.dart';

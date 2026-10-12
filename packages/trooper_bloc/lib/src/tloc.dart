@@ -61,28 +61,57 @@ import 'package:trooper_bloc/src/sources/trooper_sources.dart';
 /// }
 /// ```
 abstract class Tloc<Event extends TlocEvent, State>
-    extends Bloc<Event, State> with TrooperSources<State> {
+    extends Bloc<TlocEvent, State> with TrooperSources<State> {
   /// Creates a [Tloc] initialized with [initialState].
   Tloc(super.initialState) {
+    on<TlocSourceUpdateEvent>((event, emit) {
+      emit(event.state as State);
+    });
     handlers();
     initializeSources();
   }
+
+  bool _inOnEmit = false;
 
   /// Hook where developers register their event handlers via `on<E>((event, emit) => ...)`.
   @protected
   void handlers();
 
   @override
-  void triggerSourceEvaluation() {
-    if (!isClosed) {
-      executeSourceEvaluation(_emitFromSource);
+  void add(covariant Event event) {
+    super.add(event);
+  }
+
+  @protected
+  @mustCallSuper
+  @override
+  void onTransition(Transition<TlocEvent, State> transition) {
+    super.onTransition(transition);
+    _inOnEmit = true;
+  }
+
+  /// Updates the state of the [Tloc].
+  ///
+  /// When called directly outside of an event handler (e.g. from helper methods or
+  /// during source derivation), this dispatches an internal [TlocSourceUpdateEvent]
+  /// via [super.add], processing the transition BLoC-conformantly through the event pipeline.
+  @override
+  void emit(State state) {
+    if (_inOnEmit) {
+      _inOnEmit = false;
+      // ignore: invalid_use_of_visible_for_testing_member
+      super.emit(state);
+    } else {
+      if (!isClosed) {
+        super.add(TlocSourceUpdateEvent(state));
+      }
     }
   }
 
-  void _emitFromSource(State state) {
+  @override
+  void triggerSourceEvaluation() {
     if (!isClosed) {
-      // ignore: invalid_use_of_visible_for_testing_member
-      emit(state);
+      executeSourceEvaluation(emit);
     }
   }
 

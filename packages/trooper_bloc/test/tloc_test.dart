@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:trooper_bloc/testing.dart';
 import 'package:trooper_bloc/trooper_bloc.dart';
@@ -440,7 +441,109 @@ void main() {
         await bloc.close();
       },
     );
+
+    test(
+      'emit called outside handler dispatches internal event and triggers BlocObserver',
+      () async {
+        final observer = _TestObserver();
+        Bloc.observer = observer;
+
+        final bloc = HelperMethodTloc();
+        await pumpEventQueue();
+
+        // Call helper method that uses emit(...) directly
+        bloc.setCustomViaHelper('from_helper');
+        await pumpEventQueue();
+
+        expect(bloc.state, isA<TestLoadedState>());
+        expect((bloc.state as TestLoadedState).data, 'from_helper');
+
+        // Verify BLoC pipeline was exercised
+        expect(observer.events.whereType<TlocSourceUpdateEvent>(), isNotEmpty);
+        expect(
+          observer.transitions.any(
+            (t) =>
+                t.event is TlocSourceUpdateEvent &&
+                t.nextState is TestLoadedState &&
+                (t.nextState as TestLoadedState).data == 'from_helper',
+          ),
+          isTrue,
+        );
+        expect(
+          observer.changes.any(
+            (c) =>
+                c.nextState is TestLoadedState &&
+                (c.nextState as TestLoadedState).data == 'from_helper',
+          ),
+          isTrue,
+        );
+
+        // Verify domain events also go through normally
+        bloc.add(const TestSetCustomEvent('from_domain_event'));
+        await pumpEventQueue();
+
+        expect((bloc.state as TestLoadedState).data, 'from_domain_event');
+        expect(observer.events.whereType<TestSetCustomEvent>(), isNotEmpty);
+        expect(
+          observer.transitions.any((t) => t.event is TestSetCustomEvent),
+          isTrue,
+        );
+
+        await bloc.close();
+        Bloc.observer = const _DefaultBlocObserver();
+      },
+    );
   });
+}
+
+class _DefaultBlocObserver extends BlocObserver {
+  const _DefaultBlocObserver();
+}
+
+class _TestObserver extends BlocObserver {
+  final List<Object?> events = [];
+  final List<Transition<dynamic, dynamic>> transitions = [];
+  final List<Change<dynamic>> changes = [];
+
+  @override
+  void onEvent(Bloc<dynamic, dynamic> bloc, Object? event) {
+    super.onEvent(bloc, event);
+    events.add(event);
+  }
+
+  @override
+  void onTransition(
+    Bloc<dynamic, dynamic> bloc,
+    Transition<dynamic, dynamic> transition,
+  ) {
+    super.onTransition(bloc, transition);
+    transitions.add(transition);
+  }
+
+  @override
+  void onChange(BlocBase<dynamic> bloc, Change<dynamic> change) {
+    super.onChange(bloc, change);
+    changes.add(change);
+  }
+}
+
+class HelperMethodTloc extends Tloc<TestEvent, TestState> {
+  HelperMethodTloc() : super(const TestLoadingState());
+
+  void setCustomViaHelper(String data) {
+    emit(TestLoadedState(data));
+  }
+
+  @override
+  MatchResult matchSources(Emit<TestState> emit) => .unhandled;
+
+  @override
+  void handlers() {
+    on<TestSetCustomEvent>((event, emit) => emit(TestLoadedState(event.value)));
+  }
+
+  @override
+  List<Watched<Object?>> get sources => [];
 }
 
 class EmptySourcesTloc extends Tloc<TestEvent, int> {
