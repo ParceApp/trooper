@@ -46,18 +46,18 @@ An architectural blueprint and high-performance reactive data-flow framework for
        └─────────────────────────────────────────────────────────────┘
 ```
 
----
+
 
 ## Workspace Packages
 
 This repository is organized as a unified Dart 3.5+ workspace:
 
 | Directory | Package | Description | Pub Status |
-|---|---|---|---|
+|||||
 | [`packages/trooper`](file:///Users/hannes/Developer/trooper/packages/trooper) | [`trooper`](https://pub.dev/packages/trooper) | Core pure Dart engine: multi-tier caching (L1/L2), zero-flicker SWR, request coalescing, push streams, mutations, and controllers | [![pub package](https://img.shields.io/pub/v/trooper.svg)](https://pub.dev/packages/trooper) |
 | [`packages/trooper_bloc`](file:///Users/hannes/Developer/trooper/packages/trooper_bloc) | [`trooper_bloc`](https://pub.dev/packages/trooper_bloc) | High-performance Flutter BLoC and Cubit integration (`Tloc`, `Tubit`), snapshot-locking, microtask batching, and presentation effects. Re-exports 100% of `trooper` | [![pub package](https://img.shields.io/pub/v/trooper_bloc.svg)](https://pub.dev/packages/trooper_bloc) |
 
----
+
 
 ## AI Agent Skills (labs.dart.dev Standard)
 
@@ -68,7 +68,7 @@ Both packages bundle official AI Agent Skills compatible with the Dart Agent Ski
 - **BLoC State Management**: [`packages/trooper_bloc/skills/trooper-bloc-state-management/SKILL.md`](file:///Users/hannes/Developer/trooper/packages/trooper_bloc/skills/trooper-bloc-state-management/SKILL.md)
   Guidance on `Tloc`, `Tubit`, `watch()`, `matchSources()`, snapshot-locking, presentation `Effects`, and unit testing with `FakeAccessor`.
 
----
+
 
 ## Core Framework Highlights
 
@@ -84,7 +84,7 @@ Both packages bundle official AI Agent Skills compatible with the Dart Agent Ski
 - **Telemetry & DevTools**: Structured, zero-allocation diagnostic events dispatched via `TelemetryHub`.
 - **Multi-Tier Persistence**: In-memory L1 cache (`CacheStore`) paired with pluggable L2 disk storage (`StorageBackend`) and `StorageEnvelope`.
 
----
+
 
 ## Quickstart
 
@@ -154,7 +154,7 @@ controller.feed.watch().listen((state) {
 });
 ```
 
----
+
 
 ### Option B: Flutter + BLoC (`trooper_bloc`)
 
@@ -268,14 +268,14 @@ class FeedView extends StatelessWidget {
 }
 ```
 
----
+
 
 ## Architecture at a Glance (visualized by AI 🙃)
 <p align="center">
   <img src="doc/trooper_architecture_flow.gif" alt="Trooper Architecture Flow" width="880"/>
 </p>
 
----
+
 
 ## Developer Workflow
 
@@ -301,7 +301,7 @@ flutter test packages/trooper_bloc
 dart run packages/trooper/benchmark/trooper_benchmark.dart
 ```
 
----
+
 
 ## Documentation Links
 
@@ -313,7 +313,7 @@ dart run packages/trooper/benchmark/trooper_benchmark.dart
   - [`packages/trooper/CHANGELOG.md`](file:///Users/hannes/Developer/trooper/packages/trooper/CHANGELOG.md)
   - [`packages/trooper_bloc/CHANGELOG.md`](file:///Users/hannes/Developer/trooper/packages/trooper_bloc/CHANGELOG.md)
 
----
+
 
 ## Contributing
 
@@ -324,7 +324,7 @@ We welcome contributions, bug reports, and pull requests!
 3. Ensure all tests pass (`dart test packages/trooper` and `flutter test packages/trooper_bloc`).
 4. Submit a Pull Request.
 
----
+
 
 ## License
 
