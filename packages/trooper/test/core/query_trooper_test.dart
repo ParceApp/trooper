@@ -374,7 +374,8 @@ void main() {
       );
 
       final result = await query.get(const ());
-      expect(result, 'Callback Payload');
+      expect(result, 'Callback Payload (transformed)');
+      expect(query.currentData(), 'Callback Payload (transformed)');
       expect(started, isTrue);
       expect(transformed, isTrue);
       expect(dataCallback, isTrue);
