@@ -544,6 +544,12 @@ class HelperMethodTloc extends Tloc<TestEvent, TestState> {
 
   @override
   List<Watched<Object?>> get sources => [];
+
+  @override
+  void onAnyError(Object error, StackTrace? stackTrace, Emit<TestState> emit) {}
+
+  @override
+  void onAnyLoading(Emit<TestState> emit) {}
 }
 
 class EmptySourcesTloc extends Tloc<TestEvent, int> {
@@ -557,6 +563,12 @@ class EmptySourcesTloc extends Tloc<TestEvent, int> {
 
   @override
   List<Watched<Object?>> get sources => [];
+
+  @override
+  void onAnyError(Object error, StackTrace? stackTrace, Emit<int> emit) {}
+
+  @override
+  void onAnyLoading(Emit<int> emit) {}
 }
 
 class MinimalTloc extends Tloc<TestEvent, int> {
@@ -572,6 +584,12 @@ class MinimalTloc extends Tloc<TestEvent, int> {
 
   @override
   void handlers() {}
+
+  @override
+  void onAnyError(Object error, StackTrace? stackTrace, Emit<int> emit) {}
+
+  @override
+  void onAnyLoading(Emit<int> emit) {}
 }
 
 class ParameterizedTloc extends Tloc<TestEvent, TestState> {
@@ -665,4 +683,7 @@ class ThrowingTloc extends Tloc<TestEvent, TestState> {
 
   @override
   void handlers() {}
+
+  @override
+  void onAnyLoading(Emit<TestState> emit) {}
 }

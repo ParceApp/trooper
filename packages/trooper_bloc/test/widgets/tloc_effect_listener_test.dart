@@ -33,6 +33,12 @@ class WidgetTestTloc extends Tloc<WidgetTestEvent, int>
   void handlers() {}
 
   void triggerEffect(String text) => emitEffect(ShowSnackBarEffect(text));
+
+  @override
+  void onAnyError(Object error, StackTrace? stackTrace, Emit<int> emit) {}
+
+  @override
+  void onAnyLoading(Emit<int> emit) {}
 }
 
 void main() {

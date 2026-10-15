@@ -285,16 +285,14 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
 
   void _subscribeUpstream(Stream<T> upstream, QueryKey qKey, P param) {
     _subscription = upstream.listen(
-      (data) {
+      (data) async {
         if (sideEffects != null &&
             sideEffects?.transformRequestResult != null) {
-          runSideEffect(() async {
-            T transformation = await sideEffects!.transformRequestResult!.call(
-              data,
-              param,
-            );
-            data = transformation;
-          });
+          T transformation = await sideEffects!.transformRequestResult!.call(
+            data,
+            param,
+          );
+          data = transformation;
         }
         _lastLoadedData = data;
         if (config.hasCache) {

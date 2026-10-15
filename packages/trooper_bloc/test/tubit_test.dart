@@ -162,4 +162,7 @@ class ThrowingTubit extends Tubit<TubitTestState> {
     capturedError = error;
     super.onError(error, stackTrace);
   }
+
+  @override
+  void onAnyLoading(Emit<TubitTestState> emit) {}
 }

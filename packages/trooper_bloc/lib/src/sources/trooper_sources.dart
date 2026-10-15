@@ -44,11 +44,11 @@ mixin TrooperSources<S> {
 
   /// Fallback handler invoked when [matchSources] returns [MatchResult.unhandled]
   /// and at least one watched source has not loaded data yet.
-  void onAnyLoading(Emit<S> emit) {}
+  void onAnyLoading(Emit<S> emit);
 
   /// Fallback handler invoked when [matchSources] returns [MatchResult.unhandled]
   /// and at least one watched source is in a [DataError] state, or [matchSources] throws.
-  void onAnyError(Object error, StackTrace? stackTrace, Emit<S> emit) {}
+  void onAnyError(Object error, StackTrace? stackTrace, Emit<S> emit);
 
   /// Watches an [Accessor].
   ///

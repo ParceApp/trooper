@@ -303,13 +303,11 @@ class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
       );
       stopwatch.stop();
       if (sideEffects != null && sideEffects?.transformRequestResult != null) {
-        runSideEffect(() async {
-          T transformation = await sideEffects!.transformRequestResult!.call(
-            result,
-            param,
-          );
-          result = transformation;
-        });
+        T transformation = await sideEffects!.transformRequestResult!.call(
+          result,
+          param,
+        );
+        result = transformation;
       }
 
       if (!isParamChanged(param)) {

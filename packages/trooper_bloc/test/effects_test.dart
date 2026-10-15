@@ -30,6 +30,12 @@ class EffectTloc extends Tloc<EffectTestEvent, int> with Effects<MyEffect> {
   void handlers() {}
 
   void triggerEffect(String msg) => emitEffect(ShowToastEffect(msg));
+
+  @override
+  void onAnyError(Object error, StackTrace? stackTrace, Emit<int> emit) {}
+
+  @override
+  void onAnyLoading(Emit<int> emit) {}
 }
 
 void main() {
