@@ -204,6 +204,47 @@ class SearchTloc extends Tloc<SearchEvent, SearchState> {
 
 ---
 
+## Load More (Infinite Scroll)
+
+A `LoadMore` feed from `trooper` is a regular `Accessor`, so a Tloc watches it like any other source and calls `fetchNextPage()` from an event handler:
+
+```dart
+class ArticleFeedTloc extends Tloc<ArticleFeedEvent, ArticleFeedState> {
+  ArticleFeedTloc(this.feed) : super(const ArticleFeedLoadingState());
+
+  final LoadMore<Page<Article>, ({String category}), int> feed;
+  late final Watched<LoadMoreData<Page<Article>, int>> pages =
+      watch(feed, initialParameter: (category: 'tech'), eager: true);
+
+  @override
+  List<Watched<Object?>> get sources => [pages];
+
+  @override
+  FutureOr<MatchResult> matchSources(Emit<ArticleFeedState> emit) {
+    switch (pages.state) {
+      case DataLoaded(:final data):
+        emit(ArticleFeedLoadedState(
+          articles: [for (final page in data.pages) ...page.items],
+          isLoadingMore: data.isFetchingNextPage,
+          loadMoreError: data.nextPageError,
+          hasMore: data.hasNextPage,
+        ));
+        return .handled;
+      default:
+        return .unhandled;
+    }
+  }
+
+  @override
+  void handlers() {
+    on<ArticleFeedScrolledToEndEvent>((_, _) => feed.fetchNextPage());
+    on<ArticleFeedRetryEvent>((_, _) => feed.retryNextPage());
+  }
+}
+```
+
+---
+
 ## Testing Utilities
 
 `package:trooper_bloc/testing.dart` exports `FakeAccessor<T, P>`, allowing you to simulate and manipulate accessor states in unit tests without complex mocks:

@@ -15,6 +15,8 @@ import 'package:trooper/src/core/local_trooper.dart';
 import 'package:trooper/src/core/stream_trooper.dart';
 import 'package:trooper/src/core/trooper_mutation.dart';
 import 'package:trooper/src/core/query_trooper.dart';
+import 'package:trooper/src/core/accessor.dart';
+import 'package:trooper/src/pagination/load_more.dart';
 import 'package:trooper/src/lifecycle/lifecycle_aware.dart';
 import 'package:trooper/src/state/stateful_data.dart';
 import 'package:trooper/src/stream/keyed_stateful_stream.dart';
@@ -340,6 +342,39 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
           );
     return manage(trooper);
   }
+
+  /// Creates and registers a new [LoadMore] feed over an existing page query.
+  ///
+  /// The [source] query takes `({F filter, PP page})`, so all type arguments are
+  /// inferred from it. The feed is disposed and invalidated with this controller.
+  ///
+  /// ```dart
+  /// class ArticleController extends TrooperController {
+  ///   late final _articlePage =
+  ///       query<Page<Article>, ({({String category}) filter, int page})>(
+  ///         namespace: 'articles',
+  ///         fetch: (p) => api.getArticles(category: p.filter.category, page: p.page),
+  ///         config: const TrooperConfig.noCache(),
+  ///       );
+  ///
+  ///   late final articleFeed = loadMore(
+  ///     source: _articlePage,
+  ///     initialPageParam: 1,
+  ///     nextPageParam: (last, all) => last.hasMore ? all.length + 1 : null,
+  ///   );
+  /// }
+  /// ```
+  LoadMore<TPage, F, PP> loadMore<TPage, F extends Record, PP extends Object>({
+    required Accessor<TPage, ({F filter, PP page})> source,
+    required PP initialPageParam,
+    required PP? Function(TPage lastPage, List<TPage> allPages) nextPageParam,
+  }) => manage(
+    LoadMore<TPage, F, PP>(
+      source: source,
+      initialPageParam: initialPageParam,
+      nextPageParam: nextPageParam,
+    ),
+  );
 
   /// Creates and registers a new [LocalTrooper] managed by this controller.
   ///

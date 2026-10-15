@@ -1,3 +1,9 @@
+## Unreleased
+
+* **`LoadMore<TPage, F, PP>`**: Load-more (infinite scroll) decorator over an existing page query with `fetchNextPage()`, `retryNextPage()`, and `hasNextPage`, plus the `TrooperController.loadMore(...)` factory.
+* **`LoadMoreData<TPage, PP>`**: Accumulated pages with next-page status; `items` flattens list pages.
+* **Docs**: Pagination guide for classic pages and load more.
+
 ## 0.1.0-beta.1
 
 Initial public release of Trooper, an architectural blueprint and reactive data-flow framework for Dart applications.

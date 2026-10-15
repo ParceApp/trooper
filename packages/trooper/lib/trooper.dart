@@ -27,6 +27,7 @@ export 'src/effects/trooper_side_effects.dart';
 export 'src/error/trooper_exception.dart';
 export 'src/key/query_key.dart';
 export 'src/lifecycle/lifecycle_aware.dart';
+export 'src/pagination/load_more.dart';
 export 'src/state/data_metadata.dart';
 export 'src/state/stateful_data.dart';
 export 'src/storage/cache_entry.dart';

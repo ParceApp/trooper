@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Added
+
+#### Core Framework (`packages/trooper`)
+- **`LoadMore<TPage, F, PP>`**: Load-more (infinite scroll) decorator over an existing page query with `fetchNextPage()`, `retryNextPage()`, and `hasNextPage`. All type arguments are inferred from the wrapped query.
+- **`LoadMoreData<TPage, PP>`**: Accumulated pages plus next-page status (`isFetchingNextPage`, `nextPageError`) so the feed stays `DataLoaded` while loading more.
+- **`TrooperController.loadMore(...)`**: Factory that creates a managed `LoadMore` feed.
+- **Docs**: New pagination guide covering classic pages (`TrooperConfig.noCache()`) and load more.
+
+---
+
 ## [0.1.0] - 2026-10-08
 
 Initial public release of the Trooper framework monorepo.

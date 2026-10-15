@@ -18,6 +18,7 @@ If you know TanStack Query from the web, Trooper follows a similar mental model:
 - [Quickstart](#quickstart)
 - [The 7 Core Building Blocks](#the-7-core-building-blocks)
 - [Batch Operations for Keyed Troopers](#batch-operations-for-keyed-troopers)
+- [Pagination](#pagination)
 - [The State Model: StatefulData](#the-state-model-statefuldata)
 - [Concurrency & Request Deduplication](#concurrency--request-deduplication)
 - [Retry Policies & Timeouts](#retry-policies--timeouts)
@@ -228,6 +229,60 @@ controller.orders.invalidateKeys([101, 102]);
 // Batch mutate and persist local state
 await drafts.setAllAsync({'doc1': 'Draft 1', 'doc2': 'Draft 2'}, const ());
 ```
+
+## Pagination
+
+Trooper supports two pagination styles: classic numbered pages and load more (infinite scroll).
+
+### Classic Pages
+
+Use a regular `query` with the page number in its parameter. `TrooperConfig.noCache()` fetches every page fresh, and its default `forward` conflict policy drops the stale result when users tap through pages quickly:
+
+```dart
+class ArticleController extends TrooperController {
+  late final articlePage = query<Page<Article>, ({String category, int page})>(
+    namespace: 'article_page',
+    fetch: (p) => api.getArticles(category: p.category, page: p.page),
+    config: const TrooperConfig.noCache(),
+  );
+}
+
+// Page buttons:
+controller.articlePage.trigger((category: 'tech', page: 3));
+```
+
+### Load More (Infinite Scroll)
+
+`loadMore` wraps an existing page query and collects its pages into one `LoadMoreData`. The page query takes `({F filter, PP page})`, so every type argument is inferred:
+
+```dart
+class ArticleController extends TrooperController {
+  late final _articlePage =
+      query<Page<Article>, ({({String category}) filter, int page})>(
+        namespace: 'article_feed_page',
+        fetch: (p) => api.getArticles(category: p.filter.category, page: p.page),
+        config: const TrooperConfig.noCache(),
+      );
+
+  late final articleFeed = loadMore(
+    source: _articlePage,
+    initialPageParam: 1,
+    nextPageParam: (last, all) => last.hasMore ? all.length + 1 : null,
+  );
+}
+
+controller.articleFeed.watch(initialParameter: (category: 'tech'), eager: true);
+
+// When the list is scrolled near its end (e.g. from a ScrollController listener):
+controller.articleFeed.fetchNextPage();
+```
+
+- `get(filter)` / `refresh(filter)` (re)load the first page. A new filter resets the feed.
+- `fetchNextPage()` appends the next page. Concurrent calls share one request, and it does nothing at the end of the list or after a failed page.
+- The feed stays `DataLoaded` while a next page loads or fails. Render the footer from `data.isFetchingNextPage`, `data.nextPageError`, and `data.hasNextPage`, and call `retryNextPage()` from a retry button.
+- `LoadMoreData<List<E>, PP>.items` flattens all pages into one list.
+- Invalidating the page query (for example via a mutation's `invalidateOnSuccess`) reloads the feed's first page.
+- Watch the feed, not the page query. The page query only holds the most recently requested page.
 
 ## Retry Policies & Timeouts
 

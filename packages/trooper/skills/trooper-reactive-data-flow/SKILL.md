@@ -13,6 +13,7 @@ description: Guides implementing data sources, multi-tier caching, SWR (Stale-Wh
 - [Component Overview](#component-overview)
 - [Working with Parameters (`P extends Parameter`)](#working-with-parameters-p-extends-parameter)
 - [QueryTrooper & KeyedQueryTrooper](#querytrooper--keyedquerytrooper)
+- [Pagination](#pagination)
 - [LocalTrooper & KeyedLocalTrooper](#localtrooper--keyedlocaltrooper)
 - [StreamTrooper & KeyedStreamTrooper](#streamtrooper--keyedstreamtrooper)
 - [TrooperMutation](#troopermutation)
@@ -156,6 +157,62 @@ final product = await laptopAccessor.get();
 // Batch operations:
 final products = await productQuery.getAll(['macbook-pro', 'ipad-air'], const ());
 ```
+
+---
+
+## Pagination
+
+Trooper supports two pagination styles: classic numbered pages and load more (infinite scroll).
+
+### Classic Pages
+
+Use a regular `query` with the page number in its parameter. `TrooperConfig.noCache()` fetches every page fresh, and its default `forward` conflict policy drops the stale result when users tap through pages quickly:
+
+```dart
+class ArticleController extends TrooperController {
+  late final articlePage = query<Page<Article>, ({String category, int page})>(
+    namespace: 'article_page',
+    fetch: (p) => api.getArticles(category: p.category, page: p.page),
+    config: const TrooperConfig.noCache(),
+  );
+}
+
+// Page buttons:
+controller.articlePage.trigger((category: 'tech', page: 3));
+```
+
+### Load More (Infinite Scroll)
+
+`loadMore` wraps an existing page query and collects its pages into one `LoadMoreData`. The page query takes `({F filter, PP page})`, so every type argument is inferred:
+
+```dart
+class ArticleController extends TrooperController {
+  late final _articlePage =
+      query<Page<Article>, ({({String category}) filter, int page})>(
+        namespace: 'article_feed_page',
+        fetch: (p) => api.getArticles(category: p.filter.category, page: p.page),
+        config: const TrooperConfig.noCache(),
+      );
+
+  late final articleFeed = loadMore(
+    source: _articlePage,
+    initialPageParam: 1,
+    nextPageParam: (last, all) => last.hasMore ? all.length + 1 : null,
+  );
+}
+
+controller.articleFeed.watch(initialParameter: (category: 'tech'), eager: true);
+
+// When the list is scrolled near its end (e.g. from a ScrollController listener):
+controller.articleFeed.fetchNextPage();
+```
+
+- `get(filter)` / `refresh(filter)` (re)load the first page. A new filter resets the feed.
+- `fetchNextPage()` appends the next page. Concurrent calls share one request, and it does nothing at the end of the list or after a failed page.
+- The feed stays `DataLoaded` while a next page loads or fails. Render the footer from `data.isFetchingNextPage`, `data.nextPageError`, and `data.hasNextPage`, and call `retryNextPage()` from a retry button.
+- `LoadMoreData<List<E>, PP>.items` flattens all pages into one list.
+- Invalidating the page query (for example via a mutation's `invalidateOnSuccess`) reloads the feed's first page.
+- Watch the feed, not the page query. The page query only holds the most recently requested page.
 
 ---
 
@@ -311,14 +368,11 @@ class ArticleRepository extends TrooperController {
       ),
     );
 
-    // List query with pagination/filtering
+    // Classic paged list query: every page is fetched fresh (see Pagination)
     articleList = query<List<Article>, ({String category, int page})>(
       namespace: 'article_list',
       fetch: (p) => api.getArticles(category: p.category, page: p.page),
-      config: const TrooperConfig(
-        timeToLive: Duration(minutes: 5),
-        deduplicate: true,
-      ),
+      config: const TrooperConfig.noCache(),
     );
 
     // Mutation that invalidates both the list and the affected article
