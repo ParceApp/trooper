@@ -64,3 +64,35 @@ verfügbar und es gibt keine CI-Matrix.
 **Nachweis:** `docs/audit/raw/downgrade_trooper.txt`, `downgrade_versions.txt`, `downgrade_runtime_*.txt`
 (`tool/audit/scripts/compat.sh`)
 **Empfehlung:** Untergrenzen der Dev-Dependencies anheben (`test`, `coverage`), Min-SDK-Job in der CI ergänzen.
+
+### F-006 · P2 · freeze-relevant: nein · Aufwand: S
+**Kriterium:** ARCH-02
+**Ort:** `packages/trooper/lib/src/telemetry/telemetry_hub.dart`, `packages/trooper/lib/src/telemetry/trooper_logger.dart`
+**Befund:** Der Import-Graph von `trooper` ist nicht azyklisch: `telemetry_hub.dart` und `trooper_logger.dart`
+importieren sich gegenseitig. Alle übrigen 40 Dateien sind zyklenfrei, `trooper_bloc` ebenfalls. Eine Schichtregel
+(welches Modul darf welches importieren) ist nirgends definiert oder automatisiert geprüft.
+**Nachweis:** `docs/audit/raw/lakos_trooper.json` (`isAcyclic: false`, `firstCycle`), `tool/audit/scripts/api_arch.sh`
+**Empfehlung:** Zyklus auflösen (Logger hängt vom Hub ab, nicht umgekehrt), Schichtregel dokumentieren und
+`lakos --no-cycles-allowed` in die CI aufnehmen.
+
+### F-007 · P2 · freeze-relevant: nein · Aufwand: L
+**Kriterium:** ARCH-03
+**Ort:** `controller/trooper_controller.dart` (869 Zeilen), `core/keyed_stream_trooper.dart` (807), `core/stream_trooper.dart` (632),
+`core/keyed_query_trooper.dart` (606), `core/keyed_local_trooper.dart` (589), alle unter `packages/trooper/lib/src/`
+**Befund:** Fünf Dateien überschreiten 500 Zeilen, ohne dass eine Begründung dokumentiert ist. Die Hypothese aus Spec §5
+ist bestätigt. Die Größe korreliert mit der Duplikation zwischen Keyed- und Non-Keyed-Varianten (ARCH-04, Task 11) und
+mit den komplexesten Methoden (F-008).
+**Nachweis:** `docs/audit/raw/file_sizes.txt`
+**Empfehlung:** Gemeinsame Fetch-/Cache-/Persistenz-Logik extrahieren; der Controller kann Fabrikmethoden und
+Lifecycle-Verwaltung trennen.
+
+### F-008 · P2 · freeze-relevant: nein · Aufwand: M
+**Kriterium:** QUAL-03
+**Ort:** `StreamTrooper.connect` (26), `QueryTrooper._executeFetch` (25), `KeyedStreamTrooper.getKey` (25),
+`StreamTrooper.get`, `QueryTrooper.get`, `KeyedStreamTrooper.connectKey`, `KeyedQueryTrooper.getKey`,
+`TrooperController.dispose` (je 24), `KeyedQueryTrooper._executeFetch`, `TrooperQueryQueue.execute` (je 22) und fünf weitere
+**Befund:** 15 Methoden in `trooper` überschreiten eine zyklomatische Komplexität von 15; `trooper_bloc` hat keine.
+Betroffen sind genau die Kernpfade für Lesen, Fetch und Dispose, in denen die Nebenläufigkeitsgarantien liegen.
+**Nachweis:** `docs/audit/raw/metrics_trooper.json` (`dart_code_linter`, Schwelle 15)
+**Empfehlung:** L1-, L2- und Netzwerkpfad in `get` jeweils in eigene Methoden zerlegen; Persistenzblock aus
+`_executeFetch` herauslösen (er ist in `set` und `_executeFetch` doppelt vorhanden).

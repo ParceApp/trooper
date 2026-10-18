@@ -224,16 +224,17 @@ dimensions:
         note: "not enforced in CI"
       - id: ARCH-02
         priority: M
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "docs/audit/raw/lakos_trooper.json (isAcyclic: false; cycle telemetry_hub.dart <-> trooper_logger.dart); lakos_trooper_bloc.json acyclic"
+        findings: [F-006]
+        note: "no layering rule defined or enforced"
       - id: ARCH-03
         priority: S
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "docs/audit/raw/file_sizes.txt (5 files > 500 lines, none justified)"
+        findings: [F-007]
       - id: ARCH-04
         priority: S
         status: null
@@ -305,10 +306,10 @@ dimensions:
         note: "not enforced in CI (no CI exists)"
       - id: QUAL-03
         priority: S
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "docs/audit/raw/metrics_trooper.json (15 methods with cyclomatic complexity > 15, max 26); trooper_bloc: 0"
+        findings: [F-008]
   - id: PERF
     weight: 1
     gate_min_maturity: 2
@@ -541,5 +542,20 @@ findings:
   - id: F-005
     severity: P2
     criterion: COMPAT-01
+    freeze_relevant: false
+    status: open
+  - id: F-006
+    severity: P2
+    criterion: ARCH-02
+    freeze_relevant: false
+    status: open
+  - id: F-007
+    severity: P2
+    criterion: ARCH-03
+    freeze_relevant: false
+    status: open
+  - id: F-008
+    severity: P2
+    criterion: QUAL-03
     freeze_relevant: false
     status: open
