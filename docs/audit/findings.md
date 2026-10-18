@@ -468,8 +468,8 @@ hätte F-012 gefunden.
 **Ort:** `packages/trooper/benchmark/trooper_benchmark.dart:51` (`benchmarkL1CacheHit`)
 **Befund:** Die Benchmarks decken Coalescing, Stream-Dispatch und Speicher für 10.000 Keys ab. SWR und die Ableitung
 in `trooper_bloc` fehlen. „L1 Cache-Hit“ misst den rohen `CacheStore` (34 ns), nicht den Pfad, den Nutzer aufrufen:
-Ein Cache-Hit über `QueryTrooper.get` kostet etwa 800 ns (`telemetry_overhead.txt`). Das README zitiert die
-schnellere Zahl.
+Ein Cache-Hit über `QueryTrooper.get` kostet etwa 800 ns (`telemetry_overhead.txt`); die Benchmark-Tabelle
+suggeriert damit einen 20-fach schnelleren Pfad, als Nutzer tatsächlich bekommen.
 **Nachweis:** `docs/audit/raw/bench_baseline.txt`, `docs/audit/raw/telemetry_overhead.txt`
 **Empfehlung:** Benchmarks für `QueryTrooper.get` (Hit, SWR), `KeyedQueryTrooper` und `Tubit`-Ableitung ergänzen.
 
