@@ -317,3 +317,101 @@ im Klartext aus (`QueryKey.describe()`) sowie `error.toString()`. Parameter enth
 personenbezogene Daten (im Test: eine E-Mail-Adresse), die so in Konsolen- und Crash-Logs landen.
 **Nachweis:** `error_audit_test.dart` – „SEC-02 … logger does not print query parameters“ (rot), „… response payloads“ (grün)
 **Empfehlung:** Parameter standardmäßig maskieren oder nur ihren Hash loggen; Ausgabe per Option aktivierbar machen.
+
+### F-028 · P1 · freeze-relevant: ja · Aufwand: M
+**Kriterium:** API-01
+**Ort:** `packages/trooper/lib/trooper.dart`, `packages/trooper_bloc/lib/trooper_bloc.dart`; Einzelentscheidungen in `docs/audit/api-inventory.md`
+**Befund:** Von 88 exportierten Symbolen (81 Typen, 7 Aliase) sind sechs Implementierungsdetails:
+`StatefulStreamController` und `KeyedStatefulStream` (als Konstruktorparameter injizierbar, damit kann fremder Code in
+den State eines Troopers emittieren), `KeyedTrooperAccessor`, `WatchedHandle`, `WatchedUpdateCallback` und
+`TlocSourceUpdateEvent`. Dazu kommen der Doppelname `ConflictPolicy` (`query_conflict_policy.dart:111`) und der
+Re-Export von `FutureOr`. Alles, was mit 1.0 exportiert ist, lässt sich danach nur per Major-Release entfernen.
+**Nachweis:** `docs/audit/api-inventory.md`, `docs/audit/raw/api_trooper.json`, `api_trooper_bloc.json`
+**Empfehlung:** Die Einträge mit „intern machen“ und „entfernen“ vor dem Freeze umsetzen.
+
+### F-029 · P1 · freeze-relevant: ja · Aufwand: S
+**Kriterium:** API-02
+**Ort:** 38 Klassen laut `docs/audit/raw/class_modifiers.txt`, u. a. `QueryTrooper`, `KeyedQueryTrooper`, `TrooperController`,
+`TrooperConfig`, `CacheStore`, `RetryPolicy`, `Tloc`, `Tubit`
+**Befund:** 38 öffentliche Klassen tragen keinen der Modifier `final`, `base`, `interface` oder `sealed`. Nutzer
+können sie damit nicht nur erweitern, sondern auch `implements`-en; jede nach 1.0 ergänzte Methode bricht dann
+Fremd-Implementierungen. Die Hypothese aus Spec §5 ist bestätigt (korrigierte Zahl: 38 statt 46, die Vorab-Zählung
+enthielt private und `abstract`-Deklarationen).
+**Nachweis:** `docs/audit/raw/class_modifiers.txt` (`tool/audit/bin/class_modifiers.dart`)
+**Empfehlung:** Modifier-Vorschläge aus `api-inventory.md` übernehmen: konkrete Troopers, Konfigurations- und
+Infrastrukturklassen `final`; zur Erweiterung gedachte Basisklassen (`Trooper`, `TrooperController`, `Tloc`, `Tubit`,
+`TrooperCodec`) `abstract base`.
+
+### F-030 · P1 · freeze-relevant: ja · Aufwand: M
+**Kriterium:** API-03
+**Ort:** `controller/trooper_controller.dart:667` (`executeOrder66`), `:156`/`:672` (`onInit`/`initialize` und weitere Paare),
+`:258,315,440,588` (Fabriken), `config/trooper_config.dart:63,74,78`, `core/trooper.dart:54`, Keyed-Troopers
+**Befund:** Die API hat Redundanzen und Stolperstellen, die mit dem Freeze dauerhaft würden:
+(1) `executeOrder66()` ist ein Alias für `clearAll()` ohne fachliche Bedeutung.
+(2) Lifecycle-Hooks gibt es doppelt (`onInit`/`initialize`, `onPause`/`pause`, `onResume`/`resume`, `onRecover`/`recover`, `onDispose`/`dispose`).
+(3) `TrooperConfig.queryConflictPolicy` dupliziert `conflictPolicy`.
+(4) `TrooperConfig.defaultConfig` ist ein global veränderliches statisches Feld, mit zwei Settern (`TrooperConfig.setDefaultConfig`, `Trooper.setDefaultConfig`).
+(5) Die Controller-Fabriken haben zwei sich ausschließende optionale Parameter `fetch`/`cancellableFetch`, nur per `assert` geprüft.
+(6) Keys lassen sich auf vier Wegen adressieren (`trooper['k']`, `key()`, `getKey`/`watchKey`, `currentKey`).
+(7) `getMany` gibt es nur an `KeyedQueryTrooper`.
+**Nachweis:** `docs/audit/api-inventory.md`, Abschnitt „Weitere Punkte“; Paarvergleich auf Basis von `api_trooper.json`
+**Empfehlung:** Aliase und doppelte Namen streichen, globale Defaults nur über den Controller setzen, Fabriken in zwei
+benannte Varianten trennen (`query`/`cancellableQuery`) und einen Weg zur Key-Adressierung festlegen.
+
+### F-031 · P1 · freeze-relevant: nein · Aufwand: S
+**Kriterium:** API-04
+**Ort:** Repository (keine Policy-Datei), `packages/*/lib` (0 × `@Deprecated`)
+**Befund:** Es gibt keine Deprecation-Policy. Für ein 1.0-Release mit eingefrorener API ist eine Regel nötig, wie lange
+veraltete APIs erhalten bleiben und wie Migrationshinweise aussehen.
+**Nachweis:** `grep -rn "@Deprecated"` ohne Treffer; keine Policy in README, CONTRIBUTING oder `docs/`
+**Empfehlung:** Policy dokumentieren (mindestens ein Minor-Release mit `@Deprecated('Use X; removed in 2.0')` vor dem
+Entfernen) und im README verlinken.
+
+### F-032 · P1 · freeze-relevant: nein · Aufwand: S
+**Kriterium:** API-05
+**Ort:** Repository (keine CI), `docs/audit/raw/api_trooper.json`, `api_trooper_bloc.json`
+**Befund:** Es gibt weder eine eingefrorene API-Baseline noch einen automatisierten API-Diff. Breaking Changes würden
+nach 1.0 unbemerkt in Minor-Releases landen. Die Extrakte aus diesem Audit eignen sich als erste Baseline, sobald die
+API-Findings umgesetzt sind.
+**Nachweis:** fehlendes `.github/`; `dart_apitool extract` läuft fehlerfrei (`docs/audit/raw/api_*.txt`)
+**Empfehlung:** Nach Umsetzung von F-028–F-030 die Baseline einfrieren und `dart_apitool diff` in der CI gegen das
+letzte Release laufen lassen.
+
+### F-033 · P1 · freeze-relevant: ja · Aufwand: S
+**Kriterium:** API-06
+**Ort:** `packages/trooper_bloc/lib/trooper_bloc.dart:4-6`, `packages/trooper_bloc/pubspec.yaml` (`trooper: ^0.1.0-beta.1`)
+**Befund:** `trooper_bloc` re-exportiert `trooper` vollständig, dazu `Emitter` aus `flutter_bloc` und `FutureOr` aus
+`dart:async`. Damit ist die öffentliche API von `trooper_bloc` die Summe dreier APIs, deren Versionen getrennt laufen.
+Eine Regel, wie sich Versionen beider Packages zueinander verhalten, ist nicht dokumentiert. Die Hypothese aus Spec §5
+ist bestätigt.
+**Nachweis:** Code-Review; `docs/audit/api-inventory.md`, Abschnitt „Re-Exporte“
+**Empfehlung:** Entscheiden: entweder Re-Export behalten und `trooper_bloc` im Lockstep mit `trooper` versionieren,
+oder nur die BLoC-Symbole exportieren. `Emitter` und `FutureOr` nicht re-exportieren.
+
+### F-034 · P2 · freeze-relevant: ja · Aufwand: S
+**Kriterium:** API-07
+**Ort:** `packages/trooper/lib/src/state/stateful_data.dart:190` (`base class DataLoaded`),
+`packages/trooper_bloc/lib/src/sources/watched.dart` (`WatchedHandle`-Konstruktor)
+**Befund:** Die Zustandsklassen sind immutable und implementieren `==`/`hashCode`. `DataLoaded` ist aber `base` statt
+`final`: Fremder Code darf `DataLoaded` damit erweitern, obwohl `DataRefreshing` (dieselbe Bibliothek) die einzige
+gewollte Subklasse ist. `dynamic` kommt nur in den JSON-Hilfen (vertretbar) und im Callback von `WatchedHandle` vor.
+**Nachweis:** `docs/audit/api-inventory.md`; `docs/audit/raw/api_*.json`
+**Empfehlung:** `DataLoaded` auf `final` setzen; `WatchedHandle` intern machen (F-028).
+
+### F-035 · P1 · freeze-relevant: ja · Aufwand: S
+**Kriterium:** OBS-01
+**Ort:** `packages/trooper/lib/src/telemetry/trooper_event.dart:5` (`sealed class TrooperEvent`) und alle Event-Klassen
+**Befund:** Acht Telemetrie-Events gehören zur Public API. 23 ihrer Member sind undokumentiert (siehe F-002). Weil
+`TrooperEvent` `sealed` ist, bricht jedes neue Event nach 1.0 exhaustive `switch`-Ausdrücke der Nutzer. Neue Events
+sind aber absehbar (z. B. für F-020 und F-021).
+**Nachweis:** Code-Review; `docs/audit/raw/analyze_vga.txt` (`public_member_api_docs` in `trooper_event.dart`)
+**Empfehlung:** `TrooperEvent` öffnen (abstract base mit `final`-Subklassen) oder neue Events vor dem Freeze ergänzen
+und den Katalog als stabil dokumentieren.
+
+### F-036 · P3 · freeze-relevant: nein · Aufwand: S
+**Kriterium:** OBS-02
+**Ort:** `packages/trooper/lib/src/telemetry/trooper_logger.dart`
+**Befund:** Der Logger ist über das Interface `TrooperLogger` austauschbar. Log-Level oder Filter (z. B. nur Fehler)
+gibt es nicht; `ConsoleTrooperLogger` gibt jedes Event aus.
+**Nachweis:** Code-Review
+**Empfehlung:** Optionalen Filter (`bool Function(TrooperEvent)`) oder Level im `ConsoleTrooperLogger` anbieten.

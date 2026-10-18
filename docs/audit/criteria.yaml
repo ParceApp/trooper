@@ -177,46 +177,46 @@ dimensions:
     criteria:
       - id: API-01
         priority: M
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "docs/audit/api-inventory.md (88 symbols: 75 keep, 6 internal, 4 rework, 1 remove, 1 rename, 1 open)"
+        findings: [F-028]
       - id: API-02
         priority: M
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "docs/audit/raw/class_modifiers.txt (38 public classes without final/base/interface/sealed); proposals in api-inventory.md"
+        findings: [F-029]
       - id: API-03
         priority: M
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "api-inventory.md 'Weitere Punkte'; pair comparison of api_trooper.json"
+        findings: [F-030]
       - id: API-04
         priority: M
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "no deprecation policy in repo; 0 @Deprecated annotations in lib"
+        findings: [F-031]
       - id: API-05
         priority: M
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "no API baseline committed, no CI; docs/audit/raw/api_*.json can serve as first baseline"
+        findings: [F-032]
       - id: API-06
         priority: M
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "packages/trooper_bloc/lib/trooper_bloc.dart (re-exports trooper, Emitter, FutureOr); no versioning rule documented"
+        findings: [F-033]
       - id: API-07
         priority: S
-        status: null
+        status: partial
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "api-inventory.md (dynamic only in JSON helpers and WatchedHandle.new; StatefulData subclasses implement ==/hashCode; DataLoaded is base)"
+        findings: [F-034]
   - id: ARCH
     weight: 1
     gate_min_maturity: 2
@@ -501,22 +501,23 @@ dimensions:
     criteria:
       - id: OBS-01
         priority: S
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "telemetry/trooper_event.dart (8 events, 23 undocumented members, sealed root)"
+        findings: [F-035, F-002]
       - id: OBS-02
         priority: S
-        status: null
+        status: partial
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "TrooperLogger is an abstract interface (exchangeable); no log levels or filtering"
+        findings: [F-036]
       - id: OBS-03
         priority: C
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
+        evidence: "no DevTools extension in repo"
         findings: []
+        note: "Could criterion; no finding"
   - id: MARKET
     weight: 1
     gate_min_maturity: null
@@ -661,5 +662,50 @@ findings:
   - id: F-027
     severity: P2
     criterion: SEC-02
+    freeze_relevant: false
+    status: open
+  - id: F-028
+    severity: P1
+    criterion: API-01
+    freeze_relevant: true
+    status: open
+  - id: F-029
+    severity: P1
+    criterion: API-02
+    freeze_relevant: true
+    status: open
+  - id: F-030
+    severity: P1
+    criterion: API-03
+    freeze_relevant: true
+    status: open
+  - id: F-031
+    severity: P1
+    criterion: API-04
+    freeze_relevant: false
+    status: open
+  - id: F-032
+    severity: P1
+    criterion: API-05
+    freeze_relevant: false
+    status: open
+  - id: F-033
+    severity: P1
+    criterion: API-06
+    freeze_relevant: true
+    status: open
+  - id: F-034
+    severity: P2
+    criterion: API-07
+    freeze_relevant: true
+    status: open
+  - id: F-035
+    severity: P1
+    criterion: OBS-01
+    freeze_relevant: true
+    status: open
+  - id: F-036
+    severity: P3
+    criterion: OBS-02
     freeze_relevant: false
     status: open
