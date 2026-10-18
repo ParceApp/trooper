@@ -243,22 +243,23 @@ dimensions:
         findings: [F-007]
       - id: ARCH-04
         priority: S
-        status: null
+        status: partial
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "docs/audit/raw/duplication.txt (Query~KeyedQuery 40%, Local~KeyedLocal 39%, Stream~KeyedStream 27%; 12 StorageEnvelope constructions, 8 L2 restore paths)"
+        findings: [F-037]
       - id: ARCH-05
         priority: M
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "review storage_backend.dart (one-line docs, no error/concurrency contract; getAllKeys/containsKey/clear unused by the library); no exported contract test kit"
+        findings: [F-038]
       - id: ARCH-06
         priority: C
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
+        evidence: "no ADRs in repository"
         findings: []
+        note: "Could criterion; no finding"
   - id: TEST
     weight: 1
     gate_min_maturity: 2
@@ -283,16 +284,16 @@ dimensions:
         findings: [F-004]
       - id: TEST-04
         priority: M
-        status: null
+        status: partial
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "coverage_bloc lcov: lib/testing.dart 46/46 lines, 21/21 branches; core exports no test helpers; 24 DateTime.now() calls without injectable clock"
+        findings: [F-039]
       - id: TEST-05
         priority: S
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "no property-based tests in packages/*/test (outside the audit's randomized ASYNC-07 probe)"
+        findings: [F-040]
   - id: QUAL
     weight: 1
     gate_min_maturity: 2
@@ -322,10 +323,10 @@ dimensions:
     criteria:
       - id: PERF-01
         priority: M
-        status: null
+        status: partial
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "benchmark/trooper_benchmark.dart covers L1 (raw CacheStore), coalescing, stream dispatch, 10k-key memory; SWR and trooper_bloc derivation missing"
+        findings: [F-041]
       - id: PERF-02
         priority: M
         status: partial
@@ -335,10 +336,10 @@ dimensions:
         note: "no CI; run-to-run variance up to 70%"
       - id: PERF-03
         priority: S
-        status: null
+        status: partial
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "docs/audit/raw/telemetry_overhead.txt (no listener: guarded, listener +8.2%); keyed complexity undocumented; derivations per batch covered by FEAT-06 probe"
+        findings: [F-042]
   - id: SEC
     weight: 1
     gate_min_maturity: 2
@@ -707,5 +708,35 @@ findings:
   - id: F-036
     severity: P3
     criterion: OBS-02
+    freeze_relevant: false
+    status: open
+  - id: F-037
+    severity: P2
+    criterion: ARCH-04
+    freeze_relevant: false
+    status: open
+  - id: F-038
+    severity: P1
+    criterion: ARCH-05
+    freeze_relevant: true
+    status: open
+  - id: F-039
+    severity: P2
+    criterion: TEST-04
+    freeze_relevant: false
+    status: open
+  - id: F-040
+    severity: P2
+    criterion: TEST-05
+    freeze_relevant: false
+    status: open
+  - id: F-041
+    severity: P2
+    criterion: PERF-01
+    freeze_relevant: false
+    status: open
+  - id: F-042
+    severity: P3
+    criterion: PERF-03
     freeze_relevant: false
     status: open

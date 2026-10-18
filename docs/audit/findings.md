@@ -415,3 +415,69 @@ und den Katalog als stabil dokumentieren.
 gibt es nicht; `ConsoleTrooperLogger` gibt jedes Event aus.
 **Nachweis:** Code-Review
 **Empfehlung:** Optionalen Filter (`bool Function(TrooperEvent)`) oder Level im `ConsoleTrooperLogger` anbieten.
+
+### F-037 · P2 · freeze-relevant: nein · Aufwand: L
+**Kriterium:** ARCH-04
+**Ort:** `packages/trooper/lib/src/core/*_trooper.dart`
+**Befund:** Die Keyed- und Non-Keyed-Varianten teilen große Teile ihres Codes per Copy-and-Paste: 40 % der relevanten
+Zeilen von `query_trooper.dart` stehen nahezu identisch in `keyed_query_trooper.dart`, 39 % von `local_trooper.dart`
+in `keyed_local_trooper.dart`, 27 % von `stream_trooper.dart` in `keyed_stream_trooper.dart`. Der Persistenzblock
+(Envelope bauen, schreiben, Fehler melden) existiert 12-mal, der L2-Restore-Pfad 8-mal. Mehrere Findings sind Folgen
+davon: uneinheitliche Fehlerbehandlung (F-021), Bugs nur in einer Variante (F-017).
+**Nachweis:** `docs/audit/raw/duplication.txt` (6-Zeilen-Fenster, normalisiert)
+**Empfehlung:** Persistenz (L2 lesen/schreiben/löschen) und Fetch-Orchestrierung in gemeinsame Bausteine auslagern,
+die beide Varianten nutzen.
+
+### F-038 · P1 · freeze-relevant: ja · Aufwand: M
+**Kriterium:** ARCH-05
+**Ort:** `packages/trooper/lib/src/storage/storage_backend.dart:3-34`, `codec/trooper_codec.dart`, `telemetry/trooper_logger.dart`
+**Befund:** Der Vertrag der Erweiterungspunkte ist dünn. Bei `StorageBackend` sagt die Dartdoc pro Methode nur einen
+Satz: Es bleibt offen, ob Methoden werfen dürfen, was `delete` zurückgibt (`String?`, vermutlich den alten Wert), ob
+Aufrufe parallel erfolgen und ob `clear()` das ganze Backend leert (gefährlich, wenn es mit App-Daten geteilt wird).
+`getAllKeys`, `containsKey` und `clear` werden von der Bibliothek nie aufgerufen, Implementierer müssen sie trotzdem
+liefern. Ein exportiertes Contract-Test-Kit fehlt; `MockStorageBackend` liegt nur in `test/fixtures/`. Das Interface ist
+`abstract interface`: Jede ergänzte Methode bricht nach 1.0 alle Fremd-Implementierungen.
+**Nachweis:** Code-Review; `grep` nach Aufrufen von `getAllKeys`/`containsKey`/`clear` in `lib/` ohne Treffer
+**Empfehlung:** Interface vor dem Freeze auf die genutzten Methoden reduzieren, Fehler- und Nebenläufigkeitsvertrag
+dokumentieren und eine Contract-Test-Suite (z. B. `package:trooper/testing.dart`) exportieren.
+
+### F-039 · P2 · freeze-relevant: nein · Aufwand: M
+**Kriterium:** TEST-04
+**Ort:** `packages/trooper/lib/src/storage/cache_entry.dart:56` u. a. (24 × `DateTime.now()` in `lib/src`)
+**Befund:** `FakeAccessor` in `trooper_bloc/testing.dart` ist vollständig getestet (46/46 Zeilen, 21/21 Branches) und
+dokumentiert. Für Nutzer ohne BLoC gibt es keine Test-Helfer. Vor allem ist die Zeit nicht injizierbar: TTL, Stale-
+Erkennung und Envelope-Ablauf lesen `DateTime.now()` direkt, deshalb kann `fakeAsync` den Cache nicht altern lassen.
+Nutzer können Ablauf- und SWR-Verhalten ihrer App nicht deterministisch testen. Auch dieses Audit musste abgelaufene
+Einträge über `putEntry` mit Vergangenheitsdatum anlegen.
+**Nachweis:** `grep -rn "DateTime.now()" packages/trooper/lib/src` (24 Treffer); `coverage_bloc/lcov.info`
+**Empfehlung:** `package:clock` (wird von `fake_async` gesteuert) oder eine injizierbare Zeitquelle nutzen; einfache
+Test-Helfer für den Core exportieren.
+
+### F-040 · P2 · freeze-relevant: nein · Aufwand: M
+**Kriterium:** TEST-05
+**Ort:** `packages/trooper/test/`
+**Befund:** Es gibt keine Property-Based-Tests für die Invarianten von `CacheStore`, `TrooperQueryQueue` und
+`TrooperMutationQueue`. Der randomisierte Prüftest dieses Audits (ASYNC-07, 1.000 Seeds) zeigt, dass sich das
+Muster mit `fakeAsync` einfach umsetzen lässt, er deckt aber nur `QueryTrooper` mit Default-Policy ab.
+**Nachweis:** Review von `packages/*/test`; `packages/trooper/test/audit/async_audit_test.dart` (ASYNC-07)
+**Empfehlung:** Randomisierte Interleaving-Tests auf alle Conflict-Policies und die Keyed-Varianten ausweiten; das
+hätte F-012 gefunden.
+
+### F-041 · P2 · freeze-relevant: nein · Aufwand: S
+**Kriterium:** PERF-01
+**Ort:** `packages/trooper/benchmark/trooper_benchmark.dart:51` (`benchmarkL1CacheHit`)
+**Befund:** Die Benchmarks decken Coalescing, Stream-Dispatch und Speicher für 10.000 Keys ab. SWR und die Ableitung
+in `trooper_bloc` fehlen. „L1 Cache-Hit“ misst den rohen `CacheStore` (34 ns), nicht den Pfad, den Nutzer aufrufen:
+Ein Cache-Hit über `QueryTrooper.get` kostet etwa 800 ns (`telemetry_overhead.txt`). Das README zitiert die
+schnellere Zahl.
+**Nachweis:** `docs/audit/raw/bench_baseline.txt`, `docs/audit/raw/telemetry_overhead.txt`
+**Empfehlung:** Benchmarks für `QueryTrooper.get` (Hit, SWR), `KeyedQueryTrooper` und `Tubit`-Ableitung ergänzen.
+
+### F-042 · P3 · freeze-relevant: nein · Aufwand: S
+**Kriterium:** PERF-03
+**Ort:** Keyed-Troopers (`invalidateKeys`, `removeWhere`, `currentDataMap` …), `telemetry/telemetry_hub.dart`
+**Befund:** Ohne Listener am `TelemetryHub` verhindert der `hasListeners`-Guard Events, der Overhead ist damit
+vernachlässigbar; mit einem Listener kostet ein Cache-Hit 8,2 % mehr. Die Komplexität der Keyed-Operationen
+(z. B. Iteration über alle Keys) ist nirgends dokumentiert.
+**Nachweis:** `docs/audit/raw/telemetry_overhead.txt` (`benchmark/audit_telemetry_overhead.dart`)
+**Empfehlung:** Komplexität in der Dartdoc der Keyed-Operationen angeben.
