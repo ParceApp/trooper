@@ -11,18 +11,19 @@
 
 ## Ergebnis
 
-**Gate für 1.0: nicht bestanden.** Gesamtscore **30,2 %**. 59 Findings: 1 × P0, 32 × P1, 21 × P2, 5 × P3; 10 davon
-sind freeze-relevant, also nach dem API-Freeze nur noch per Major-Release behebbar.
+**Gate für 1.0: nicht bestanden.** Gesamtscore **29,8 %**. 60 Findings: 4 × P0, 44 × P1, 7 × P2, 5 × P3; 11 davon
+sind freeze-relevant, also nach dem API-Freeze nur noch per Major-Release behebbar. Alle 48 P0/P1-Findings blockieren
+das Gate; ein Finding, das ein Must-Kriterium blockiert, ist mindestens P1.
 
 Der Kern ist solide gebaut: Request-Coalescing, Zero-Flicker-SWR, FIFO-Mutationen, Snapshot-Locking und
 Microtask-Batching funktionieren wie beschrieben, alle Suiten laufen 100-mal flake-frei, auf VM, dart2js und dart2wasm
 grün, ohne bekannte Schwachstellen in den Abhängigkeiten, und `trooper` erreicht bei pana 160/160. Für ein 1.0 fehlen
 drei Dinge:
 
-1. **Korrektheit unter Nebenläufigkeit und Lifecycle.** Ein P0 (`parallel` überschreibt neuere mit älteren Daten,
-   entgegen der Dartdoc) und mehrere P1: `invalidate()`/`clearAll()` lassen persistierte Nutzerdaten auf der Platte,
-   `forward` liefert überholte Ergebnisse aus, Mutationen ignorieren den Abbruch, `KeyedStreamTrooper.dispose()` kann
-   abbrechen.
+1. **Korrektheit, Datenschutz und Lifecycle.** Vier P0: `invalidate()`/`clearAll()` lassen persistierte Nutzerdaten
+   auf der Platte, die der nächste Nutzer angezeigt bekommt; L2-Schlüssel verschiedener Parameter können kollidieren;
+   `KeyedStreamTrooper.dispose()` bricht ab und gibt Ressourcen nicht frei; `parallel` überschreibt neuere mit älteren
+   Daten, entgegen der Dartdoc. Dazu P1: `forward` liefert überholte Ergebnisse aus, Mutationen ignorieren den Abbruch.
 2. **Eine einfrierbare API.** 38 Klassen ohne Modifier, sechs exportierte Implementierungsdetails, zwei `sealed`
    Hierarchien, die nicht wachsen dürfen, und neun Extensions mit 51 Membern, die niemand normal aufrufen kann.
 3. **Absicherung und Vertrag.** Keine CI, Coverage 83,7 % statt 95 %, keine dokumentierten Garantien, und mehrere
@@ -32,8 +33,8 @@ drei Dinge:
 
 | Bedingung (Spec 2.5) | Status |
 |---|---|
-| Alle Must-Kriterien erfüllt | nein: 11 von 55 erfüllt, 13 teilweise, 31 nicht erfüllt |
-| Keine offenen P0/P1-Findings | nein: 1 × P0, 32 × P1 |
+| Alle Must-Kriterien erfüllt | nein: 11 von 55 erfüllt, 12 teilweise, 32 nicht erfüllt |
+| Keine offenen P0/P1-Findings | nein: 4 × P0, 44 × P1 |
 | Reifegrad ≥ 2 überall, API/ASYNC/LIFE/ERR/COMPAT = 3 | nein: ohne CI erreicht keine Dimension Reifegrad 3 |
 | Harte Schwellen | siehe Tabelle |
 
@@ -55,7 +56,7 @@ drei Dinge:
 
 | Dimension | Gewicht | Score | Reifegrad | Gate-Minimum |
 |---|---|---|---|---|
-| FEAT | 1 | 67,5 % | 1 | 2 |
+| FEAT | 1 | 60,0 % | 1 | 2 |
 | ASYNC | 2 | 55,0 % | 1 | 3 |
 | LIFE | 2 | 35,7 % | 1 | 3 |
 | ERR | 2 | 28,6 % | 1 | 3 |
@@ -72,7 +73,7 @@ drei Dinge:
 | OBS | 1 | 20,0 % | 1 | 2 |
 | MARKET | 1 | n/a | 0 | – |
 
-**Gesamtscore: 30,2 %**
+**Gesamtscore: 29,8 %**
 
 Gewichtung: ASYNC, LIFE, ERR und API zählen doppelt. Der Score zeigt den Fortschritt, über die Freigabe entscheidet
 nur das Gate.
@@ -81,14 +82,14 @@ nur das Gate.
 
 | # | Finding | Schwere | freeze | Kurzbeschreibung |
 |---|---|---|---|---|
-| 1 | F-012 | P0 | nein | `QueryConflictPolicy.parallel`: ältere Antwort überschreibt neuere in Stream, Cache und L2; die versprochene Sequence-ID existiert nicht |
-| 2 | F-014 | P1 | nein | `invalidate()` und `clearAll()` löschen L2 nicht; Logout hinterlässt Nutzerdaten, die der nächste Nutzer sieht |
-| 3 | F-044 | P1 | ja | Alle 51 Member der `Parameterless*`-Extensions sind durch Instanzmethoden verdeckt; `accessor.get()` kompiliert nicht |
-| 4 | F-013 | P1 | nein | Default-Policy `forward`: der überholte Aufrufer bekommt das alte Ergebnis, kurzzeitig auch im Stream |
-| 5 | F-017 | P1 | nein | `KeyedStreamTrooper.dispose()` bricht mit `ConcurrentModificationError` ab und gibt Ressourcen nicht frei |
-| 6 | F-016 | P1 | ja | Verhalten nach `dispose` undokumentiert und uneinheitlich; `KeyedStreamTrooper.getKey` hängt für immer |
-| 7 | F-024 | P1 | nein | L2-Envelope-Version wird nie geprüft; Daten unbekannter Formatversionen werden ungeprüft ausgeliefert |
-| 8 | F-020 | P1 | nein | Fehler in Nutzer-Callbacks (Side-Effects, Cancel-Listener) werden spurlos verschluckt |
+| 1 | F-014 | P0 | nein | `invalidate()` und `clearAll()` löschen L2 nicht, auch nicht bei Keyed-Troopers und für Einträge früherer Sitzungen; ein Logout hinterlässt Nutzerdaten, die der nächste Nutzer sieht |
+| 2 | F-060 | P0 | ja | L2-Schlüssel entstehen aus `toString()`; Parameter ohne eigenes `toString` kollidieren, nach einem Kaltstart kommen fremde Daten zurück |
+| 3 | F-017 | P0 | nein | `KeyedStreamTrooper.dispose()` bricht mit `ConcurrentModificationError` ab und gibt Ressourcen nicht frei, auch mit Echtzeit |
+| 4 | F-012 | P0 | nein | `QueryConflictPolicy.parallel`: ältere Antwort überschreibt neuere in Stream, Cache und L2; die versprochene Sequence-ID existiert nicht |
+| 5 | F-044 | P1 | ja | Alle 51 Member der `Parameterless*`-Extensions sind durch Instanzmethoden verdeckt; `accessor.get()` kompiliert nicht |
+| 6 | F-013 | P1 | nein | Default-Policy `forward`: der überholte Aufrufer bekommt das alte Ergebnis, kurzzeitig auch im Stream |
+| 7 | F-016 | P1 | ja | Verhalten nach `dispose` undokumentiert und uneinheitlich; `KeyedStreamTrooper.getKey` hängt für immer |
+| 8 | F-024 | P1 | nein | L2-Envelope-Version wird nie geprüft; Daten unbekannter Formatversionen werden ungeprüft ausgeliefert |
 | 9 | F-029 | P1 | ja | 38 öffentliche Klassen ohne `final`/`base`/`interface`/`sealed` |
 | 10 | F-054 | P1 | nein | Keine CI; keine Schwelle wird automatisch geprüft |
 
@@ -112,21 +113,26 @@ Alle Findings mit Ort, Nachweis und Empfehlung: `docs/audit/findings.md`. Maschi
 
 **Vor dem API-Freeze** (alle freeze-relevanten Findings und die Korrektheits-P0/P1):
 
-1. Korrektheit: F-012, F-013, F-014, F-015, F-017, F-024. Die zugehörigen Prüftests unter `packages/*/test/audit/`
-   sind bereits geschrieben und mit `skip: 'F-NNN'` markiert; sie werden mit dem Fix zu Regressionstests.
+1. Korrektheit und Datenschutz: F-014, F-060, F-017, F-012, dann F-013, F-015, F-024. Die zugehörigen Prüftests unter
+   `packages/*/test/audit/` sind bereits geschrieben und mit `skip: 'F-NNN'` markiert; sie werden mit dem Fix zu
+   Regressionstests. F-014 und F-038 gemeinsam lösen (das Löschen aller Keys eines Namespace braucht eine Aufzählung im
+   `StorageBackend`).
 2. API einfrierbar machen: F-028 (Interna), F-029 (Modifier), F-030 (Redundanzen), F-044 (Parameterless), F-033
    (Re-Exporte), F-022/F-035 (`sealed`), F-034, F-038 (Storage-Vertrag), F-016 (Verhalten nach `dispose`).
    Entscheidungen je Symbol stehen in `docs/audit/api-inventory.md`.
 3. Vertrag schreiben: Garantien (F-048), Deprecation-Policy (F-031), Versionsstrategie (F-052).
 
-**Infrastruktur für 1.0** (parallel zu 1. und 2.):
+**Ebenfalls vor 1.0** (alle übrigen P1-Findings blockieren das Gate, können aber parallel zu 1. und 2. laufen):
 
-4. CI mit den Skripten aus `tool/audit/scripts/` (F-054): Analyzer mit VGA (F-001), Coverage-Schwellen (F-003),
-   SDK-/Web-Matrix (F-005), API-Diff (F-032), Snippet- und Linkcheck (F-043, F-045), OSV (F-058).
-5. Doku und Release: F-002, F-009, F-010, F-043, F-045, F-049, F-050.
+4. CI mit den Skripten aus `tool/audit/scripts/` (F-054): Analyzer mit VGA (F-001), Coverage und Mutation-Score
+   (F-003, F-059), SDK-/Web-Matrix (F-005), API-Diff (F-032), Snippet- und Linkcheck (F-043, F-045), OSV (F-058),
+   Benchmarks mit stabiler Messung (F-011, F-041), Schichtregel (F-006).
+5. Robustheit und Tests: F-019, F-020, F-021, F-023, F-004, F-039, F-026, F-027.
+6. Doku, Release, Governance: F-002, F-009, F-010, F-043, F-045, F-046, F-047, F-050, F-052, F-055, F-056.
 
-**Danach in 1.x möglich:** die übrigen P2/P3-Findings (u. a. Duplikation F-037, Komplexität F-008, Jitter F-023,
-Benchmarks F-011/F-041, Governance-Dateien F-055–F-057).
+**Danach in 1.x möglich** (P2/P3): Dateigröße und Duplikation (F-007, F-037), Komplexität (F-008), Retry-Timer nach
+`dispose` (F-018), Property-Based-Tests (F-040), CHANGELOG-Format (F-049), Branch-Protection und Dependabot (F-057),
+sowie F-025, F-036, F-042, F-051, F-053.
 
 ## Grenzen dieses Audits
 
@@ -136,7 +142,12 @@ Benchmarks F-011/F-041, Governance-Dateien F-055–F-057).
   Das Ergebnis (98 % des Warm-up-Werts) ist ein Indiz, kein Beweis für Leckfreiheit.
 - **Leak-Tracking:** `leak_tracker` instrumentiert nur Flutter-Disposables, nicht die Trooper-Typen; dafür gibt es
   eigene Prüftests (LIFE-01/02).
-- **F-017** ist nur unter `fakeAsync` deterministisch reproduzierbar; mit Echtzeit hängt der Fehler vom Timing ab.
+- **Unabhängiges Review:** Ein frischer Reviewer hat die Findings stichprobenartig gegen den Code geprüft (keine
+  Fehlbefunde) und dabei F-060 gefunden, F-014 auf Keyed-Troopers erweitert und gezeigt, dass F-017 auch mit Echtzeit
+  auftritt. Daraufhin wurden F-014 und F-017 auf P0 und 14 Findings, die Must-Kriterien blockieren, von P2 auf P1
+  angehoben.
+- **Mutation-Teilmengen:** Jede Modulgruppe nutzt gezielte Test-Teilmengen (`tool/audit/mutation/*.xml`); Mutanten,
+  die nur andere Tests erkennen würden, zählen als überlebend.
 - **pana für `trooper_bloc`** ist erst nach dem Release von `trooper` aussagekräftig.
 - Die Prüftests prüfen die Garantien, die Doku und Dartdoc versprechen, oder bei fehlender Doku eine plausible
   Erwartung. Wo die Erwartung strittig ist (z. B. `StateError` nach `dispose`), steht das im Finding.
@@ -145,7 +156,7 @@ Benchmarks F-011/F-041, Governance-Dateien F-055–F-057).
 
 | Datei | Inhalt |
 |---|---|
-| `docs/audit/criteria.yaml` | 74 Kriterien mit Status und Nachweis, 59 Findings |
+| `docs/audit/criteria.yaml` | 74 Kriterien mit Status und Nachweis, 60 Findings |
 | `docs/audit/findings.md` | alle Findings im Format der Spec 6.2 |
 | `docs/audit/traceability.md` | 30 Feature-Claims mit Beleg |
 | `docs/audit/api-inventory.md` | Entscheidung je exportiertem Symbol |

@@ -20,10 +20,21 @@ void expectNoFlicker<T>(List<StatefulData<T>> states) {
 
 class _SharedQueueController extends TrooperController {
   _SharedQueueController(TrooperQueryQueue queue, this.fetch)
-      : super(defaultQueryQueue: queue);
+    : super(defaultQueryQueue: queue);
   final Future<String> Function() fetch;
-  late final profile =
-      query<String, ()>(namespace: 'f03_shared', fetch: (_) => fetch());
+  late final profile = query<String, ()>(
+    namespace: 'f03_shared',
+    fetch: (_) => fetch(),
+  );
+}
+
+class _Filter {
+  const _Filter(this.id);
+  final String id;
+  @override
+  bool operator ==(Object other) => other is _Filter && other.id == id;
+  @override
+  int get hashCode => id.hashCode;
 }
 
 void main() {
@@ -31,7 +42,9 @@ void main() {
     test('QueryTrooper refresh keeps data visible', () async {
       var n = 0;
       final q = QueryTrooper<String, ()>(
-          namespace: 'f02q', fetch: (_) async => 'v${n++}');
+        namespace: 'f02q',
+        fetch: (_) async => 'v${n++}',
+      );
       final states = <StatefulData<String>>[];
       q.stream.listen(states.add);
       await q.get(());
@@ -45,7 +58,9 @@ void main() {
     test('KeyedQueryTrooper refresh keeps data visible', () async {
       var n = 0;
       final q = KeyedQueryTrooper<String, String, ()>(
-          namespace: 'f02k', fetch: (k, _) async => '$k${n++}');
+        namespace: 'f02k',
+        fetch: (k, _) async => '$k${n++}',
+      );
       final states = <StatefulData<String>>[];
       q['a'].stream.listen(states.add);
       await q['a'].get(());
@@ -96,28 +111,30 @@ void main() {
       });
     }
 
-    test('two controllers sharing a TrooperQueryQueue share one fetch',
-        () async {
-      var calls = 0;
-      final gate = Completer<String>();
-      Future<String> fetch() {
-        calls++;
-        return gate.future;
-      }
+    test(
+      'two controllers sharing a TrooperQueryQueue share one fetch',
+      () async {
+        var calls = 0;
+        final gate = Completer<String>();
+        Future<String> fetch() {
+          calls++;
+          return gate.future;
+        }
 
-      final queue = TrooperQueryQueue();
-      final a = _SharedQueueController(queue, fetch);
-      final b = _SharedQueueController(queue, fetch);
-      final fa = a.profile.get(());
-      final fb = b.profile.get(());
-      gate.complete('v');
-      expect(await fa, 'v');
-      expect(await fb, 'v');
-      expect(calls, 1);
-      await a.dispose();
-      await b.dispose();
-      await queue.dispose();
-    });
+        final queue = TrooperQueryQueue();
+        final a = _SharedQueueController(queue, fetch);
+        final b = _SharedQueueController(queue, fetch);
+        final fa = a.profile.get(());
+        final fb = b.profile.get(());
+        gate.complete('v');
+        expect(await fa, 'v');
+        expect(await fb, 'v');
+        expect(calls, 1);
+        await a.dispose();
+        await b.dispose();
+        await queue.dispose();
+      },
+    );
   });
 
   group('FEAT-05 L1/L2 interplay', () {
@@ -147,6 +164,24 @@ void main() {
       expect(calls, 0);
       await second.dispose();
     });
+
+    test('L2 keys of different parameters do not collide', () async {
+      final storage = InMemoryStorageBackend();
+      QueryTrooper<String, ({_Filter f})> make() => QueryTrooper(
+        namespace: 'f05k',
+        fetch: (p) async => 'data-for-${p.f.id}',
+        codec: TrooperCodec.string,
+        config: TrooperConfig(storage: storage),
+      );
+      final writer = make();
+      await writer.get((f: const _Filter('B')));
+      await pumpEventQueue();
+      await writer.dispose();
+
+      final reader = make(); // cold start
+      expect(await reader.get((f: const _Filter('A'))), 'data-for-A');
+      await reader.dispose();
+    }, skip: 'F-060');
 
     test('fetch result is written through to L2', () async {
       final storage = InMemoryStorageBackend();

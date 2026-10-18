@@ -1,6 +1,8 @@
 # Audit Findings
 
 Format nach Spec 6.2. Sortiert nach Schwere (P0 → P3), innerhalb einer Stufe nach ID.
+Regel für die Einstufung: Ein Finding, das ein Must-Kriterium blockiert, ist mindestens P1, denn ohne seine
+Behebung kann das Gate (Spec 2.5) nicht bestehen.
 Maschinenlesbarer Status: `docs/audit/criteria.yaml` (Liste `findings`).
 
 ### F-012 · P0 · freeze-relevant: nein · Aufwand: M
@@ -16,6 +18,53 @@ und `KeyedQueryTrooper`; mit `cancel` und `forward` ist der Endzustand korrekt.
 **Nachweis:** `packages/trooper/test/audit/async_audit_test.dart` – „ASYNC-01 … QueryConflictPolicy.parallel“ (2 Tests, rot)
 **Empfehlung:** Pro Slot eine monoton steigende Request-Sequenz führen und nur Ergebnisse übernehmen, deren Sequenz
 nicht älter als die zuletzt übernommene ist.
+
+### F-014 · P0 · freeze-relevant: nein · Aufwand: M
+**Kriterium:** ASYNC-02
+**Ort:** `packages/trooper/lib/src/core/trooper.dart:172` (`invalidate`), `packages/trooper/lib/src/core/accessor.dart:58`,
+`packages/trooper/lib/src/core/keyed_trooper.dart:181-212,286-290` (`invalidateKey`, `invalidate`, `clearAll`),
+`packages/trooper/lib/src/controller/trooper_controller.dart:651` (`clearAll`)
+**Befund:** Laut Dartdoc „removes storage“ entfernt `invalidate()` auch den L2-Eintrag. Tatsächlich bleibt er erhalten
+und wird beim nächsten `get` wiederhergestellt, bei nicht-keyed **und** bei keyed Troopers.
+`TrooperController.clearAll()` löscht persistierte Daten ebenfalls nicht. `KeyedTrooper.clearAll` leert
+`_lastParams` synchron, bevor `controller.invalidate()` läuft; `invalidate`/`invalidateKey` löschen nur Keys,
+deren Parameter im Speicher bekannt sind. Einträge aus früheren App-Sitzungen werden deshalb nie gelöscht.
+Ein Logout per `clearAll()` hinterlässt so Nutzerdaten auf der Platte (im Test: E-Mail-Adressen), und der nächste
+Nutzer bekommt sie aus L2 angezeigt. Das ist Default-Verhalten, bricht ein dokumentiertes Versprechen und legt
+personenbezogene Daten offen, deshalb P0 (Spec 2.3: Sicherheitslücke, Datenschutz). Zusätzlich bricht
+`invalidate()` laufende Requests mit `TrooperCancelledException` ab, was nirgends dokumentiert ist.
+**Nachweis:** `async_audit_test.dart` – „invalidate removes L2 storage as documented“, „controller.clearAll removes
+persisted QueryTrooper data“, „controller.clearAll removes persisted KeyedQueryTrooper data“, „keyed invalidate purges
+L2 entries from an earlier session“ (alle rot)
+**Empfehlung:** `invalidate()` und `clearAll()` löschen alle Storage-Keys ihres Namespace, auch solche aus früheren
+Sitzungen. Das braucht eine Aufzählung der Keys pro Namespace im `StorageBackend` (siehe F-038). Alternativ die Doku
+korrigieren und eine explizite `purge()`-API ergänzen. Das Abbruchverhalten dokumentieren.
+
+### F-017 · P0 · freeze-relevant: nein · Aufwand: S
+**Kriterium:** LIFE-02
+**Ort:** `packages/trooper/lib/src/core/keyed_stream_trooper.dart:718`
+**Befund:** `KeyedStreamTrooper.dispose()` iteriert über `_subscriptions.values` und wartet dabei mit `await sub.cancel()`.
+Verändert ein Callback die Map während dieses `await`, bricht `dispose()` mit `ConcurrentModificationError` ab. Die
+restlichen Subscriptions werden dann nicht gekündigt, und `super.dispose()` (Stream-Controller, Queue, Cache) läuft
+nicht: ein Ressourcenleck, deshalb P0 (Spec 2.3). Der Fehler tritt auch mit Echtzeit auf, ein typischer Auslöser ist
+ein Listener, der beim ersten `DataLoaded` `dispose()` aufruft. (Die erste Einschätzung, er sei nur unter `fakeAsync`
+reproduzierbar, hat das unabhängige Review widerlegt.)
+**Nachweis:** `lifecycle_audit_test.dart` – „LIFE-02 KeyedStreamTrooper dispose from a listener (real time)“ und
+„LIFE-02 KeyedStreamTrooper leaves no timers after dispose“ (beide rot, Stacktrace `keyed_stream_trooper.dart 718:38`)
+**Empfehlung:** Vor der Schleife eine Kopie ziehen (`List.of(_subscriptions.values)`), Map sofort leeren, dann kündigen.
+
+### F-060 · P0 · freeze-relevant: ja · Aufwand: M
+**Kriterium:** FEAT-05
+**Ort:** `packages/trooper/lib/src/key/query_key.dart:79-84` (`storageKey`)
+**Befund:** Der L2-Schlüssel entsteht aus `'$parameter'`, also aus `toString()`. Enthält ein Record-Parameter eine
+Klasse ohne eigenes `toString`, ergibt jeder Wert denselben Schlüssel (`…:(f: Instance of 'Filter')`). Nach einem
+Kaltstart liefert `get((f: Filter('A')))` dann die gespeicherten Daten von `Filter('B')`. Im L1-Cache passiert das
+nicht, weil `QueryKey` dort mit `==` verglichen wird. Außerdem stehen Parameter im Klartext im Schlüssel; ein
+verschlüsselnder Codec (Hook aus F-026) schützt sie nicht. Eine Korrektur ändert das persistierte Format oder braucht
+eine API für eigene Schlüssel, ist also freeze-relevant. Gefunden hat das das unabhängige Review.
+**Nachweis:** `packages/trooper/test/audit/feature_audit_test.dart` – „L2 keys of different parameters do not collide“ (rot)
+**Empfehlung:** Schlüssel aus einer stabilen, kanonischen Serialisierung der Parameter bilden (oder einen
+`keyBuilder` verlangen, wenn Parameter nicht serialisierbar sind), optional gehasht; Format versionieren (vgl. F-024).
 
 ### F-001 · P1 · freeze-relevant: nein · Aufwand: M
 **Kriterium:** QUAL-01
@@ -56,6 +105,39 @@ Am schwächsten abgedeckt sind die Stream- und Keyed-Varianten sowie der Control
 **Empfehlung:** Tests für die genannten Dateien ergänzen, beginnend mit Fehler- und Dispose-Pfaden der Stream-Troopers;
 Coverage-Schwelle in der CI erzwingen.
 
+### F-004 · P1 · freeze-relevant: nein · Aufwand: M
+**Kriterium:** TEST-03
+**Ort:** `packages/trooper/test/core/stream_trooper_test.dart` (16 Stellen), `core/keyed_stream_trooper_test.dart` (12),
+`edge_cases/swr_sequence_test.dart` (10), `stream/keyed_stateful_stream_test.dart` (8) u. a.
+**Befund:** Beide Suiten liefen 100-mal mit zufälliger Reihenfolge ohne Fehler. Die Tests steuern Zeit aber an 121
+Stellen mit echtem `Future.delayed`; `fake_async` ist als Dev-Dependency eingetragen, wird jedoch in keiner Testdatei
+verwendet. Die Tests hängen damit von realen Laufzeiten ab (z. B. 50 ms vs. 10 ms in `out_of_order_test.dart`) und
+können auf langsamen CI-Runnern kippen; zudem verlängern sie die Laufzeit.
+**Nachweis:** `docs/audit/raw/flake_trooper.txt`, `docs/audit/raw/flake_trooper_bloc.txt`, `docs/audit/raw/real_delays.txt`
+**Empfehlung:** Zeitabhängige Tests auf `fakeAsync` oder `Completer` umstellen.
+
+### F-005 · P1 · freeze-relevant: nein · Aufwand: S
+**Kriterium:** COMPAT-01
+**Ort:** `packages/trooper/pubspec.yaml` (`dev_dependencies`), `pubspec.yaml` (Workspace)
+**Befund:** Mit allen Abhängigkeiten auf ihrer Untergrenze (`flutter pub downgrade`) lassen sich die Tests von
+`trooper` nicht mehr laden: `frontend_server_client` 3.2.0 sucht einen Snapshot, den Dart 3.13 nicht mehr enthält.
+Betroffen ist nur die Dev-Toolchain; mit den Laufzeit-Abhängigkeiten auf ihrer Untergrenze (`meta` 1.19.0, `bloc` 9.0.0,
+`flutter_bloc` 9.1.1) laufen beide Suiten grün. Die SDK-Untergrenze `^3.12.0` ist ungetestet, lokal ist nur Dart 3.13.5
+verfügbar und es gibt keine CI-Matrix.
+**Nachweis:** `docs/audit/raw/downgrade_trooper.txt`, `downgrade_versions.txt`, `downgrade_runtime_*.txt`
+(`tool/audit/scripts/compat.sh`)
+**Empfehlung:** Untergrenzen der Dev-Dependencies anheben (`test`, `coverage`), Min-SDK-Job in der CI ergänzen.
+
+### F-006 · P1 · freeze-relevant: nein · Aufwand: S
+**Kriterium:** ARCH-02
+**Ort:** `packages/trooper/lib/src/telemetry/telemetry_hub.dart`, `packages/trooper/lib/src/telemetry/trooper_logger.dart`
+**Befund:** Der Import-Graph von `trooper` ist nicht azyklisch: `telemetry_hub.dart` und `trooper_logger.dart`
+importieren sich gegenseitig. Alle übrigen 40 Dateien sind zyklenfrei, `trooper_bloc` ebenfalls. Eine Schichtregel
+(welches Modul darf welches importieren) ist nirgends definiert oder automatisiert geprüft.
+**Nachweis:** `docs/audit/raw/lakos_trooper.json` (`isAcyclic: false`, `firstCycle`), `tool/audit/scripts/api_arch.sh`
+**Empfehlung:** Zyklus auflösen (Logger hängt vom Hub ab, nicht umgekehrt), Schichtregel dokumentieren und
+`lakos --no-cycles-allowed` in die CI aufnehmen.
+
 ### F-009 · P1 · freeze-relevant: nein · Aufwand: S
 **Kriterium:** REL-01
 **Ort:** `packages/trooper_bloc/CHANGELOG.md:1`, `packages/trooper_bloc/pubspec.yaml` (`version: 0.1.2-beta.1`)
@@ -79,6 +161,16 @@ in `packages/trooper/doc/` wird vom README eingebunden.
 **Nachweis:** `grep -n "file:///"` auf die ausgelieferten Dateien; Dateilisten in `docs/audit/raw/dryrun_*.txt`
 **Empfehlung:** Relative Links oder GitHub-URLs verwenden; einen Linkcheck gegen `file://` in die CI aufnehmen.
 
+### F-011 · P1 · freeze-relevant: nein · Aufwand: M
+**Kriterium:** PERF-02
+**Ort:** `packages/trooper/benchmark/trooper_benchmark.dart`
+**Befund:** Eine Baseline liegt jetzt vor (Median aus drei Läufen, `bench_baseline.txt`), aber die Läufe streuen stark:
+Im zweiten Lauf lagen alle vier Benchmarks 20–70 % unter den anderen beiden (z. B. Request-Coalescing 45.983 statt
+~131.000 ops/s). Mit dieser Streuung ist eine 10-%-Regressionsschranke nicht belastbar. Eine CI-Prüfung fehlt ganz.
+**Nachweis:** `docs/audit/raw/bench_run1.txt` … `bench_run3.txt`, `docs/audit/raw/bench_baseline.txt`
+**Empfehlung:** Warm-up und mehrere Messwiederholungen pro Benchmark (z. B. `benchmark_harness`), Median und Streuung
+ausgeben; Regressionsprüfung erst auf dieser Basis in die CI aufnehmen.
+
 ### F-013 · P1 · freeze-relevant: nein · Aufwand: M
 **Kriterium:** ASYNC-02
 **Ort:** `packages/trooper/lib/src/concurrency/query_queue.dart:107` (`_linkCompleter`) und `:137` (`completer.complete(result)`)
@@ -90,20 +182,6 @@ selbst, bevor der verlinkte neue Request fertig ist. Der Endzustand ist korrekt,
 **Nachweis:** `async_audit_test.dart` – „ASYNC-02 … refresh (forward): first caller receives the newer result“ (rot)
 **Empfehlung:** Bei `forward` den Completer des überholten Requests ausschließlich über den neuen Request vervollständigen
 und das Ergebnis des alten verwerfen.
-
-### F-014 · P1 · freeze-relevant: nein · Aufwand: S
-**Kriterium:** ASYNC-02
-**Ort:** `packages/trooper/lib/src/core/trooper.dart:172` (`invalidate`), `packages/trooper/lib/src/core/accessor.dart:58`,
-`packages/trooper/lib/src/controller/trooper_controller.dart:651` (`clearAll`)
-**Befund:** Laut Dartdoc „removes storage“ entfernt `invalidate()` auch den L2-Eintrag; tatsächlich bleibt er erhalten
-und wird beim nächsten `get` wiederhergestellt. Auch `TrooperController.clearAll()` löscht persistierte Daten
-nicht-keyed Troopers nicht. Ein Logout per `clearAll()` hinterlässt damit Nutzerdaten (im Test: eine E-Mail-Adresse)
-auf der Platte, und der nächste Nutzer bekommt sie aus L2 angezeigt. Zusätzlich bricht `invalidate()` laufende
-Requests mit `TrooperCancelledException` ab, was nirgends dokumentiert ist.
-**Nachweis:** `async_audit_test.dart` – „invalidate removes L2 storage as documented“ und
-„controller.clearAll removes persisted QueryTrooper data“ (beide rot)
-**Empfehlung:** `invalidate()` und `clearAll()` löschen die zugehörigen Storage-Keys (oder die Doku wird korrigiert und
-eine explizite `purge()`-API ergänzt); Abbruchverhalten dokumentieren.
 
 ### F-015 · P1 · freeze-relevant: nein · Aufwand: S
 **Kriterium:** ASYNC-05
@@ -128,17 +206,6 @@ ein Breaking Change.
 **Nachweis:** `packages/trooper/test/audit/lifecycle_audit_test.dart` – „LIFE-01 <Typ> use after dispose fails with StateError“
 (5 Tests rot)
 **Empfehlung:** Einheitlich `StateError` nach `dispose` werfen, im Vertrag von `LifecycleAware` dokumentieren und testen.
-
-### F-017 · P1 · freeze-relevant: nein · Aufwand: S
-**Kriterium:** LIFE-02
-**Ort:** `packages/trooper/lib/src/core/keyed_stream_trooper.dart:718`
-**Befund:** `KeyedStreamTrooper.dispose()` iteriert über `_subscriptions.values` und wartet dabei mit `await sub.cancel()`.
-Verändert ein Callback die Map während dieses `await`, bricht `dispose()` mit `ConcurrentModificationError` ab. Die
-restlichen Subscriptions werden dann nicht gekündigt, und `super.dispose()` (Stream-Controller, Queue, Cache) läuft
-nicht. Unter `fakeAsync` ist das reproduzierbar, mit Echtzeit hängt es vom Timing ab.
-**Nachweis:** `lifecycle_audit_test.dart` – „LIFE-02 KeyedStreamTrooper leaves no timers after dispose“ (rot, Stacktrace
-`keyed_stream_trooper.dart 718:38`)
-**Empfehlung:** Vor der Schleife eine Kopie ziehen (`List.of(_subscriptions.values)`), Map sofort leeren, dann kündigen.
 
 ### F-019 · P1 · freeze-relevant: nein · Aufwand: M
 **Kriterium:** LIFE-03
@@ -192,6 +259,15 @@ durchgereicht, das ist vertretbar. Weil die Klasse `sealed` ist, bricht jeder na
 **Empfehlung:** Vor dem Freeze `TrooperCodecException` ergänzen und entscheiden, ob die Hierarchie `sealed` bleiben soll
 (Erweiterbarkeit) oder bewusst geschlossen ist.
 
+### F-023 · P1 · freeze-relevant: nein · Aufwand: S
+**Kriterium:** ERR-03
+**Ort:** `packages/trooper/lib/src/config/retry_policy.dart` (`delayForAttempt`)
+**Befund:** Backoff, Obergrenze und `retryWhen` arbeiten exakt wie konfiguriert (Aufrufe bei 0/100/300/700 ms bzw.
+0/100/300/550 ms mit `maxDelay`). Jitter fehlt: Alle Clients wiederholen nach einem Serverausfall im selben Takt
+(Thundering Herd).
+**Nachweis:** `error_audit_test.dart` – ERR-03-Gruppe (3 grün, „backoff applies jitter“ rot)
+**Empfehlung:** Optionalen Jitter (z. B. „full jitter“) ergänzen, per Parameter abschaltbar für deterministische Tests.
+
 ### F-024 · P1 · freeze-relevant: nein · Aufwand: M
 **Kriterium:** ERR-04
 **Ort:** `packages/trooper/lib/src/storage/storage_envelope.dart:59-61` und alle L2-Lesepfade (z. B. `query_trooper.dart:140-147`)
@@ -204,6 +280,26 @@ Fetch zurück (aber still, siehe F-021). Die Hypothese ERR-04 aus Spec §5 ist b
 „wrong payload type“ (grün)
 **Empfehlung:** Unbekannte und fehlende Versionen verwerfen, einen Migrations-Hook pro Codec/Trooper vorsehen und
 das Format in der Doku als stabil beschreiben.
+
+### F-026 · P1 · freeze-relevant: nein · Aufwand: S
+**Kriterium:** SEC-01
+**Ort:** `packages/trooper/lib/src/storage/storage_backend.dart`, `codec/trooper_codec.dart`, READMEs, `skills/*/SKILL.md`
+**Befund:** L2 speichert Payloads als Klartext-JSON. Ein Verschlüsselungs-Hook ist strukturell möglich (eigenes
+`StorageBackend` oder eigener `TrooperCodec` als Wrapper), aber nirgends dokumentiert; README, Dartdoc und Skills
+erwähnen weder Klartext-Persistenz noch den Umgang mit sensiblen Daten.
+**Nachweis:** Code-Review; `grep` nach „encrypt|plaintext|sensitive“ ohne Treffer
+**Empfehlung:** Abschnitt „Sensible Daten“ mit Beispiel eines verschlüsselnden Backends (z. B. über
+`flutter_secure_storage`) ergänzen.
+
+### F-027 · P1 · freeze-relevant: nein · Aufwand: S
+**Kriterium:** SEC-02
+**Ort:** `packages/trooper/lib/src/telemetry/trooper_logger.dart` (`ConsoleTrooperLogger.log`),
+`key/query_key.dart:87` (`describe`), `telemetry/trooper_event.dart` (`toString` von `RequestErrorEvent` u. a.)
+**Befund:** Der Logger ist opt-in (`attach()`) und gibt keine Antwort-Payloads aus. Er gibt aber jeden Query-Parameter
+im Klartext aus (`QueryKey.describe()`) sowie `error.toString()`. Parameter enthalten in der Praxis häufig
+personenbezogene Daten (im Test: eine E-Mail-Adresse), die so in Konsolen- und Crash-Logs landen.
+**Nachweis:** `error_audit_test.dart` – „SEC-02 … logger does not print query parameters“ (rot), „… response payloads“ (grün)
+**Empfehlung:** Parameter standardmäßig maskieren oder nur ihren Hash loggen; Ausgabe per Option aktivierbar machen.
 
 ### F-028 · P1 · freeze-relevant: ja · Aufwand: M
 **Kriterium:** API-01
@@ -305,8 +401,33 @@ Aufrufe parallel erfolgen und ob `clear()` das ganze Backend leert (gefährlich,
 liefern. Ein exportiertes Contract-Test-Kit fehlt; `MockStorageBackend` liegt nur in `test/fixtures/`. Das Interface ist
 `abstract interface`: Jede ergänzte Methode bricht nach 1.0 alle Fremd-Implementierungen.
 **Nachweis:** Code-Review; `grep` nach Aufrufen von `getAllKeys`/`containsKey`/`clear` in `lib/` ohne Treffer
-**Empfehlung:** Interface vor dem Freeze auf die genutzten Methoden reduzieren, Fehler- und Nebenläufigkeitsvertrag
-dokumentieren und eine Contract-Test-Suite (z. B. `package:trooper/testing.dart`) exportieren.
+**Empfehlung:** Den Vertrag vor dem Freeze bewusst festlegen: Für den Fix von F-014 (Löschen aller Keys eines
+Namespace, auch aus früheren Sitzungen) braucht die Bibliothek eine Aufzählung oder ein präfixbasiertes Löschen
+(z. B. `getAllKeys` beibehalten oder durch `deleteWhere(prefix)` ersetzen); ungenutzte Methoden wie `containsKey` und ein
+backendweites `clear()` entfallen. Fehler- und Nebenläufigkeitsvertrag dokumentieren und eine Contract-Test-Suite
+(z. B. `package:trooper/testing.dart`) exportieren.
+
+### F-039 · P1 · freeze-relevant: nein · Aufwand: M
+**Kriterium:** TEST-04
+**Ort:** `packages/trooper/lib/src/storage/cache_entry.dart:56` u. a. (24 × `DateTime.now()` in `lib/src`)
+**Befund:** `FakeAccessor` in `trooper_bloc/testing.dart` ist vollständig getestet (46/46 Zeilen, 21/21 Branches) und
+dokumentiert. Für Nutzer ohne BLoC gibt es keine Test-Helfer. Vor allem ist die Zeit nicht injizierbar: TTL, Stale-
+Erkennung und Envelope-Ablauf lesen `DateTime.now()` direkt, deshalb kann `fakeAsync` den Cache nicht altern lassen.
+Nutzer können Ablauf- und SWR-Verhalten ihrer App nicht deterministisch testen. Auch dieses Audit musste abgelaufene
+Einträge über `putEntry` mit Vergangenheitsdatum anlegen.
+**Nachweis:** `grep -rn "DateTime.now()" packages/trooper/lib/src` (24 Treffer); `coverage_bloc/lcov.info`
+**Empfehlung:** `package:clock` (wird von `fake_async` gesteuert) oder eine injizierbare Zeitquelle nutzen; einfache
+Test-Helfer für den Core exportieren.
+
+### F-041 · P1 · freeze-relevant: nein · Aufwand: S
+**Kriterium:** PERF-01
+**Ort:** `packages/trooper/benchmark/trooper_benchmark.dart:51` (`benchmarkL1CacheHit`)
+**Befund:** Die Benchmarks decken Coalescing, Stream-Dispatch und Speicher für 10.000 Keys ab. SWR und die Ableitung
+in `trooper_bloc` fehlen. „L1 Cache-Hit“ misst den rohen `CacheStore` (34 ns), nicht den Pfad, den Nutzer aufrufen:
+Ein Cache-Hit über `QueryTrooper.get` kostet etwa 800 ns (`telemetry_overhead.txt`); die Benchmark-Tabelle
+suggeriert damit einen 20-fach schnelleren Pfad, als Nutzer tatsächlich bekommen.
+**Nachweis:** `docs/audit/raw/bench_baseline.txt`, `docs/audit/raw/telemetry_overhead.txt`
+**Empfehlung:** Benchmarks für `QueryTrooper.get` (Hit, SWR), `KeyedQueryTrooper` und `Tubit`-Ableitung ergänzen.
 
 ### F-043 · P1 · freeze-relevant: nein · Aufwand: M
 **Kriterium:** FEAT-07 (auch DOC-06)
@@ -367,6 +488,14 @@ die Suite des Packages nicht.
 **Empfehlung:** Widerlegte Claims korrigieren oder implementieren; die Audit-Prüftests für C-005 und C-024 in die
 reguläre Suite übernehmen.
 
+### F-047 · P1 · freeze-relevant: nein · Aufwand: M
+**Kriterium:** DOC-03
+**Ort:** `packages/trooper/README.md`, `packages/trooper_bloc/README.md`
+**Befund:** Quickstart und Zustandsmodell sind gut erklärt; Rezepte gibt es für Pagination und Retry. Eine FAQ fehlt,
+ebenso Rezepte für häufige Aufgaben wie Logout/Reset, Optimistic Updates, Offline-Betrieb oder Tests ohne BLoC.
+**Nachweis:** Review der READMEs (Überschriften-Inventar)
+**Empfehlung:** FAQ und Rezeptsammlung ergänzen, insbesondere „Nutzerdaten beim Logout löschen“ (vgl. F-014).
+
 ### F-048 · P1 · freeze-relevant: nein · Aufwand: M
 **Kriterium:** DOC-04
 **Ort:** Doku insgesamt
@@ -378,6 +507,15 @@ sind Abweichungen von impliziten, nirgends festgeschriebenen Erwartungen.
 **Nachweis:** Review von README, Dartdoc und Skills
 **Empfehlung:** Abschnitt „Guarantees“ schreiben und jede Garantie mit einem Test verknüpfen (die Audit-Prüftests sind
 ein Ausgangspunkt).
+
+### F-050 · P1 · freeze-relevant: nein · Aufwand: S
+**Kriterium:** COMPAT-03
+**Ort:** `packages/trooper_bloc/pubspec.yaml:17-18`
+**Befund:** `trooper_bloc` verlangt `sdk: ^3.12.0`, aber `flutter: ">=3.24.0"`. Flutter 3.24 bringt Dart 3.5 mit;
+die Flutter-Untergrenze ist damit wirkungslos und täuscht Kompatibilität mit älteren Flutter-Versionen vor. Das
+Root-README wiederholt „Flutter ≥ 3.24“ als Badge. Die Hypothese COMPAT-03 aus Spec §5 ist bestätigt.
+**Nachweis:** Review `pubspec.yaml`; `docs/audit/raw/linkcheck.txt` (Badge)
+**Empfehlung:** Flutter-Untergrenze auf die erste Flutter-Version mit Dart 3.12 anheben und Badge angleichen.
 
 ### F-052 · P1 · freeze-relevant: nein · Aufwand: M
 **Kriterium:** REL-02
@@ -399,6 +537,30 @@ erreichen.
 **Nachweis:** Repository-Inhalt; `automated_in_ci: false` für alle Kriterien in `docs/audit/criteria.yaml`
 **Empfehlung:** Workflow mit den Skripten aus `tool/audit/scripts/` als Ausgangspunkt aufsetzen.
 
+### F-055 · P1 · freeze-relevant: nein · Aufwand: S
+**Kriterium:** GOV-02
+**Ort:** Repository-Root
+**Befund:** `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` sowie Issue- und PR-Templates fehlen; das README hat einen
+vierzeiligen Contributing-Abschnitt.
+**Nachweis:** `ls -a` im Root; GitHub-API
+**Empfehlung:** Die drei Dateien und Templates (Bug, Feature, PR-Checkliste) ergänzen.
+
+### F-056 · P1 · freeze-relevant: nein · Aufwand: S
+**Kriterium:** GOV-03
+**Ort:** Doku
+**Befund:** Es gibt keine Support-Policy: welche Dart- und Flutter-Versionen unterstützt werden, wie lange 1.x
+gepflegt wird und wie Sicherheitsfixes zurückportiert werden.
+**Nachweis:** Review von README und Repository
+**Empfehlung:** Support-Policy im README oder in `SUPPORT.md` festhalten.
+
+### F-058 · P1 · freeze-relevant: nein · Aufwand: S
+**Kriterium:** SEC-04
+**Ort:** Repository-Root
+**Befund:** Der OSV-Scan findet keine bekannten Schwachstellen in den 69 aufgelösten Paketen. Eine `SECURITY.md` mit
+Meldeweg für Sicherheitslücken fehlt; der OSV-Scan läuft nicht in der CI.
+**Nachweis:** `docs/audit/raw/osv.txt`
+**Empfehlung:** `SECURITY.md` anlegen (Kontakt, Antwortzeiten, unterstützte Versionen) und den OSV-Scan in die CI aufnehmen.
+
 ### F-059 · P1 · freeze-relevant: nein · Aufwand: L
 **Kriterium:** TEST-02
 **Ort:** `packages/trooper/lib/src/core/stream_trooper.dart` (46,0 %), `storage/storage_envelope.dart` (50,0 %),
@@ -414,39 +576,6 @@ F-024). Bei `storage_envelope.dart` überleben 7 von 14 Mutanten, genau dort feh
 (`tool/audit/scripts/mutation.sh`, Konfiguration `tool/audit/mutation/*.xml`)
 **Empfehlung:** Überlebende Mutanten der genannten Dateien als Checkliste für fehlende Assertions nutzen, beginnend mit
 den Stream-Troopers.
-
-### F-004 · P2 · freeze-relevant: nein · Aufwand: M
-**Kriterium:** TEST-03
-**Ort:** `packages/trooper/test/core/stream_trooper_test.dart` (16 Stellen), `core/keyed_stream_trooper_test.dart` (12),
-`edge_cases/swr_sequence_test.dart` (10), `stream/keyed_stateful_stream_test.dart` (8) u. a.
-**Befund:** Beide Suiten liefen 100-mal mit zufälliger Reihenfolge ohne Fehler. Die Tests steuern Zeit aber an 121
-Stellen mit echtem `Future.delayed`; `fake_async` ist als Dev-Dependency eingetragen, wird jedoch in keiner Testdatei
-verwendet. Die Tests hängen damit von realen Laufzeiten ab (z. B. 50 ms vs. 10 ms in `out_of_order_test.dart`) und
-können auf langsamen CI-Runnern kippen; zudem verlängern sie die Laufzeit.
-**Nachweis:** `docs/audit/raw/flake_trooper.txt`, `docs/audit/raw/flake_trooper_bloc.txt`, `docs/audit/raw/real_delays.txt`
-**Empfehlung:** Zeitabhängige Tests auf `fakeAsync` oder `Completer` umstellen.
-
-### F-005 · P2 · freeze-relevant: nein · Aufwand: S
-**Kriterium:** COMPAT-01
-**Ort:** `packages/trooper/pubspec.yaml` (`dev_dependencies`), `pubspec.yaml` (Workspace)
-**Befund:** Mit allen Abhängigkeiten auf ihrer Untergrenze (`flutter pub downgrade`) lassen sich die Tests von
-`trooper` nicht mehr laden: `frontend_server_client` 3.2.0 sucht einen Snapshot, den Dart 3.13 nicht mehr enthält.
-Betroffen ist nur die Dev-Toolchain; mit den Laufzeit-Abhängigkeiten auf ihrer Untergrenze (`meta` 1.19.0, `bloc` 9.0.0,
-`flutter_bloc` 9.1.1) laufen beide Suiten grün. Die SDK-Untergrenze `^3.12.0` ist ungetestet, lokal ist nur Dart 3.13.5
-verfügbar und es gibt keine CI-Matrix.
-**Nachweis:** `docs/audit/raw/downgrade_trooper.txt`, `downgrade_versions.txt`, `downgrade_runtime_*.txt`
-(`tool/audit/scripts/compat.sh`)
-**Empfehlung:** Untergrenzen der Dev-Dependencies anheben (`test`, `coverage`), Min-SDK-Job in der CI ergänzen.
-
-### F-006 · P2 · freeze-relevant: nein · Aufwand: S
-**Kriterium:** ARCH-02
-**Ort:** `packages/trooper/lib/src/telemetry/telemetry_hub.dart`, `packages/trooper/lib/src/telemetry/trooper_logger.dart`
-**Befund:** Der Import-Graph von `trooper` ist nicht azyklisch: `telemetry_hub.dart` und `trooper_logger.dart`
-importieren sich gegenseitig. Alle übrigen 40 Dateien sind zyklenfrei, `trooper_bloc` ebenfalls. Eine Schichtregel
-(welches Modul darf welches importieren) ist nirgends definiert oder automatisiert geprüft.
-**Nachweis:** `docs/audit/raw/lakos_trooper.json` (`isAcyclic: false`, `firstCycle`), `tool/audit/scripts/api_arch.sh`
-**Empfehlung:** Zyklus auflösen (Logger hängt vom Hub ab, nicht umgekehrt), Schichtregel dokumentieren und
-`lakos --no-cycles-allowed` in die CI aufnehmen.
 
 ### F-007 · P2 · freeze-relevant: nein · Aufwand: L
 **Kriterium:** ARCH-03
@@ -470,16 +599,6 @@ Betroffen sind genau die Kernpfade für Lesen, Fetch und Dispose, in denen die N
 **Empfehlung:** L1-, L2- und Netzwerkpfad in `get` jeweils in eigene Methoden zerlegen; Persistenzblock aus
 `_executeFetch` herauslösen (er ist in `set` und `_executeFetch` doppelt vorhanden).
 
-### F-011 · P2 · freeze-relevant: nein · Aufwand: M
-**Kriterium:** PERF-02
-**Ort:** `packages/trooper/benchmark/trooper_benchmark.dart`
-**Befund:** Eine Baseline liegt jetzt vor (Median aus drei Läufen, `bench_baseline.txt`), aber die Läufe streuen stark:
-Im zweiten Lauf lagen alle vier Benchmarks 20–70 % unter den anderen beiden (z. B. Request-Coalescing 45.983 statt
-~131.000 ops/s). Mit dieser Streuung ist eine 10-%-Regressionsschranke nicht belastbar. Eine CI-Prüfung fehlt ganz.
-**Nachweis:** `docs/audit/raw/bench_run1.txt` … `bench_run3.txt`, `docs/audit/raw/bench_baseline.txt`
-**Empfehlung:** Warm-up und mehrere Messwiederholungen pro Benchmark (z. B. `benchmark_harness`), Median und Streuung
-ausgeben; Regressionsprüfung erst auf dieser Basis in die CI aufnehmen.
-
 ### F-018 · P2 · freeze-relevant: nein · Aufwand: S
 **Kriterium:** LIFE-02
 **Ort:** `packages/trooper/lib/src/concurrency/query_queue.dart:151`
@@ -488,35 +607,6 @@ bis zum Ablauf der Wartezeit aktiv (im Test: eine Minute) und hält Trooper und 
 wird das Cancel-Token geprüft.
 **Nachweis:** `lifecycle_audit_test.dart` – „LIFE-02 retry backoff timer does not outlive dispose“ (rot)
 **Empfehlung:** Backoff über einen `Timer` umsetzen, der beim Abbruch des Cancel-Tokens gecancelt wird.
-
-### F-023 · P2 · freeze-relevant: nein · Aufwand: S
-**Kriterium:** ERR-03
-**Ort:** `packages/trooper/lib/src/config/retry_policy.dart` (`delayForAttempt`)
-**Befund:** Backoff, Obergrenze und `retryWhen` arbeiten exakt wie konfiguriert (Aufrufe bei 0/100/300/700 ms bzw.
-0/100/300/550 ms mit `maxDelay`). Jitter fehlt: Alle Clients wiederholen nach einem Serverausfall im selben Takt
-(Thundering Herd).
-**Nachweis:** `error_audit_test.dart` – ERR-03-Gruppe (3 grün, „backoff applies jitter“ rot)
-**Empfehlung:** Optionalen Jitter (z. B. „full jitter“) ergänzen, per Parameter abschaltbar für deterministische Tests.
-
-### F-026 · P2 · freeze-relevant: nein · Aufwand: S
-**Kriterium:** SEC-01
-**Ort:** `packages/trooper/lib/src/storage/storage_backend.dart`, `codec/trooper_codec.dart`, READMEs, `skills/*/SKILL.md`
-**Befund:** L2 speichert Payloads als Klartext-JSON. Ein Verschlüsselungs-Hook ist strukturell möglich (eigenes
-`StorageBackend` oder eigener `TrooperCodec` als Wrapper), aber nirgends dokumentiert; README, Dartdoc und Skills
-erwähnen weder Klartext-Persistenz noch den Umgang mit sensiblen Daten.
-**Nachweis:** Code-Review; `grep` nach „encrypt|plaintext|sensitive“ ohne Treffer
-**Empfehlung:** Abschnitt „Sensible Daten“ mit Beispiel eines verschlüsselnden Backends (z. B. über
-`flutter_secure_storage`) ergänzen.
-
-### F-027 · P2 · freeze-relevant: nein · Aufwand: S
-**Kriterium:** SEC-02
-**Ort:** `packages/trooper/lib/src/telemetry/trooper_logger.dart` (`ConsoleTrooperLogger.log`),
-`key/query_key.dart:87` (`describe`), `telemetry/trooper_event.dart` (`toString` von `RequestErrorEvent` u. a.)
-**Befund:** Der Logger ist opt-in (`attach()`) und gibt keine Antwort-Payloads aus. Er gibt aber jeden Query-Parameter
-im Klartext aus (`QueryKey.describe()`) sowie `error.toString()`. Parameter enthalten in der Praxis häufig
-personenbezogene Daten (im Test: eine E-Mail-Adresse), die so in Konsolen- und Crash-Logs landen.
-**Nachweis:** `error_audit_test.dart` – „SEC-02 … logger does not print query parameters“ (rot), „… response payloads“ (grün)
-**Empfehlung:** Parameter standardmäßig maskieren oder nur ihren Hash loggen; Ausgabe per Option aktivierbar machen.
 
 ### F-037 · P2 · freeze-relevant: nein · Aufwand: L
 **Kriterium:** ARCH-04
@@ -530,18 +620,6 @@ davon: uneinheitliche Fehlerbehandlung (F-021), Bugs nur in einer Variante (F-01
 **Empfehlung:** Persistenz (L2 lesen/schreiben/löschen) und Fetch-Orchestrierung in gemeinsame Bausteine auslagern,
 die beide Varianten nutzen.
 
-### F-039 · P2 · freeze-relevant: nein · Aufwand: M
-**Kriterium:** TEST-04
-**Ort:** `packages/trooper/lib/src/storage/cache_entry.dart:56` u. a. (24 × `DateTime.now()` in `lib/src`)
-**Befund:** `FakeAccessor` in `trooper_bloc/testing.dart` ist vollständig getestet (46/46 Zeilen, 21/21 Branches) und
-dokumentiert. Für Nutzer ohne BLoC gibt es keine Test-Helfer. Vor allem ist die Zeit nicht injizierbar: TTL, Stale-
-Erkennung und Envelope-Ablauf lesen `DateTime.now()` direkt, deshalb kann `fakeAsync` den Cache nicht altern lassen.
-Nutzer können Ablauf- und SWR-Verhalten ihrer App nicht deterministisch testen. Auch dieses Audit musste abgelaufene
-Einträge über `putEntry` mit Vergangenheitsdatum anlegen.
-**Nachweis:** `grep -rn "DateTime.now()" packages/trooper/lib/src` (24 Treffer); `coverage_bloc/lcov.info`
-**Empfehlung:** `package:clock` (wird von `fake_async` gesteuert) oder eine injizierbare Zeitquelle nutzen; einfache
-Test-Helfer für den Core exportieren.
-
 ### F-040 · P2 · freeze-relevant: nein · Aufwand: M
 **Kriterium:** TEST-05
 **Ort:** `packages/trooper/test/`
@@ -552,24 +630,6 @@ Muster mit `fakeAsync` einfach umsetzen lässt, er deckt aber nur `QueryTrooper`
 **Empfehlung:** Randomisierte Interleaving-Tests auf alle Conflict-Policies und die Keyed-Varianten ausweiten; das
 hätte F-012 gefunden.
 
-### F-041 · P2 · freeze-relevant: nein · Aufwand: S
-**Kriterium:** PERF-01
-**Ort:** `packages/trooper/benchmark/trooper_benchmark.dart:51` (`benchmarkL1CacheHit`)
-**Befund:** Die Benchmarks decken Coalescing, Stream-Dispatch und Speicher für 10.000 Keys ab. SWR und die Ableitung
-in `trooper_bloc` fehlen. „L1 Cache-Hit“ misst den rohen `CacheStore` (34 ns), nicht den Pfad, den Nutzer aufrufen:
-Ein Cache-Hit über `QueryTrooper.get` kostet etwa 800 ns (`telemetry_overhead.txt`); die Benchmark-Tabelle
-suggeriert damit einen 20-fach schnelleren Pfad, als Nutzer tatsächlich bekommen.
-**Nachweis:** `docs/audit/raw/bench_baseline.txt`, `docs/audit/raw/telemetry_overhead.txt`
-**Empfehlung:** Benchmarks für `QueryTrooper.get` (Hit, SWR), `KeyedQueryTrooper` und `Tubit`-Ableitung ergänzen.
-
-### F-047 · P2 · freeze-relevant: nein · Aufwand: M
-**Kriterium:** DOC-03
-**Ort:** `packages/trooper/README.md`, `packages/trooper_bloc/README.md`
-**Befund:** Quickstart und Zustandsmodell sind gut erklärt; Rezepte gibt es für Pagination und Retry. Eine FAQ fehlt,
-ebenso Rezepte für häufige Aufgaben wie Logout/Reset, Optimistic Updates, Offline-Betrieb oder Tests ohne BLoC.
-**Nachweis:** Review der READMEs (Überschriften-Inventar)
-**Empfehlung:** FAQ und Rezeptsammlung ergänzen, insbesondere „Nutzerdaten beim Logout löschen“ (vgl. F-014).
-
 ### F-049 · P2 · freeze-relevant: nein · Aufwand: S
 **Kriterium:** DOC-05
 **Ort:** `packages/trooper/CHANGELOG.md`, `packages/trooper_bloc/CHANGELOG.md`, `CHANGELOG.md`
@@ -579,31 +639,6 @@ Migrationsleitfaden von 0.x auf 1.0 fehlt; er wird nach den API-Findings (F-028�
 **Nachweis:** Review der drei CHANGELOGs
 **Empfehlung:** Paket-CHANGELOGs auf Keep a Changelog umstellen, Migrationsleitfaden mit dem 1.0-Release schreiben.
 
-### F-050 · P2 · freeze-relevant: nein · Aufwand: S
-**Kriterium:** COMPAT-03
-**Ort:** `packages/trooper_bloc/pubspec.yaml:17-18`
-**Befund:** `trooper_bloc` verlangt `sdk: ^3.12.0`, aber `flutter: ">=3.24.0"`. Flutter 3.24 bringt Dart 3.5 mit;
-die Flutter-Untergrenze ist damit wirkungslos und täuscht Kompatibilität mit älteren Flutter-Versionen vor. Das
-Root-README wiederholt „Flutter ≥ 3.24“ als Badge. Die Hypothese COMPAT-03 aus Spec §5 ist bestätigt.
-**Nachweis:** Review `pubspec.yaml`; `docs/audit/raw/linkcheck.txt` (Badge)
-**Empfehlung:** Flutter-Untergrenze auf die erste Flutter-Version mit Dart 3.12 anheben und Badge angleichen.
-
-### F-055 · P2 · freeze-relevant: nein · Aufwand: S
-**Kriterium:** GOV-02
-**Ort:** Repository-Root
-**Befund:** `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` sowie Issue- und PR-Templates fehlen; das README hat einen
-vierzeiligen Contributing-Abschnitt.
-**Nachweis:** `ls -a` im Root; GitHub-API
-**Empfehlung:** Die drei Dateien und Templates (Bug, Feature, PR-Checkliste) ergänzen.
-
-### F-056 · P2 · freeze-relevant: nein · Aufwand: S
-**Kriterium:** GOV-03
-**Ort:** Doku
-**Befund:** Es gibt keine Support-Policy: welche Dart- und Flutter-Versionen unterstützt werden, wie lange 1.x
-gepflegt wird und wie Sicherheitsfixes zurückportiert werden.
-**Nachweis:** Review von README und Repository
-**Empfehlung:** Support-Policy im README oder in `SUPPORT.md` festhalten.
-
 ### F-057 · P2 · freeze-relevant: nein · Aufwand: S
 **Kriterium:** GOV-04
 **Ort:** GitHub-Repository `ParceApp/trooper` (öffentlich)
@@ -611,14 +646,6 @@ gepflegt wird und wie Sicherheitsfixes zurückportiert werden.
 Dependabot-Konfiguration für pub-Abhängigkeiten fehlt.
 **Nachweis:** `gh api repos/ParceApp/trooper/branches/main/protection` (404), `gh api repos/ParceApp/trooper` (`security_and_analysis`)
 **Empfehlung:** Branch-Protection mit Pflicht-CI, Dependabot (`package-ecosystem: pub`) und Secret Scanning aktivieren.
-
-### F-058 · P2 · freeze-relevant: nein · Aufwand: S
-**Kriterium:** SEC-04
-**Ort:** Repository-Root
-**Befund:** Der OSV-Scan findet keine bekannten Schwachstellen in den 69 aufgelösten Paketen. Eine `SECURITY.md` mit
-Meldeweg für Sicherheitslücken fehlt; der OSV-Scan läuft nicht in der CI.
-**Nachweis:** `docs/audit/raw/osv.txt`
-**Empfehlung:** `SECURITY.md` anlegen (Kontakt, Antwortzeiten, unterstützte Versionen) und den OSV-Scan in die CI aufnehmen.
 
 ### F-025 · P3 · freeze-relevant: nein · Aufwand: S
 **Kriterium:** ERR-05

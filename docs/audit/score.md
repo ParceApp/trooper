@@ -4,7 +4,7 @@ Audited commit: `222815ed6e4179e6a3c89130c30af152e548aa2e`
 
 | Dimension | Weight | Score | Maturity | Gate minimum |
 |---|---|---|---|---|
-| FEAT | 1 | 67.5 % | 1 | 2 |
+| FEAT | 1 | 60.0 % | 1 | 2 |
 | ASYNC | 2 | 55.0 % | 1 | 3 |
 | LIFE | 2 | 35.7 % | 1 | 3 |
 | ERR | 2 | 28.6 % | 1 | 3 |
@@ -21,14 +21,14 @@ Audited commit: `222815ed6e4179e6a3c89130c30af152e548aa2e`
 | OBS | 1 | 20.0 % | 1 | 2 |
 | MARKET | 1 | n/a | 0 | – |
 
-**Total score:** 30.2 %
+**Total score:** 29.8 %
 
 **Gate:** NOT PASSED
 
 Reasons:
 
 - FEAT-01: must criterion is notMet
-- FEAT-05: must criterion is partial
+- FEAT-05: must criterion is notMet
 - FEAT: maturity 1 below gate minimum 2
 - ASYNC-01: must criterion is notMet
 - ASYNC-02: must criterion is notMet
@@ -87,19 +87,26 @@ Reasons:
 - F-001: open P1 finding
 - F-002: open P1 finding
 - F-003: open P1 finding
+- F-004: open P1 finding
+- F-005: open P1 finding
+- F-006: open P1 finding
 - F-009: open P1 finding
 - F-010: open P1 finding
+- F-011: open P1 finding
 - F-012: open P0 finding
 - F-013: open P1 finding
-- F-014: open P1 finding
+- F-014: open P0 finding
 - F-015: open P1 finding
 - F-016: open P1 finding
-- F-017: open P1 finding
+- F-017: open P0 finding
 - F-019: open P1 finding
 - F-020: open P1 finding
 - F-021: open P1 finding
 - F-022: open P1 finding
+- F-023: open P1 finding
 - F-024: open P1 finding
+- F-026: open P1 finding
+- F-027: open P1 finding
 - F-028: open P1 finding
 - F-029: open P1 finding
 - F-030: open P1 finding
@@ -109,11 +116,19 @@ Reasons:
 - F-034: open P1 finding
 - F-035: open P1 finding
 - F-038: open P1 finding
+- F-039: open P1 finding
+- F-041: open P1 finding
 - F-043: open P1 finding
 - F-044: open P1 finding
 - F-045: open P1 finding
 - F-046: open P1 finding
+- F-047: open P1 finding
 - F-048: open P1 finding
+- F-050: open P1 finding
 - F-052: open P1 finding
 - F-054: open P1 finding
+- F-055: open P1 finding
+- F-056: open P1 finding
+- F-058: open P1 finding
 - F-059: open P1 finding
+- F-060: open P0 finding

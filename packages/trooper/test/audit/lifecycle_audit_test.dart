@@ -195,6 +195,36 @@ void main() {
     },
   );
 
+  test(
+    'LIFE-02 KeyedStreamTrooper dispose from a listener (real time)',
+    () async {
+      late StreamController<int> src;
+      final t = KeyedStreamTrooper<String, int, ()>(
+        namespace: 'l02rt',
+        streamFactory: (_, _, _) => (src = StreamController<int>()).stream,
+      );
+      final getF = t['k'].get(());
+      await pumpEventQueue();
+      final disposed = Completer<Object?>();
+      t['k'].stream.listen((s) {
+        if (s is DataLoaded<int> && !disposed.isCompleted) {
+          t.dispose().then(
+            (_) => disposed.complete(null),
+            onError: (Object e) => disposed.complete(e),
+          );
+        }
+      });
+      src.add(1);
+      await getF;
+      expect(
+        await disposed.future.timeout(const Duration(seconds: 5)),
+        isNull,
+        reason: 'dispose must complete without error',
+      );
+    },
+    skip: 'F-017',
+  );
+
   test('LIFE-02 stream subscribers receive done after dispose', () async {
     final q = QueryTrooper<String, ()>(
       namespace: 'l02',

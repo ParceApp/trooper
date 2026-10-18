@@ -35,10 +35,10 @@ dimensions:
         findings: []
       - id: FEAT-05
         priority: M
-        status: partial
+        status: not_met
         automated_in_ci: false
-        evidence: "feature_audit_test.dart FEAT-05 (cold start from L2, write-through: green); invalidation of L2: red"
-        findings: [F-014]
+        evidence: "feature_audit_test.dart FEAT-05 (cold start + write-through green; storage-key collision red); async_audit_test.dart (L2 invalidation red)"
+        findings: [F-014, F-060]
       - id: FEAT-06
         priority: M
         status: met
@@ -115,7 +115,7 @@ dimensions:
         priority: M
         status: not_met
         automated_in_ci: false
-        evidence: "lifecycle_audit_test.dart (no timers after dispose for 10/11 types, stream done, controller cascade); bloc_audit_test.dart (Tubit cancels subscriptions); flutter test with leak_tracker: 44/44, no leaks"
+        evidence: "lifecycle_audit_test.dart (no timers after dispose for 10/11 types, stream done, controller cascade; KeyedStreamTrooper dispose fails in real time); bloc_audit_test.dart (Tubit cancels subscriptions); flutter test with leak_tracker: 44/44, no leaks"
         findings: [F-017, F-018]
         note: "leak_tracker only instruments Flutter disposables"
       - id: LIFE-03
@@ -547,17 +547,17 @@ findings:
     freeze_relevant: false
     status: open
   - id: F-004
-    severity: P2
+    severity: P1
     criterion: TEST-03
     freeze_relevant: false
     status: open
   - id: F-005
-    severity: P2
+    severity: P1
     criterion: COMPAT-01
     freeze_relevant: false
     status: open
   - id: F-006
-    severity: P2
+    severity: P1
     criterion: ARCH-02
     freeze_relevant: false
     status: open
@@ -582,7 +582,7 @@ findings:
     freeze_relevant: false
     status: open
   - id: F-011
-    severity: P2
+    severity: P1
     criterion: PERF-02
     freeze_relevant: false
     status: open
@@ -597,7 +597,7 @@ findings:
     freeze_relevant: false
     status: open
   - id: F-014
-    severity: P1
+    severity: P0
     criterion: ASYNC-02
     freeze_relevant: false
     status: open
@@ -612,7 +612,7 @@ findings:
     freeze_relevant: true
     status: open
   - id: F-017
-    severity: P1
+    severity: P0
     criterion: LIFE-02
     freeze_relevant: false
     status: open
@@ -642,7 +642,7 @@ findings:
     freeze_relevant: true
     status: open
   - id: F-023
-    severity: P2
+    severity: P1
     criterion: ERR-03
     freeze_relevant: false
     status: open
@@ -657,12 +657,12 @@ findings:
     freeze_relevant: false
     status: open
   - id: F-026
-    severity: P2
+    severity: P1
     criterion: SEC-01
     freeze_relevant: false
     status: open
   - id: F-027
-    severity: P2
+    severity: P1
     criterion: SEC-02
     freeze_relevant: false
     status: open
@@ -722,7 +722,7 @@ findings:
     freeze_relevant: true
     status: open
   - id: F-039
-    severity: P2
+    severity: P1
     criterion: TEST-04
     freeze_relevant: false
     status: open
@@ -732,7 +732,7 @@ findings:
     freeze_relevant: false
     status: open
   - id: F-041
-    severity: P2
+    severity: P1
     criterion: PERF-01
     freeze_relevant: false
     status: open
@@ -762,7 +762,7 @@ findings:
     freeze_relevant: false
     status: open
   - id: F-047
-    severity: P2
+    severity: P1
     criterion: DOC-03
     freeze_relevant: false
     status: open
@@ -777,7 +777,7 @@ findings:
     freeze_relevant: false
     status: open
   - id: F-050
-    severity: P2
+    severity: P1
     criterion: COMPAT-03
     freeze_relevant: false
     status: open
@@ -802,12 +802,12 @@ findings:
     freeze_relevant: false
     status: open
   - id: F-055
-    severity: P2
+    severity: P1
     criterion: GOV-02
     freeze_relevant: false
     status: open
   - id: F-056
-    severity: P2
+    severity: P1
     criterion: GOV-03
     freeze_relevant: false
     status: open
@@ -817,7 +817,7 @@ findings:
     freeze_relevant: false
     status: open
   - id: F-058
-    severity: P2
+    severity: P1
     criterion: SEC-04
     freeze_relevant: false
     status: open
@@ -825,4 +825,9 @@ findings:
     severity: P1
     criterion: TEST-02
     freeze_relevant: false
+    status: open
+  - id: F-060
+    severity: P0
+    criterion: FEAT-05
+    freeze_relevant: true
     status: open

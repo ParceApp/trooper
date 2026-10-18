@@ -46,6 +46,16 @@ class _StorageController extends TrooperController {
   );
 }
 
+class _KeyedStorageController extends TrooperController {
+  _KeyedStorageController(StorageBackend storage)
+    : super(defaultStorage: storage);
+  late final contacts = keyedQuery<String, String, ()>(
+    namespace: 'a02c_contacts',
+    fetch: (k, _) async => '$k@example.com',
+    codec: TrooperCodec.string,
+  );
+}
+
 void main() {
   group('ASYNC-01 older response never overwrites newer', () {
     for (final policy in QueryConflictPolicy.values) {
@@ -202,6 +212,39 @@ void main() {
       );
       await c.dispose();
     }, skip: 'F-014');
+    test(
+      'controller.clearAll removes persisted KeyedQueryTrooper data',
+      () async {
+        final storage = InMemoryStorageBackend();
+        final c = _KeyedStorageController(storage);
+        await c.contacts['a'].get(());
+        await pumpEventQueue();
+        expect(await storage.getAllKeys(), isNotEmpty);
+        c.clearAll();
+        await pumpEventQueue();
+        expect(await storage.getAllKeys(), isEmpty);
+        await c.dispose();
+      },
+      skip: 'F-014',
+    );
+
+    test(
+      'keyed invalidate purges L2 entries from an earlier session',
+      () async {
+        final storage = InMemoryStorageBackend();
+        final first = _KeyedStorageController(storage);
+        await first.contacts['a'].get(());
+        await pumpEventQueue();
+        await first.dispose();
+        // next app session: same storage, nothing in memory yet
+        final second = _KeyedStorageController(storage);
+        second.contacts.invalidate();
+        await pumpEventQueue();
+        expect(await storage.getAllKeys(), isEmpty);
+        await second.dispose();
+      },
+      skip: 'F-014',
+    );
   });
 
   test('ASYNC-03 failing SWR background revalidation is observable', () async {
