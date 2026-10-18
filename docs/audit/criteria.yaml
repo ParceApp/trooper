@@ -11,46 +11,46 @@ dimensions:
     criteria:
       - id: FEAT-01
         priority: M
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "docs/audit/traceability.md (30 claims: 16 belegt, 4 teilweise, 10 widerlegt)"
+        findings: [F-046]
       - id: FEAT-02
         priority: M
-        status: null
+        status: met
         automated_in_ci: false
-        evidence: null
+        evidence: "packages/trooper/test/audit/feature_audit_test.dart FEAT-02 (Query, KeyedQuery, Stream); swr_sequence_test.dart"
         findings: []
       - id: FEAT-03
         priority: M
-        status: null
+        status: met
         automated_in_ci: false
-        evidence: null
+        evidence: "feature_audit_test.dart FEAT-03 (N=2, N=50, two controllers sharing a queue); cache_stampede_test.dart"
         findings: []
       - id: FEAT-04
         priority: M
-        status: null
+        status: met
         automated_in_ci: false
-        evidence: null
+        evidence: "tests cover StalePolicy (2/2 values), QueryConflictPolicy (3/3), RetryPolicy constructors none/immediate/linear/exponential"
         findings: []
       - id: FEAT-05
         priority: M
-        status: null
+        status: partial
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "feature_audit_test.dart FEAT-05 (cold start from L2, write-through: green); invalidation of L2: red"
+        findings: [F-014]
       - id: FEAT-06
         priority: M
-        status: null
+        status: met
         automated_in_ci: false
-        evidence: null
+        evidence: "packages/trooper_bloc/test/audit/bloc_feature_audit_test.dart (one derivation per batch, stable snapshot across await, DataRefreshing keeps data)"
         findings: []
       - id: FEAT-07
         priority: S
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "docs/audit/raw/snippets_analyze.txt, snippets_index.tsv (44 snippets; API drift in README quickstart, trooper README, bloc README, both SKILL.md)"
+        findings: [F-043]
   - id: ASYNC
     weight: 2
     gate_min_maturity: 3
@@ -366,9 +366,8 @@ dimensions:
         priority: M
         status: partial
         automated_in_ci: false
-        evidence: "docs/audit/raw/osv.txt (69 packages, no issues)"
-        findings: []
-        note: "SECURITY.md part assessed in Task 12"
+        evidence: "docs/audit/raw/osv.txt (69 packages, no issues); no SECURITY.md"
+        findings: [F-058]
   - id: COMPAT
     weight: 1
     gate_min_maturity: 3
@@ -389,16 +388,16 @@ dimensions:
         note: "not in CI"
       - id: COMPAT-03
         priority: M
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "packages/trooper_bloc/pubspec.yaml:17-18 (sdk ^3.12.0 vs flutter >=3.24.0 which ships Dart 3.5)"
+        findings: [F-050]
       - id: COMPAT-04
         priority: S
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "no documentation of isolate behaviour (TelemetryHub.global, caches and queues are per isolate)"
+        findings: [F-051]
   - id: DOC
     weight: 1
     gate_min_maturity: 2
@@ -411,34 +410,34 @@ dimensions:
         findings: [F-002]
       - id: DOC-02
         priority: M
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "docs/audit/raw/linkcheck.txt; README review (badges, 11 file:/// links, missing GIF path, broken anchor, nonexistent trooper_flutter)"
+        findings: [F-045]
       - id: DOC-03
         priority: M
-        status: null
+        status: partial
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "README review: quickstart and state-model concepts present; recipes partial (pagination, retry); no FAQ"
+        findings: [F-047]
       - id: DOC-04
         priority: M
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "no section documenting ordering, dispose, error and isolate guarantees"
+        findings: [F-048]
       - id: DOC-05
         priority: M
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "package CHANGELOGs without Keep a Changelog structure or dates; trooper_bloc CHANGELOG lacks current version; no migration guide"
+        findings: [F-049, F-009]
       - id: DOC-06
         priority: S
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "snippets_analyze.txt (both SKILL.md files contain non-compiling API usages)"
+        findings: [F-043]
   - id: REL
     weight: 1
     gate_min_maturity: 2
@@ -452,10 +451,10 @@ dimensions:
         note: "trooper_bloc pana not evaluable before trooper is published"
       - id: REL-02
         priority: M
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "versions diverge (trooper 0.1.0-beta.1, trooper_bloc 0.1.2-beta.1, root CHANGELOG 0.1.0); no release workflow"
+        findings: [F-052]
       - id: REL-03
         priority: M
         status: not_met
@@ -464,38 +463,38 @@ dimensions:
         findings: [F-010]
       - id: REL-04
         priority: S
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "packages not yet on pub.dev (HTTP 404), publisher cannot be verified"
+        findings: [F-053]
   - id: GOV
     weight: 1
     gate_min_maturity: 2
     criteria:
       - id: GOV-01
         priority: M
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "no .github/workflows"
+        findings: [F-054]
       - id: GOV-02
         priority: M
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "no CONTRIBUTING.md, CODE_OF_CONDUCT.md, issue or PR templates (README has a 4-line contributing section)"
+        findings: [F-055]
       - id: GOV-03
         priority: M
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "no support policy"
+        findings: [F-056]
       - id: GOV-04
         priority: S
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "gh api: main not protected; dependabot security updates and secret scanning disabled"
+        findings: [F-057]
   - id: OBS
     weight: 1
     gate_min_maturity: 2
@@ -525,10 +524,11 @@ dimensions:
     criteria:
       - id: MARKET-01
         priority: C
-        status: null
+        status: na
         automated_in_ci: false
         evidence: null
         findings: []
+        note: "optional, not commissioned"
 findings:
   - id: F-001
     severity: P1
@@ -738,5 +738,85 @@ findings:
   - id: F-042
     severity: P3
     criterion: PERF-03
+    freeze_relevant: false
+    status: open
+  - id: F-043
+    severity: P1
+    criterion: FEAT-07
+    freeze_relevant: false
+    status: open
+  - id: F-044
+    severity: P1
+    criterion: API-03
+    freeze_relevant: true
+    status: open
+  - id: F-045
+    severity: P1
+    criterion: DOC-02
+    freeze_relevant: false
+    status: open
+  - id: F-046
+    severity: P1
+    criterion: FEAT-01
+    freeze_relevant: false
+    status: open
+  - id: F-047
+    severity: P2
+    criterion: DOC-03
+    freeze_relevant: false
+    status: open
+  - id: F-048
+    severity: P1
+    criterion: DOC-04
+    freeze_relevant: false
+    status: open
+  - id: F-049
+    severity: P2
+    criterion: DOC-05
+    freeze_relevant: false
+    status: open
+  - id: F-050
+    severity: P2
+    criterion: COMPAT-03
+    freeze_relevant: false
+    status: open
+  - id: F-051
+    severity: P3
+    criterion: COMPAT-04
+    freeze_relevant: false
+    status: open
+  - id: F-052
+    severity: P1
+    criterion: REL-02
+    freeze_relevant: false
+    status: open
+  - id: F-053
+    severity: P3
+    criterion: REL-04
+    freeze_relevant: false
+    status: open
+  - id: F-054
+    severity: P1
+    criterion: GOV-01
+    freeze_relevant: false
+    status: open
+  - id: F-055
+    severity: P2
+    criterion: GOV-02
+    freeze_relevant: false
+    status: open
+  - id: F-056
+    severity: P2
+    criterion: GOV-03
+    freeze_relevant: false
+    status: open
+  - id: F-057
+    severity: P2
+    criterion: GOV-04
+    freeze_relevant: false
+    status: open
+  - id: F-058
+    severity: P2
+    criterion: SEC-04
     freeze_relevant: false
     status: open

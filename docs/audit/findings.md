@@ -481,3 +481,168 @@ vernachlässigbar; mit einem Listener kostet ein Cache-Hit 8,2 % mehr. Die Kompl
 (z. B. Iteration über alle Keys) ist nirgends dokumentiert.
 **Nachweis:** `docs/audit/raw/telemetry_overhead.txt` (`benchmark/audit_telemetry_overhead.dart`)
 **Empfehlung:** Komplexität in der Dartdoc der Keyed-Operationen angeben.
+
+### F-043 · P1 · freeze-relevant: nein · Aufwand: M
+**Kriterium:** FEAT-07 (auch DOC-06)
+**Ort:** `README.md:100-104` (Quickstart), `packages/trooper/README.md:291,330`, `packages/trooper_bloc/README.md:68,147,186,211`,
+`packages/trooper/skills/trooper-reactive-data-flow/SKILL.md:146,223`, `packages/trooper_bloc/skills/trooper-bloc-state-management/SKILL.md:291,510`,
+`packages/trooper/example/README.md:98`
+**Befund:** Von 44 Dart-Snippets in READMEs und Skills nutzen mehrere eine API, die es so nicht gibt (Fehler, die nur
+fehlende Beispiel-Klassen betreffen, nicht mitgezählt):
+- Der Quickstart im Root-README ruft `super('ArticleController')` auf, `TrooperController` hat keinen solchen Parameter.
+- `RetryPolicy.exponential(multiplier: …)` statt `backoffMultiplier`.
+- `TelemetryHub.global.addListener(...)` existiert nicht.
+- Alle `Tloc`/`Tubit`-Beispiele lassen die seit Commit `ddff790` verpflichtenden `onAnyLoading`/`onAnyError` weg.
+- Der BLoC-Skill zeigt `QueryTrooper(fetcher: …, cacheDuration: …)` statt `fetch:`/`config:`.
+- Parameterlose Aufrufe wie `accessor.get()`, `counter.set(10)` kompilieren nicht (siehe F-044).
+
+Wer der Doku oder den Agent-Skills folgt, bekommt Compilerfehler.
+**Nachweis:** `docs/audit/raw/snippets_analyze.txt` mit Zuordnung in `snippets_index.tsv` (`tool/audit/scripts/snippets.py`)
+**Empfehlung:** Snippets korrigieren und in der CI extrahieren und analysieren (z. B. mit diesem Skript oder `code_excerpter`).
+
+### F-044 · P1 · freeze-relevant: ja · Aufwand: M
+**Kriterium:** API-03
+**Ort:** alle neun `Parameterless*`-Extensions, u. a. `core/accessor.dart` (`ParameterlessAccessor`), `core/local_trooper.dart`,
+`core/keyed_*_trooper.dart`, `core/trooper_mutation.dart`, `core/keyed_accessor.dart`
+**Befund:** Die Extensions sollen Kurzformen für Troopers ohne Parameter (`()`) anbieten, z. B. `accessor.get()` oder
+`mutation()`. In Dart verdecken Instanzmethoden aber jede gleichnamige Extension-Methode, und alle 51 Extension-Member
+heißen genau wie Instanzmethoden des erweiterten Typs (`get`, `refresh`, `watch`, `set`, `getKey`, `call` …). Kein
+einziges ist über die normale Aufrufsyntax erreichbar; `q.get()` liefert „1 positional argument expected“. Die eigenen
+Tests des Packages umgehen das mit expliziter Extension-Syntax (`ParameterlessKeyedQueryTrooper(query).getKey(10)` in
+`keyed_query_trooper_test.dart:269`). README und Skills werben trotzdem mit der Kurzform. Neun öffentliche Extensions
+mit 51 Membern wären mit dem Freeze eingefroren, obwohl niemand sie normal aufrufen kann.
+**Nachweis:** `docs/audit/raw/parameterless_shadowing.txt`; Analyzer-Fehler in `snippets_analyze.txt` (`SKILL.md:146,223`, `trooper_bloc/README.md:68`)
+**Empfehlung:** Vor dem Freeze die Parameter der Instanzmethoden für `P = ()` optional machen (z. B. über einen
+`P? parameter` mit `()`-Default in den Parameterless-Fällen) oder die Extensions entfernen; Doku angleichen.
+
+### F-045 · P1 · freeze-relevant: nein · Aufwand: S
+**Kriterium:** DOC-02
+**Ort:** `README.md:5,8` (Badges), `README.md:57,66,68,308-316` (11 `file:///`-Links), `README.md:275` (GIF), `packages/trooper/README.md:24` (Anker), `:376`
+**Befund:** Die READMEs enthalten falsche oder tote Angaben: Das Badge „Dart 3.5+“ widerspricht `sdk: ^3.12.0`; das
+Badge „very good analysis“ widerspricht `analysis_options.yaml` (F-001); 11 Links zeigen auf `file:///Users/hannes/...`;
+das Architektur-GIF im Root-README verweist auf `doc/trooper_architecture_flow.gif`, das im Root nicht existiert
+(es liegt unter `packages/trooper/doc/` bzw. `docs/animation/`); der Inhaltsverzeichnis-Anker
+`#architecture-at-a-glance` passt nicht zur Überschrift „Architecture at a Glance (visualized by AI 🙃)“; der Abschnitt
+„Ecosystem“ nennt ein Paket `trooper_flutter`, das es nicht gibt; „Telemetry & DevTools“ verspricht eine
+DevTools-Integration, die fehlt. Die pub.dev-Links liefern bis zum Release 404. Die Hypothese DOC-02 aus Spec §5 ist
+bestätigt.
+**Nachweis:** `docs/audit/raw/linkcheck.txt`, Link- und Anker-Prüfung (Task 12), `docs/audit/traceability.md` (C-010, C-019, C-028, C-029)
+**Empfehlung:** Angaben korrigieren, Links relativ oder als GitHub-URL setzen, Linkcheck in die CI aufnehmen.
+
+### F-046 · P1 · freeze-relevant: nein · Aufwand: M
+**Kriterium:** FEAT-01
+**Ort:** `docs/audit/traceability.md`
+**Befund:** Von 30 Feature-Claims sind 16 belegt, 4 nur teilweise und 10 widerlegt. Die widerlegten Claims sind
+jeweils eigene Findings: Sequence-ID bei `parallel` (F-012), L2-Löschung durch `invalidate` (F-014), kooperativer
+Abbruch für Queries und Mutationen (F-015), parameterlose Kurzformen (F-044), nicht existierende APIs und Pakete
+(F-043, F-045). Zwei belegte Claims (Microtask-Batching, `DataRefreshing` im BLoC) prüft nur der Audit-Prüftest,
+die Suite des Packages nicht.
+**Nachweis:** `docs/audit/traceability.md`
+**Empfehlung:** Widerlegte Claims korrigieren oder implementieren; die Audit-Prüftests für C-005 und C-024 in die
+reguläre Suite übernehmen.
+
+### F-047 · P2 · freeze-relevant: nein · Aufwand: M
+**Kriterium:** DOC-03
+**Ort:** `packages/trooper/README.md`, `packages/trooper_bloc/README.md`
+**Befund:** Quickstart und Zustandsmodell sind gut erklärt; Rezepte gibt es für Pagination und Retry. Eine FAQ fehlt,
+ebenso Rezepte für häufige Aufgaben wie Logout/Reset, Optimistic Updates, Offline-Betrieb oder Tests ohne BLoC.
+**Nachweis:** Review der READMEs (Überschriften-Inventar)
+**Empfehlung:** FAQ und Rezeptsammlung ergänzen, insbesondere „Nutzerdaten beim Logout löschen“ (vgl. F-014).
+
+### F-048 · P1 · freeze-relevant: nein · Aufwand: M
+**Kriterium:** DOC-04
+**Ort:** Doku insgesamt
+**Befund:** Es gibt keinen Abschnitt, der die Laufzeitgarantien verbindlich beschreibt: Reihenfolge und Konflikte
+(was passiert bei überlappenden Requests je Policy), Verhalten von `invalidate`/`refresh` während laufender Requests
+(sie brechen ab, siehe F-014), Verhalten nach `dispose` (F-016), Fehlerkanäle (State vs. Telemetrie vs. Exception)
+und Isolate-Grenzen. Für ein 1.0 mit eingefrorener API ist das der eigentliche Vertrag; mehrere Findings dieses Audits
+sind Abweichungen von impliziten, nirgends festgeschriebenen Erwartungen.
+**Nachweis:** Review von README, Dartdoc und Skills
+**Empfehlung:** Abschnitt „Guarantees“ schreiben und jede Garantie mit einem Test verknüpfen (die Audit-Prüftests sind
+ein Ausgangspunkt).
+
+### F-049 · P2 · freeze-relevant: nein · Aufwand: S
+**Kriterium:** DOC-05
+**Ort:** `packages/trooper/CHANGELOG.md`, `packages/trooper_bloc/CHANGELOG.md`, `CHANGELOG.md`
+**Befund:** Nur das Root-CHANGELOG folgt Keep a Changelog (`## [0.1.0] - 2026-10-08`). Die Paket-CHANGELOGs haben
+weder Datum noch die Gliederung Added/Changed/Fixed; `trooper_bloc` nennt die aktuelle Version nicht (F-009). Ein
+Migrationsleitfaden von 0.x auf 1.0 fehlt; er wird nach den API-Findings (F-028–F-030, F-044) nötig.
+**Nachweis:** Review der drei CHANGELOGs
+**Empfehlung:** Paket-CHANGELOGs auf Keep a Changelog umstellen, Migrationsleitfaden mit dem 1.0-Release schreiben.
+
+### F-050 · P2 · freeze-relevant: nein · Aufwand: S
+**Kriterium:** COMPAT-03
+**Ort:** `packages/trooper_bloc/pubspec.yaml:17-18`
+**Befund:** `trooper_bloc` verlangt `sdk: ^3.12.0`, aber `flutter: ">=3.24.0"`. Flutter 3.24 bringt Dart 3.5 mit;
+die Flutter-Untergrenze ist damit wirkungslos und täuscht Kompatibilität mit älteren Flutter-Versionen vor. Das
+Root-README wiederholt „Flutter ≥ 3.24“ als Badge. Die Hypothese COMPAT-03 aus Spec §5 ist bestätigt.
+**Nachweis:** Review `pubspec.yaml`; `docs/audit/raw/linkcheck.txt` (Badge)
+**Empfehlung:** Flutter-Untergrenze auf die erste Flutter-Version mit Dart 3.12 anheben und Badge angleichen.
+
+### F-051 · P3 · freeze-relevant: nein · Aufwand: S
+**Kriterium:** COMPAT-04
+**Ort:** `packages/trooper/lib/src/telemetry/telemetry_hub.dart` (`TelemetryHub.global`), `CacheStore`, `TrooperQueryQueue`
+**Befund:** Nirgends ist dokumentiert, dass Cache, Queues und der globale Telemetrie-Hub pro Isolate existieren und
+Daten nicht zwischen Isolates geteilt werden (etwa bei Hintergrundverarbeitung mit `Isolate.run`).
+**Nachweis:** Review von Doku und Dartdoc
+**Empfehlung:** Kurzen Abschnitt zu Isolates in den Garantien (F-048) ergänzen.
+
+### F-052 · P1 · freeze-relevant: nein · Aufwand: M
+**Kriterium:** REL-02
+**Ort:** `packages/trooper/pubspec.yaml` (`0.1.0-beta.1`), `packages/trooper_bloc/pubspec.yaml` (`0.1.2-beta.1`), `CHANGELOG.md:22` (`[0.1.0]`)
+**Befund:** Es gibt keine Versionsstrategie für das Monorepo. Die Versionen laufen bereits auseinander, das
+Root-CHANGELOG nennt eine Version 0.1.0, die keines der Pakete trägt. Einen automatisierten Release-Prozess (Tag →
+Publish über GitHub OIDC) gibt es nicht; die Release-Reihenfolge (`trooper` vor `trooper_bloc`, F-009) ist nirgends
+festgehalten.
+**Nachweis:** Review der Manifeste und CHANGELOGs; kein `.github/`
+**Empfehlung:** Lockstep- oder unabhängige Versionierung festlegen (bei vollständigem Re-Export Lockstep, siehe F-033)
+und einen Publish-Workflow mit OIDC einrichten.
+
+### F-053 · P3 · freeze-relevant: nein · Aufwand: S
+**Kriterium:** REL-04
+**Ort:** pub.dev
+**Befund:** Beide Pakete sind noch nicht veröffentlicht; ob sie unter einem verifizierten Publisher erscheinen, lässt
+sich nicht prüfen. `homepage: https://parceapp.de` ist erreichbar.
+**Nachweis:** `docs/audit/raw/linkcheck.txt` (pub.dev 404)
+**Empfehlung:** Vor dem ersten Release einen verifizierten Publisher für `parceapp.de` anlegen und beide Pakete darunter veröffentlichen.
+
+### F-054 · P1 · freeze-relevant: nein · Aufwand: M
+**Kriterium:** GOV-01
+**Ort:** Repository (kein `.github/workflows/`)
+**Befund:** Es gibt keine CI. Keine der Schwellen aus diesem Audit (Analyzer, Format, Tests, Coverage, SDK-Matrix,
+Web/WASM, API-Diff, Benchmarks, Linkcheck) wird automatisch geprüft. Deshalb kann keine Dimension Reifegrad 3
+erreichen.
+**Nachweis:** Repository-Inhalt; `automated_in_ci: false` für alle Kriterien in `docs/audit/criteria.yaml`
+**Empfehlung:** Workflow mit den Skripten aus `tool/audit/scripts/` als Ausgangspunkt aufsetzen.
+
+### F-055 · P2 · freeze-relevant: nein · Aufwand: S
+**Kriterium:** GOV-02
+**Ort:** Repository-Root
+**Befund:** `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` sowie Issue- und PR-Templates fehlen; das README hat einen
+vierzeiligen Contributing-Abschnitt.
+**Nachweis:** `ls -a` im Root; GitHub-API
+**Empfehlung:** Die drei Dateien und Templates (Bug, Feature, PR-Checkliste) ergänzen.
+
+### F-056 · P2 · freeze-relevant: nein · Aufwand: S
+**Kriterium:** GOV-03
+**Ort:** Doku
+**Befund:** Es gibt keine Support-Policy: welche Dart- und Flutter-Versionen unterstützt werden, wie lange 1.x
+gepflegt wird und wie Sicherheitsfixes zurückportiert werden.
+**Nachweis:** Review von README und Repository
+**Empfehlung:** Support-Policy im README oder in `SUPPORT.md` festhalten.
+
+### F-057 · P2 · freeze-relevant: nein · Aufwand: S
+**Kriterium:** GOV-04
+**Ort:** GitHub-Repository `ParceApp/trooper` (öffentlich)
+**Befund:** `main` ist nicht geschützt; Dependabot-Security-Updates und Secret Scanning sind deaktiviert; eine
+Dependabot-Konfiguration für pub-Abhängigkeiten fehlt.
+**Nachweis:** `gh api repos/ParceApp/trooper/branches/main/protection` (404), `gh api repos/ParceApp/trooper` (`security_and_analysis`)
+**Empfehlung:** Branch-Protection mit Pflicht-CI, Dependabot (`package-ecosystem: pub`) und Secret Scanning aktivieren.
+
+### F-058 · P2 · freeze-relevant: nein · Aufwand: S
+**Kriterium:** SEC-04
+**Ort:** Repository-Root
+**Befund:** Der OSV-Scan findet keine bekannten Schwachstellen in den 69 aufgelösten Paketen. Eine `SECURITY.md` mit
+Meldeweg für Sicherheitslücken fehlt; der OSV-Scan läuft nicht in der CI.
+**Nachweis:** `docs/audit/raw/osv.txt`
+**Empfehlung:** `SECURITY.md` anlegen (Kontakt, Antwortzeiten, unterstützte Versionen) und den OSV-Scan in die CI aufnehmen.

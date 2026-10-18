@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:trooper/trooper.dart';
 
 Future<int> _run({required bool listen, int n = 300000}) async {
+  // ignore: invalid_use_of_visible_for_testing_member
   final hub = TelemetryHub.isolated();
   final sub = listen ? hub.events.listen((_) {}) : null;
   final q = QueryTrooper<int, ()>(
