@@ -291,16 +291,17 @@ dimensions:
     criteria:
       - id: QUAL-01
         priority: M
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "docs/audit/raw/analyze_vga.txt (970 issues: lib 614, test 292, example/benchmark 64)"
+        findings: [F-001]
       - id: QUAL-02
         priority: M
-        status: null
+        status: met
         automated_in_ci: false
-        evidence: null
+        evidence: "docs/audit/raw/format.txt (101 files, 0 changed)"
         findings: []
+        note: "not enforced in CI (no CI exists)"
       - id: QUAL-03
         priority: S
         status: null
@@ -513,4 +514,14 @@ dimensions:
         automated_in_ci: false
         evidence: null
         findings: []
-findings: []
+findings:
+  - id: F-001
+    severity: P1
+    criterion: QUAL-01
+    freeze_relevant: false
+    status: open
+  - id: F-002
+    severity: P1
+    criterion: DOC-01
+    freeze_relevant: false
+    status: open
