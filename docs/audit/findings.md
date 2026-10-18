@@ -179,3 +179,50 @@ die Mutation abgebrochen und liefert die Action trotzdem ein Ergebnis, emittiert
 **Nachweis:** `async_audit_test.dart` – „ASYNC-05 TrooperMutation: no DataLoaded after cancel“ (rot)
 **Empfehlung:** Nach `await action(...)` das Token prüfen und bei Abbruch `TrooperCancelledException` werfen,
 ohne State, Invalidierung oder Side-Effects auszulösen.
+
+### F-016 · P1 · freeze-relevant: ja · Aufwand: M
+**Kriterium:** LIFE-01
+**Ort:** `packages/trooper/lib/src/core/local_trooper.dart:260`, `core/keyed_local_trooper.dart`, `core/stream_trooper.dart:431`,
+`core/keyed_stream_trooper.dart:443`, `storage/cache_store.dart`; Vertrag in `lifecycle/lifecycle_aware.dart` („should not be reused“)
+**Befund:** `dispose()` ist für alle elf geprüften Typen idempotent. Das Verhalten **nach** `dispose` ist aber weder
+dokumentiert noch einheitlich: `QueryTrooper`, `KeyedQueryTrooper`, `TrooperMutation`, beide Queues und der Controller
+werfen `StateError`; `LocalTrooper` und `KeyedLocalTrooper` liefern stillschweigend weiter Werte; `CacheStore` nimmt
+weiter Einträge an; `StreamTrooper` wirft `TrooperCancelledException`; `KeyedStreamTrooper.getKey` kehrt **nie** zurück
+(Test-Timeout nach 30 s). Ein nachträgliches Vereinheitlichen ändert beobachtbares Verhalten und ist nach dem Freeze
+ein Breaking Change.
+**Nachweis:** `packages/trooper/test/audit/lifecycle_audit_test.dart` – „LIFE-01 <Typ> use after dispose fails with StateError“
+(5 Tests rot)
+**Empfehlung:** Einheitlich `StateError` nach `dispose` werfen, im Vertrag von `LifecycleAware` dokumentieren und testen.
+
+### F-017 · P1 · freeze-relevant: nein · Aufwand: S
+**Kriterium:** LIFE-02
+**Ort:** `packages/trooper/lib/src/core/keyed_stream_trooper.dart:718`
+**Befund:** `KeyedStreamTrooper.dispose()` iteriert über `_subscriptions.values` und wartet dabei mit `await sub.cancel()`.
+Verändert ein Callback die Map während dieses `await`, bricht `dispose()` mit `ConcurrentModificationError` ab. Die
+restlichen Subscriptions werden dann nicht gekündigt, und `super.dispose()` (Stream-Controller, Queue, Cache) läuft
+nicht. Unter `fakeAsync` ist das reproduzierbar, mit Echtzeit hängt es vom Timing ab.
+**Nachweis:** `lifecycle_audit_test.dart` – „LIFE-02 KeyedStreamTrooper leaves no timers after dispose“ (rot, Stacktrace
+`keyed_stream_trooper.dart 718:38`)
+**Empfehlung:** Vor der Schleife eine Kopie ziehen (`List.of(_subscriptions.values)`), Map sofort leeren, dann kündigen.
+
+### F-018 · P2 · freeze-relevant: nein · Aufwand: S
+**Kriterium:** LIFE-02
+**Ort:** `packages/trooper/lib/src/concurrency/query_queue.dart:151`
+**Befund:** Der Backoff zwischen Retries ist ein nicht abbrechbares `Future.delayed`. Nach `dispose()` bleibt der Timer
+bis zum Ablauf der Wartezeit aktiv (im Test: eine Minute) und hält Trooper und Closure so lange am Leben; erst danach
+wird das Cancel-Token geprüft.
+**Nachweis:** `lifecycle_audit_test.dart` – „LIFE-02 retry backoff timer does not outlive dispose“ (rot)
+**Empfehlung:** Backoff über einen `Timer` umsetzen, der beim Abbruch des Cancel-Tokens gecancelt wird.
+
+### F-019 · P1 · freeze-relevant: nein · Aufwand: M
+**Kriterium:** LIFE-03
+**Ort:** `packages/trooper/lib/src/storage/cache_store.dart:48` und `:34` (`evictionInterval` standardmäßig `null`),
+`core/keyed_trooper.dart:75`, `stream/keyed_stateful_stream.dart:42`, `core/keyed_stream_trooper.dart:138-143`
+**Befund:** Kein Speicher ist begrenzt. Der `CacheStore` hat keine Größengrenze, und abgelaufene Einträge werden ohne
+gesetztes `evictionInterval` nur beim Zugriff entfernt. Pro Key angelegte Maps (letzte Parameter, Stream-Controller,
+Watcher-Zähler) werden nie aufgeräumt. In langlebigen Apps mit wachsendem Key-Raum (Chat-Räume, Detailseiten nach ID)
+wächst der Speicher unbegrenzt. Nirgends ist dokumentiert, dass das so beabsichtigt ist oder wie man es begrenzt.
+Der Soak-Test mit festem Key-Raum (10.000 Keys) blieb stabil (LIFE-05).
+**Nachweis:** Code-Review (Orte oben); `docs/audit/raw/soak.txt`
+**Empfehlung:** Optionale Größengrenze mit LRU-Eviction im `CacheStore`, Aufräumen der Per-Key-Strukturen, wenn ein Key
+keine Watcher mehr hat; Verhalten und Defaults dokumentieren.

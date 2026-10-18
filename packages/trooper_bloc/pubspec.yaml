@@ -30,4 +30,5 @@ dev_dependencies:
   bloc_test: ^10.0.0
   flutter_test:
     sdk: flutter
+  leak_tracker_flutter_testing: ^3.0.10
   lints: ^6.1.0

@@ -107,34 +107,36 @@ dimensions:
     criteria:
       - id: LIFE-01
         priority: M
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "packages/trooper/test/audit/lifecycle_audit_test.dart (dispose idempotent for 11 types; use-after-dispose: 6 types StateError, 5 types deviate); packages/trooper_bloc/test/audit/bloc_audit_test.dart (Tubit close idempotent)"
+        findings: [F-016]
       - id: LIFE-02
         priority: M
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "lifecycle_audit_test.dart (no timers after dispose for 10/11 types, stream done, controller cascade); bloc_audit_test.dart (Tubit cancels subscriptions); flutter test with leak_tracker: 44/44, no leaks"
+        findings: [F-017, F-018]
+        note: "leak_tracker only instruments Flutter disposables"
       - id: LIFE-03
         priority: M
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "review: cache_store.dart:48 unbounded map, evictionInterval default null; keyed_trooper.dart:75, keyed_stateful_stream.dart:42, keyed_stream_trooper.dart:138-143 per-key maps without removal; no documentation"
+        findings: [F-019]
       - id: LIFE-04
         priority: M
-        status: null
+        status: met
         automated_in_ci: false
-        evidence: null
+        evidence: "lifecycle_audit_test.dart 'LIFE-04 controller dispose cascades with in-flight request' (children disposed, no late state, no late cache write)"
         findings: []
       - id: LIFE-05
         priority: S
-        status: null
+        status: met
         automated_in_ci: false
-        evidence: null
+        evidence: "docs/audit/raw/soak.txt (1M ops, 10k keys, RSS ratio 0.980; benchmark/audit_soak.dart)"
         findings: []
+        note: "bounded key space; unbounded key growth is covered by LIFE-03"
   - id: ERR
     weight: 2
     gate_min_maturity: 3
@@ -599,5 +601,25 @@ findings:
   - id: F-015
     severity: P1
     criterion: ASYNC-05
+    freeze_relevant: false
+    status: open
+  - id: F-016
+    severity: P1
+    criterion: LIFE-01
+    freeze_relevant: true
+    status: open
+  - id: F-017
+    severity: P1
+    criterion: LIFE-02
+    freeze_relevant: false
+    status: open
+  - id: F-018
+    severity: P2
+    criterion: LIFE-02
+    freeze_relevant: false
+    status: open
+  - id: F-019
+    severity: P1
+    criterion: LIFE-03
     freeze_relevant: false
     status: open
