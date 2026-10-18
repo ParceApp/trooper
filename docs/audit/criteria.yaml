@@ -322,10 +322,11 @@ dimensions:
         findings: []
       - id: PERF-02
         priority: M
-        status: null
+        status: partial
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "docs/audit/raw/bench_baseline.txt (median of 3 runs)"
+        findings: [F-011]
+        note: "no CI; run-to-run variance up to 70%"
       - id: PERF-03
         priority: S
         status: null
@@ -356,10 +357,11 @@ dimensions:
         findings: []
       - id: SEC-04
         priority: M
-        status: null
+        status: partial
         automated_in_ci: false
-        evidence: null
+        evidence: "docs/audit/raw/osv.txt (69 packages, no issues)"
         findings: []
+        note: "SECURITY.md part assessed in Task 12"
   - id: COMPAT
     weight: 1
     gate_min_maturity: 3
@@ -396,10 +398,10 @@ dimensions:
     criteria:
       - id: DOC-01
         priority: M
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "docs/audit/raw/analyze_vga.txt (41 public_member_api_docs); dartdoc_trooper.txt (0 warnings), dartdoc_bloc.txt (3 unresolved references)"
+        findings: [F-002]
       - id: DOC-02
         priority: M
         status: null
@@ -436,10 +438,11 @@ dimensions:
     criteria:
       - id: REL-01
         priority: M
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "docs/audit/raw/pana_summary.txt (trooper 160/160, trooper_bloc 45/160); dryrun_trooper.txt (0 warnings), dryrun_bloc.txt (1 warning)"
+        findings: [F-009]
+        note: "trooper_bloc pana not evaluable before trooper is published"
       - id: REL-02
         priority: M
         status: null
@@ -448,10 +451,10 @@ dimensions:
         findings: []
       - id: REL-03
         priority: M
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "docs/audit/raw/dryrun_*.txt (archives 1 MB / 25 KB; GIF 1 MB used by README); grep file:/// in shipped files"
+        findings: [F-010]
       - id: REL-04
         priority: S
         status: null
@@ -557,5 +560,20 @@ findings:
   - id: F-008
     severity: P2
     criterion: QUAL-03
+    freeze_relevant: false
+    status: open
+  - id: F-009
+    severity: P1
+    criterion: REL-01
+    freeze_relevant: false
+    status: open
+  - id: F-010
+    severity: P1
+    criterion: REL-03
+    freeze_relevant: false
+    status: open
+  - id: F-011
+    severity: P2
+    criterion: PERF-02
     freeze_relevant: false
     status: open

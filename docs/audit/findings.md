@@ -26,7 +26,7 @@ abarbeiten und den Analyzer-Lauf in die CI aufnehmen.
 nicht auflösbaren Referenzen (`comment_references`), u. a. in `config/trooper_config.dart:56-70`,
 `controller/trooper_controller.dart:60,207,209,574` und `trooper_bloc/lib/src/widgets/tloc_effect_listener.dart:9,40`.
 Die Telemetrie-Events gehören zur Public API (OBS-01) und sind fast vollständig undokumentiert.
-**Nachweis:** `docs/audit/raw/analyze_vga.txt` (Codes `PUBLIC_MEMBER_API_DOCS`, `COMMENT_REFERENCES`)
+**Nachweis:** `docs/audit/raw/analyze_vga.txt` (Codes `PUBLIC_MEMBER_API_DOCS`, `COMMENT_REFERENCES`); `docs/audit/raw/dartdoc_bloc.txt` (3 unaufgelöste Referenzen: `[super.add]`, `[effects]`, `[context.read]`)
 **Empfehlung:** Fehlende Dartdocs ergänzen, kaputte Referenzen korrigieren, `public_member_api_docs` als Fehler in
 der CI erzwingen.
 
@@ -96,3 +96,36 @@ Betroffen sind genau die Kernpfade für Lesen, Fetch und Dispose, in denen die N
 **Nachweis:** `docs/audit/raw/metrics_trooper.json` (`dart_code_linter`, Schwelle 15)
 **Empfehlung:** L1-, L2- und Netzwerkpfad in `get` jeweils in eigene Methoden zerlegen; Persistenzblock aus
 `_executeFetch` herauslösen (er ist in `set` und `_executeFetch` doppelt vorhanden).
+
+### F-009 · P1 · freeze-relevant: nein · Aufwand: S
+**Kriterium:** REL-01
+**Ort:** `packages/trooper_bloc/CHANGELOG.md:1`, `packages/trooper_bloc/pubspec.yaml` (`version: 0.1.2-beta.1`)
+**Befund:** `trooper` erreicht bei pana 160/160, der Dry-Run meldet 0 Warnungen. Für `trooper_bloc` meldet der Dry-Run
+eine Warnung: Der CHANGELOG nennt die aktuelle Version 0.1.2-beta.1 nicht (er beginnt bei 0.1.0-beta.1). pana vergibt
+45/160, weil `trooper` auf pub.dev nicht existiert (beide Packages sind noch unveröffentlicht, HTTP 404) und damit
+Analyse, Dartdoc, Plattform- und Downgrade-Prüfung nicht laufen. Eine belastbare pana-Bewertung von `trooper_bloc` ist
+erst nach dem Release von `trooper` möglich.
+**Nachweis:** `docs/audit/raw/dryrun_bloc.txt`, `docs/audit/raw/pana_trooper_bloc.txt`, `docs/audit/raw/pana_summary.txt`
+**Empfehlung:** CHANGELOG-Eintrag für 0.1.2-beta.1 ergänzen; Release-Reihenfolge festlegen (erst `trooper`, dann
+`trooper_bloc`) und pana für `trooper_bloc` danach erneut laufen lassen, bis dahin in der CI mit `dependency_overrides`.
+
+### F-010 · P1 · freeze-relevant: nein · Aufwand: S
+**Kriterium:** REL-03
+**Ort:** `packages/trooper_bloc/skills/trooper-bloc-state-management/SKILL.md:56-62` (7 Links),
+`packages/trooper/example/README.md` (2 Links)
+**Befund:** Dateien, die im Paketarchiv ausgeliefert werden, verlinken auf lokale Pfade `file:///Users/hannes/Developer/trooper/...`.
+Die Links funktionieren für niemanden außer auf dem Entwicklerrechner und geben den lokalen Benutzernamen preis.
+Das Root-README hat 11 weitere solcher Links (→ DOC-02, Task 12). Sonst ist der Paketinhalt angemessen: Das 1-MB-GIF
+in `packages/trooper/doc/` wird vom README eingebunden.
+**Nachweis:** `grep -n "file:///"` auf die ausgelieferten Dateien; Dateilisten in `docs/audit/raw/dryrun_*.txt`
+**Empfehlung:** Relative Links oder GitHub-URLs verwenden; einen Linkcheck gegen `file://` in die CI aufnehmen.
+
+### F-011 · P2 · freeze-relevant: nein · Aufwand: M
+**Kriterium:** PERF-02
+**Ort:** `packages/trooper/benchmark/trooper_benchmark.dart`
+**Befund:** Eine Baseline liegt jetzt vor (Median aus drei Läufen, `bench_baseline.txt`), aber die Läufe streuen stark:
+Im zweiten Lauf lagen alle vier Benchmarks 20–70 % unter den anderen beiden (z. B. Request-Coalescing 45.983 statt
+~131.000 ops/s). Mit dieser Streuung ist eine 10-%-Regressionsschranke nicht belastbar. Eine CI-Prüfung fehlt ganz.
+**Nachweis:** `docs/audit/raw/bench_run1.txt` … `bench_run3.txt`, `docs/audit/raw/bench_baseline.txt`
+**Empfehlung:** Warm-up und mehrere Messwiederholungen pro Benchmark (z. B. `benchmark_harness`), Median und Streuung
+ausgeben; Regressionsprüfung erst auf dieser Basis in die CI aufnehmen.
