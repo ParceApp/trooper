@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mutations version="1.2">
+  <files>
+    <file>lib/src/concurrency/cancel_token.dart</file>
+    <file>lib/src/concurrency/mutation_queue.dart</file>
+    <file>lib/src/concurrency/query_queue.dart</file>
+  </files>
+  <commands>
+    <command group="test" expected-return="0" working-directory="." timeout="120">dart test test/concurrency test/edge_cases test/config</command>
+  </commands>
+</mutations>

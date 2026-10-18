@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mutations version="1.2">
+  <files>
+    <file>lib/src/core/accessor.dart</file>
+    <file>lib/src/core/keyed_accessor.dart</file>
+    <file>lib/src/core/keyed_local_trooper.dart</file>
+    <file>lib/src/core/keyed_query_trooper.dart</file>
+    <file>lib/src/core/keyed_stream_trooper.dart</file>
+    <file>lib/src/core/keyed_trooper.dart</file>
+    <file>lib/src/core/local_trooper.dart</file>
+    <file>lib/src/core/query_trooper.dart</file>
+    <file>lib/src/core/stream_trooper.dart</file>
+    <file>lib/src/core/trooper_mutation.dart</file>
+    <file>lib/src/core/trooper.dart</file>
+  </files>
+  <commands>
+    <command group="test" expected-return="0" working-directory="." timeout="120">dart test test/core test/edge_cases test/error</command>
+  </commands>
+</mutations>

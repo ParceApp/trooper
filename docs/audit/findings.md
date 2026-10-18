@@ -29,3 +29,38 @@ Die Telemetrie-Events gehören zur Public API (OBS-01) und sind fast vollständi
 **Nachweis:** `docs/audit/raw/analyze_vga.txt` (Codes `PUBLIC_MEMBER_API_DOCS`, `COMMENT_REFERENCES`)
 **Empfehlung:** Fehlende Dartdocs ergänzen, kaputte Referenzen korrigieren, `public_member_api_docs` als Fehler in
 der CI erzwingen.
+
+### F-003 · P1 · freeze-relevant: nein · Aufwand: L
+**Kriterium:** TEST-01
+**Ort:** `packages/trooper/lib/src/core/stream_trooper.dart` (69,8 %), `core/keyed_stream_trooper.dart` (71,3 %),
+`core/keyed_query_trooper.dart` (71,5 %), `storage/cache_entry.dart` (76,0 %), `controller/trooper_controller.dart` (76,8 %),
+`core/keyed_accessor.dart` (78,9 %), `core/keyed_trooper.dart` (79,6 %), `concurrency/mutation_queue.dart` (80,0 %)
+**Befund:** `trooper` erreicht 83,7 % Line-Coverage (2.323/2.775) und 78,9 % Branch-Coverage (1.072/1.359). Das Gate
+verlangt 95 % bzw. 85 %. `trooper_bloc` erfüllt die Schwelle mit 99,2 % Line- und 95,3 % Branch-Coverage.
+Am schwächsten abgedeckt sind die Stream- und Keyed-Varianten sowie der Controller.
+**Nachweis:** `docs/audit/raw/coverage_summary.txt`, `docs/audit/raw/coverage_trooper/lcov.info` (`tool/audit/scripts/tests.sh`)
+**Empfehlung:** Tests für die genannten Dateien ergänzen, beginnend mit Fehler- und Dispose-Pfaden der Stream-Troopers;
+Coverage-Schwelle in der CI erzwingen.
+
+### F-004 · P2 · freeze-relevant: nein · Aufwand: M
+**Kriterium:** TEST-03
+**Ort:** `packages/trooper/test/core/stream_trooper_test.dart` (16 Stellen), `core/keyed_stream_trooper_test.dart` (12),
+`edge_cases/swr_sequence_test.dart` (10), `stream/keyed_stateful_stream_test.dart` (8) u. a.
+**Befund:** Beide Suiten liefen 100-mal mit zufälliger Reihenfolge ohne Fehler. Die Tests steuern Zeit aber an 121
+Stellen mit echtem `Future.delayed`; `fake_async` ist als Dev-Dependency eingetragen, wird jedoch in keiner Testdatei
+verwendet. Die Tests hängen damit von realen Laufzeiten ab (z. B. 50 ms vs. 10 ms in `out_of_order_test.dart`) und
+können auf langsamen CI-Runnern kippen; zudem verlängern sie die Laufzeit.
+**Nachweis:** `docs/audit/raw/flake_trooper.txt`, `docs/audit/raw/flake_trooper_bloc.txt`, `docs/audit/raw/real_delays.txt`
+**Empfehlung:** Zeitabhängige Tests auf `fakeAsync` oder `Completer` umstellen.
+
+### F-005 · P2 · freeze-relevant: nein · Aufwand: S
+**Kriterium:** COMPAT-01
+**Ort:** `packages/trooper/pubspec.yaml` (`dev_dependencies`), `pubspec.yaml` (Workspace)
+**Befund:** Mit allen Abhängigkeiten auf ihrer Untergrenze (`flutter pub downgrade`) lassen sich die Tests von
+`trooper` nicht mehr laden: `frontend_server_client` 3.2.0 sucht einen Snapshot, den Dart 3.13 nicht mehr enthält.
+Betroffen ist nur die Dev-Toolchain; mit den Laufzeit-Abhängigkeiten auf ihrer Untergrenze (`meta` 1.19.0, `bloc` 9.0.0,
+`flutter_bloc` 9.1.1) laufen beide Suiten grün. Die SDK-Untergrenze `^3.12.0` ist ungetestet, lokal ist nur Dart 3.13.5
+verfügbar und es gibt keine CI-Matrix.
+**Nachweis:** `docs/audit/raw/downgrade_trooper.txt`, `downgrade_versions.txt`, `downgrade_runtime_*.txt`
+(`tool/audit/scripts/compat.sh`)
+**Empfehlung:** Untergrenzen der Dev-Dependencies anheben (`test`, `coverage`), Min-SDK-Job in der CI ergänzen.

@@ -217,10 +217,11 @@ dimensions:
     criteria:
       - id: ARCH-01
         priority: M
-        status: null
+        status: met
         automated_in_ci: false
-        evidence: null
+        evidence: "grep: no dart:io/flutter imports in packages/trooper/lib; web runs green"
         findings: []
+        note: "not enforced in CI"
       - id: ARCH-02
         priority: M
         status: null
@@ -257,10 +258,10 @@ dimensions:
     criteria:
       - id: TEST-01
         priority: M
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "docs/audit/raw/coverage_summary.txt (trooper lines 83.7%, branches 78.9%; trooper_bloc lines 99.2%, branches 95.3%)"
+        findings: [F-003]
       - id: TEST-02
         priority: M
         status: null
@@ -269,10 +270,10 @@ dimensions:
         findings: []
       - id: TEST-03
         priority: M
-        status: null
+        status: partial
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "docs/audit/raw/flake_trooper.txt, flake_trooper_bloc.txt (100/100 runs green each); docs/audit/raw/real_delays.txt (121 real-time delays)"
+        findings: [F-004]
       - id: TEST-04
         priority: M
         status: null
@@ -364,16 +365,18 @@ dimensions:
     criteria:
       - id: COMPAT-01
         priority: M
-        status: null
+        status: partial
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "docs/audit/raw/downgrade_runtime_*.txt (meta 1.19.0, bloc 9.0.0, flutter_bloc 9.1.1 green); downgrade_trooper.txt (full downgrade fails to load tests)"
+        findings: [F-005]
+        note: "Min-SDK 3.12 not testable locally (Dart 3.13.5 installed)"
       - id: COMPAT-02
         priority: M
-        status: null
+        status: met
         automated_in_ci: false
-        evidence: null
+        evidence: "docs/audit/raw/web_js.txt, web_wasm.txt (188/188 on Chrome dart2js and dart2wasm), coverage_trooper.txt (VM)"
         findings: []
+        note: "not in CI"
       - id: COMPAT-03
         priority: M
         status: null
@@ -523,5 +526,20 @@ findings:
   - id: F-002
     severity: P1
     criterion: DOC-01
+    freeze_relevant: false
+    status: open
+  - id: F-003
+    severity: P1
+    criterion: TEST-01
+    freeze_relevant: false
+    status: open
+  - id: F-004
+    severity: P2
+    criterion: TEST-03
+    freeze_relevant: false
+    status: open
+  - id: F-005
+    severity: P2
+    criterion: COMPAT-01
     freeze_relevant: false
     status: open
