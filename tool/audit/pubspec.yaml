@@ -1,0 +1,12 @@
+name: trooper_audit_tool
+description: Internal tooling for the Trooper enterprise-readiness audit.
+publish_to: none
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  yaml: ^3.1.0
+
+dev_dependencies:
+  test: ^1.25.0

@@ -1,0 +1,516 @@
+meta:
+  audited_commit: 222815ed6e4179e6a3c89130c30af152e548aa2e
+  date: 2026-10-18
+  tools:
+    dart: 3.13.5
+    flutter: 3.47.6
+dimensions:
+  - id: FEAT
+    weight: 1
+    gate_min_maturity: 2
+    criteria:
+      - id: FEAT-01
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: FEAT-02
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: FEAT-03
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: FEAT-04
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: FEAT-05
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: FEAT-06
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: FEAT-07
+        priority: S
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+  - id: ASYNC
+    weight: 2
+    gate_min_maturity: 3
+    criteria:
+      - id: ASYNC-01
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: ASYNC-02
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: ASYNC-03
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: ASYNC-04
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: ASYNC-05
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: ASYNC-06
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: ASYNC-07
+        priority: S
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+  - id: LIFE
+    weight: 2
+    gate_min_maturity: 3
+    criteria:
+      - id: LIFE-01
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: LIFE-02
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: LIFE-03
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: LIFE-04
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: LIFE-05
+        priority: S
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+  - id: ERR
+    weight: 2
+    gate_min_maturity: 3
+    criteria:
+      - id: ERR-01
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: ERR-02
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: ERR-03
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: ERR-04
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: ERR-05
+        priority: S
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+  - id: API
+    weight: 2
+    gate_min_maturity: 3
+    criteria:
+      - id: API-01
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: API-02
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: API-03
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: API-04
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: API-05
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: API-06
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: API-07
+        priority: S
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+  - id: ARCH
+    weight: 1
+    gate_min_maturity: 2
+    criteria:
+      - id: ARCH-01
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: ARCH-02
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: ARCH-03
+        priority: S
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: ARCH-04
+        priority: S
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: ARCH-05
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: ARCH-06
+        priority: C
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+  - id: TEST
+    weight: 1
+    gate_min_maturity: 2
+    criteria:
+      - id: TEST-01
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: TEST-02
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: TEST-03
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: TEST-04
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: TEST-05
+        priority: S
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+  - id: QUAL
+    weight: 1
+    gate_min_maturity: 2
+    criteria:
+      - id: QUAL-01
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: QUAL-02
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: QUAL-03
+        priority: S
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+  - id: PERF
+    weight: 1
+    gate_min_maturity: 2
+    criteria:
+      - id: PERF-01
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: PERF-02
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: PERF-03
+        priority: S
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+  - id: SEC
+    weight: 1
+    gate_min_maturity: 2
+    criteria:
+      - id: SEC-01
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: SEC-02
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: SEC-03
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: SEC-04
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+  - id: COMPAT
+    weight: 1
+    gate_min_maturity: 3
+    criteria:
+      - id: COMPAT-01
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: COMPAT-02
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: COMPAT-03
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: COMPAT-04
+        priority: S
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+  - id: DOC
+    weight: 1
+    gate_min_maturity: 2
+    criteria:
+      - id: DOC-01
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: DOC-02
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: DOC-03
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: DOC-04
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: DOC-05
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: DOC-06
+        priority: S
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+  - id: REL
+    weight: 1
+    gate_min_maturity: 2
+    criteria:
+      - id: REL-01
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: REL-02
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: REL-03
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: REL-04
+        priority: S
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+  - id: GOV
+    weight: 1
+    gate_min_maturity: 2
+    criteria:
+      - id: GOV-01
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: GOV-02
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: GOV-03
+        priority: M
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: GOV-04
+        priority: S
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+  - id: OBS
+    weight: 1
+    gate_min_maturity: 2
+    criteria:
+      - id: OBS-01
+        priority: S
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: OBS-02
+        priority: S
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+      - id: OBS-03
+        priority: C
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+  - id: MARKET
+    weight: 1
+    gate_min_maturity: null
+    criteria:
+      - id: MARKET-01
+        priority: C
+        status: null
+        automated_in_ci: false
+        evidence: null
+        findings: []
+findings: []
