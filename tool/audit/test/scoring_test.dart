@@ -81,6 +81,20 @@ void main() {
     expect(maturity(dim('X', [c('X-01', Priority.must, Status.notMet)])), 0);
   });
 
+  test('maturity uses all assessed criteria when a dimension has no must', () {
+    expect(
+        maturity(dim('OBS', [
+          c('OBS-01', Priority.should, Status.notMet),
+          c('OBS-02', Priority.should, Status.partial),
+        ])),
+        1);
+    expect(
+        maturity(dim('OBS', [c('OBS-01', Priority.should, Status.met, ci: true)])),
+        3);
+    expect(maturity(dim('MARKET', [c('MARKET-01', Priority.could, Status.na)])),
+        0);
+  });
+
   test('totalScore weights dimensions', () {
     final cat = Catalog(meta: const {}, findings: const [], dimensions: [
       dim('ASYNC', [c('A-01', Priority.must, Status.partial)], weight: 2),

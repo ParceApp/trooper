@@ -18,15 +18,21 @@ double? dimensionScore(Dimension d) {
 }
 
 /// Maturity 0–3 as defined in spec section 2.2.
+///
+/// A dimension without must criteria is graded on all its assessed criteria,
+/// so that it cannot reach maturity 3 by vacuous truth.
 int maturity(Dimension d) {
-  final musts = d.criteria.where((c) => c.priority == Priority.must);
-  final mustsMetOrNa =
-      musts.every((c) => c.status == Status.met || c.status == Status.na);
-  final metMustsAutomated = musts
-      .where((c) => c.status == Status.met)
-      .every((c) => c.automatedInCi);
-  if (mustsMetOrNa && metMustsAutomated) return 3;
-  if (musts.every((c) =>
+  final musts = d.criteria.where((c) => c.priority == Priority.must).toList();
+  final base = musts.isNotEmpty
+      ? musts
+      : d.criteria.where((c) => c.status != null && c.status != Status.na).toList();
+  if (base.isEmpty) return 0;
+  final metOrNa =
+      base.every((c) => c.status == Status.met || c.status == Status.na);
+  final metAutomated =
+      base.where((c) => c.status == Status.met).every((c) => c.automatedInCi);
+  if (metOrNa && metAutomated) return 3;
+  if (base.every((c) =>
       c.status == Status.met ||
       c.status == Status.partial ||
       c.status == Status.na)) {
