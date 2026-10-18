@@ -646,3 +646,19 @@ Dependabot-Konfiguration für pub-Abhängigkeiten fehlt.
 Meldeweg für Sicherheitslücken fehlt; der OSV-Scan läuft nicht in der CI.
 **Nachweis:** `docs/audit/raw/osv.txt`
 **Empfehlung:** `SECURITY.md` anlegen (Kontakt, Antwortzeiten, unterstützte Versionen) und den OSV-Scan in die CI aufnehmen.
+
+### F-059 · P1 · freeze-relevant: nein · Aufwand: L
+**Kriterium:** TEST-02
+**Ort:** `packages/trooper/lib/src/core/stream_trooper.dart` (46,0 %), `storage/storage_envelope.dart` (50,0 %),
+`core/keyed_stream_trooper.dart` (51,4 %), `core/trooper.dart` (54,2 %), `core/local_trooper.dart` (56,7 %),
+`storage/storage_backend.dart` (0 von 1)
+**Befund:** Über die Module `core`, `concurrency`, `storage` und `controller` überleben 557 von 1.415 Mutanten, der
+Mutation-Score liegt bei 60,6 % (Gate: 75 %). Der Lauf war vollständig, ohne Stichprobe; Mutanten auf nicht
+abgedeckten Zeilen zählen als überlebend. Gut abgesichert sind `cancel_token.dart` und `cache_entry.dart` (je 100 %),
+`cache_store.dart` (86 %), `query_queue.dart` (83,8 %) und `keyed_accessor.dart` (83,3 %). Die schwachen Dateien
+decken sich mit den Coverage-Lücken (F-003) und den Fundorten der Lifecycle- und Persistenz-Findings (F-017, F-021,
+F-024). Bei `storage_envelope.dart` überleben 7 von 14 Mutanten, genau dort fehlt die Versionsprüfung (F-024).
+**Nachweis:** `docs/audit/raw/mutation/summary.txt`, HTML-Reports unter `docs/audit/raw/mutation/<gruppe>/`
+(`tool/audit/scripts/mutation.sh`, Konfiguration `tool/audit/mutation/*.xml`)
+**Empfehlung:** Überlebende Mutanten der genannten Dateien als Checkliste für fehlende Assertions nutzen, beginnend mit
+den Stream-Troopers.

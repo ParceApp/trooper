@@ -272,10 +272,11 @@ dimensions:
         findings: [F-003]
       - id: TEST-02
         priority: M
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "docs/audit/raw/mutation/summary.txt (1415 mutants in core/concurrency/storage/controller, 557 survived, score 60.6%)"
+        findings: [F-059]
+        note: "full run, no sampling; mutants on uncovered lines count as survivors"
       - id: TEST-03
         priority: M
         status: partial
@@ -818,5 +819,10 @@ findings:
   - id: F-058
     severity: P2
     criterion: SEC-04
+    freeze_relevant: false
+    status: open
+  - id: F-059
+    severity: P1
+    criterion: TEST-02
     freeze_relevant: false
     status: open
