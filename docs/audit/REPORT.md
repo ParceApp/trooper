@@ -11,7 +11,7 @@
 
 ## Ergebnis
 
-**Gate für 1.0: nicht bestanden.** Gesamtscore **@@SCORE@@**. 58 Findings: 1 × P0, 30 × P1, 22 × P2, 5 × P3; 10 davon
+**Gate für 1.0: nicht bestanden.** Gesamtscore **30,2 %**. 59 Findings: 1 × P0, 32 × P1, 21 × P2, 5 × P3; 10 davon
 sind freeze-relevant, also nach dem API-Freeze nur noch per Major-Release behebbar.
 
 Der Kern ist solide gebaut: Request-Coalescing, Zero-Flicker-SWR, FIFO-Mutationen, Snapshot-Locking und
@@ -32,8 +32,8 @@ drei Dinge:
 
 | Bedingung (Spec 2.5) | Status |
 |---|---|
-| Alle Must-Kriterien erfüllt | nein: @@MUST@@ |
-| Keine offenen P0/P1-Findings | nein: 1 × P0, 30 × P1 |
+| Alle Must-Kriterien erfüllt | nein: 11 von 55 erfüllt, 13 teilweise, 31 nicht erfüllt |
+| Keine offenen P0/P1-Findings | nein: 1 × P0, 32 × P1 |
 | Reifegrad ≥ 2 überall, API/ASYNC/LIFE/ERR/COMPAT = 3 | nein: ohne CI erreicht keine Dimension Reifegrad 3 |
 | Harte Schwellen | siehe Tabelle |
 
@@ -45,7 +45,7 @@ drei Dinge:
 | Dartdoc | 100 % | 41 öffentliche Member ohne Doku, 27 kaputte Referenzen |
 | Line-Coverage | ≥ 95 % / ≥ 90 % | `trooper` 83,7 %; `trooper_bloc` 99,2 % |
 | Branch-Coverage `trooper` | ≥ 85 % | 78,9 % |
-| Mutation-Score | ≥ 75 % | @@MUTATION@@ |
+| Mutation-Score | ≥ 75 % | 60,6 % (1.415 Mutanten, 557 überlebt; F-059) |
 | Flakiness | 100 Läufe ohne Fehler | erfüllt (beide Pakete 100/100) |
 | CI-Matrix | grün | keine CI; lokal: VM, dart2js, dart2wasm grün; Min-SDK ungetestet |
 | API-Diff | in CI | fehlt |
@@ -53,7 +53,26 @@ drei Dinge:
 
 ## Reifegrad und Score
 
-@@SCORETABLE@@
+| Dimension | Gewicht | Score | Reifegrad | Gate-Minimum |
+|---|---|---|---|---|
+| FEAT | 1 | 67,5 % | 1 | 2 |
+| ASYNC | 2 | 55,0 % | 1 | 3 |
+| LIFE | 2 | 35,7 % | 1 | 3 |
+| ERR | 2 | 28,6 % | 1 | 3 |
+| API | 2 | 5,0 % | 1 | 3 |
+| ARCH | 1 | 28,6 % | 1 | 2 |
+| TEST | 1 | 21,4 % | 1 | 2 |
+| QUAL | 1 | 37,5 % | 1 | 2 |
+| PERF | 1 | 50,0 % | 2 | 2 |
+| SEC | 1 | 50,0 % | 2 | 2 |
+| COMPAT | 1 | 40,9 % | 1 | 3 |
+| DOC | 1 | 8,8 % | 1 | 2 |
+| REL | 1 | 0,0 % | 0 | 2 |
+| GOV | 1 | 0,0 % | 0 | 2 |
+| OBS | 1 | 20,0 % | 1 | 2 |
+| MARKET | 1 | n/a | 0 | – |
+
+**Gesamtscore: 30,2 %**
 
 Gewichtung: ASYNC, LIFE, ERR und API zählen doppelt. Der Score zeigt den Fortschritt, über die Freigabe entscheidet
 nur das Gate.
@@ -112,7 +131,7 @@ Benchmarks F-011/F-041, Governance-Dateien F-055–F-057).
 ## Grenzen dieses Audits
 
 - **Min-SDK:** Dart 3.12 ist lokal nicht installiert; die SDK-Untergrenze ist ungetestet (F-005).
-- **Mutation-Testing:** @@MUTATIONNOTE@@
+- **Mutation-Testing:** Vollständiger Lauf über alle 1.415 Mutanten der Module `core`, `concurrency`, `storage` und `controller` (keine Stichprobe, ca. 75 Minuten in einem separaten Worktree). Mutanten auf nicht abgedeckten Zeilen zählen als überlebend. Die Regeln von `mutation_test` sind textbasiert und erzeugen auch äquivalente Mutanten; der Score ist daher eher eine Untergrenze.
 - **Speicher:** Der Soak-Test misst RSS, nicht den Dart-Heap; eine Garbage Collection lässt sich nicht erzwingen.
   Das Ergebnis (98 % des Warm-up-Werts) ist ein Indiz, kein Beweis für Leckfreiheit.
 - **Leak-Tracking:** `leak_tracker` instrumentiert nur Flutter-Disposables, nicht die Trooper-Typen; dafür gibt es
@@ -126,7 +145,7 @@ Benchmarks F-011/F-041, Governance-Dateien F-055–F-057).
 
 | Datei | Inhalt |
 |---|---|
-| `docs/audit/criteria.yaml` | 74 Kriterien mit Status und Nachweis, 58 Findings |
+| `docs/audit/criteria.yaml` | 74 Kriterien mit Status und Nachweis, 59 Findings |
 | `docs/audit/findings.md` | alle Findings im Format der Spec 6.2 |
 | `docs/audit/traceability.md` | 30 Feature-Claims mit Beleg |
 | `docs/audit/api-inventory.md` | Entscheidung je exportiertem Symbol |

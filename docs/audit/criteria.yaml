@@ -192,7 +192,7 @@ dimensions:
         status: not_met
         automated_in_ci: false
         evidence: "api-inventory.md 'Weitere Punkte'; pair comparison of api_trooper.json"
-        findings: [F-030]
+        findings: [F-030, F-044]
       - id: API-04
         priority: M
         status: not_met
@@ -697,7 +697,7 @@ findings:
     freeze_relevant: true
     status: open
   - id: F-034
-    severity: P2
+    severity: P1
     criterion: API-07
     freeze_relevant: true
     status: open
