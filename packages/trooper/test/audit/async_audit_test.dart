@@ -13,8 +13,13 @@ Future<List<Object>> collectZoneErrors(Future<void> Function() body) async {
   final errors = <Object>[];
   final done = Completer<void>();
   runZonedGuarded(() async {
-    await body();
-    done.complete();
+    try {
+      await body();
+    } catch (e) {
+      errors.add(e);
+    } finally {
+      done.complete();
+    }
   }, (e, _) => errors.add(e));
   await done.future;
   // Let trailing microtasks surface their errors.
@@ -94,25 +99,34 @@ void main() {
   });
 
   group('ASYNC-02 operations during an in-flight request', () {
-    test('invalidate: caller gets TrooperCancelledException, late result is dropped', () async {
-      final fetch = ManualFetch<String>();
-      final q = QueryTrooper<String, ()>(namespace: 'a02i', fetch: (_) => fetch());
-      final f = q.get(());
-      await Future<void>.value();
-      q.invalidate();
-      fetch.calls.single.complete('late');
-      await expectLater(f, throwsA(isA<TrooperCancelledException>()));
-      await pumpEventQueue();
-      expect(q.current(), isA<DataInitial<String>>());
-      expect(q.cache.get<String>(const QueryKey('a02i', ())), isNull);
-      await q.dispose();
-    });
+    test(
+      'invalidate: caller gets TrooperCancelledException, late result is dropped',
+      () async {
+        final fetch = ManualFetch<String>();
+        final q = QueryTrooper<String, ()>(
+          namespace: 'a02i',
+          fetch: (_) => fetch(),
+        );
+        final f = q.get(());
+        await Future<void>.value();
+        q.invalidate();
+        fetch.calls.single.complete('late');
+        await expectLater(f, throwsA(isA<TrooperCancelledException>()));
+        await pumpEventQueue();
+        expect(q.current(), isA<DataInitial<String>>());
+        expect(q.cache.get<String>(const QueryKey('a02i', ())), isNull);
+        await q.dispose();
+      },
+    );
 
     test('refresh (forward): first caller receives the newer result', () async {
       // Documented: "forwards awaiting callers to the new request".
       // The superseded fetch ignores its cancel token and resolves first.
       final fetch = ManualFetch<String>();
-      final q = QueryTrooper<String, ()>(namespace: 'a02r', fetch: (_) => fetch());
+      final q = QueryTrooper<String, ()>(
+        namespace: 'a02r',
+        fetch: (_) => fetch(),
+      );
       final states = <StatefulData<String>>[];
       q.stream.listen(states.add);
       final f0 = q.get(());
@@ -124,30 +138,38 @@ void main() {
       fetch.calls.last.complete('new');
       expect(await f0, 'new');
       expect(await f1, 'new');
-      expect(states.whereType<DataLoaded<String>>().map((s) => s.data),
-          isNot(contains('old')),
-          reason: 'superseded result must not reach the stream');
+      expect(
+        states.whereType<DataLoaded<String>>().map((s) => s.data),
+        isNot(contains('old')),
+        reason: 'superseded result must not reach the stream',
+      );
       await q.dispose();
     }, skip: 'F-013');
 
-    test('mutation invalidateOnSuccess: late query result is not cached', () async {
-      final fetch = ManualFetch<String>();
-      final q = QueryTrooper<String, ()>(namespace: 'a02m', fetch: (_) => fetch());
-      final m = TrooperMutation<String, ()>(
-        namespace: 'a02m_m',
-        action: (_) async => 'saved',
-        invalidateOnSuccess: [q],
-      );
-      q.get(()).then((_) {}, onError: (_) {});
-      await Future<void>.value();
-      await m.execute(());
-      fetch.calls.single.complete('pre-mutation');
-      await pumpEventQueue();
-      expect(q.cache.get<String>(const QueryKey('a02m', ())), isNull);
-      expect(q.currentData(), isNot('pre-mutation'));
-      await q.dispose();
-      await m.dispose();
-    });
+    test(
+      'mutation invalidateOnSuccess: late query result is not cached',
+      () async {
+        final fetch = ManualFetch<String>();
+        final q = QueryTrooper<String, ()>(
+          namespace: 'a02m',
+          fetch: (_) => fetch(),
+        );
+        final m = TrooperMutation<String, ()>(
+          namespace: 'a02m_m',
+          action: (_) async => 'saved',
+          invalidateOnSuccess: [q],
+        );
+        q.get(()).then((_) {}, onError: (_) {});
+        await Future<void>.value();
+        await m.execute(());
+        fetch.calls.single.complete('pre-mutation');
+        await pumpEventQueue();
+        expect(q.cache.get<String>(const QueryKey('a02m', ())), isNull);
+        expect(q.currentData(), isNot('pre-mutation'));
+        await q.dispose();
+        await m.dispose();
+      },
+    );
 
     test('invalidate removes L2 storage as documented', () async {
       final storage = InMemoryStorageBackend();
@@ -173,8 +195,11 @@ void main() {
       expect(await storage.getAllKeys(), isNotEmpty);
       c.clearAll();
       await pumpEventQueue();
-      expect(await storage.getAllKeys(), isEmpty,
-          reason: 'e.g. logout via clearAll must not leave user data on disk');
+      expect(
+        await storage.getAllKeys(),
+        isEmpty,
+        reason: 'e.g. logout via clearAll must not leave user data on disk',
+      );
       await c.dispose();
     }, skip: 'F-014');
   });
@@ -210,25 +235,27 @@ void main() {
     await q.dispose();
   });
 
-  test('ASYNC-04 listener may invalidate and dispose during notification',
-      () async {
-    final q = QueryTrooper<String, ()>(
-      namespace: 'a04',
-      fetch: (_) async => 'v',
-    );
-    final errors = await collectZoneErrors(() async {
-      q.stream.listen((s) {
-        if (s is DataLoaded<String>) {
-          q.invalidate();
-          q.dispose();
-        }
+  test(
+    'ASYNC-04 listener may invalidate and dispose during notification',
+    () async {
+      final q = QueryTrooper<String, ()>(
+        namespace: 'a04',
+        fetch: (_) async => 'v',
+      );
+      final errors = await collectZoneErrors(() async {
+        q.stream.listen((s) {
+          if (s is DataLoaded<String>) {
+            q.invalidate();
+            q.dispose();
+          }
+        });
+        await q.get(());
+        await pumpEventQueue();
       });
-      await q.get(());
-      await pumpEventQueue();
-    });
-    expect(errors, isEmpty);
-    expect(q.isDisposed, isTrue);
-  });
+      expect(errors, isEmpty);
+      expect(q.isDisposed, isTrue);
+    },
+  );
 
   test('ASYNC-05 QueryTrooper: no state from a cancelled request', () async {
     final fetch = ManualFetch<String>();
@@ -248,8 +275,10 @@ void main() {
     fetch.calls[0].complete('a');
     await pumpEventQueue();
 
-    expect(states.whereType<DataLoaded<String>>().map((s) => s.data),
-        isNot(contains('a')));
+    expect(
+      states.whereType<DataLoaded<String>>().map((s) => s.data),
+      isNot(contains('a')),
+    );
     expect(q.currentData(), 'b');
     await q.dispose();
   });
@@ -309,8 +338,7 @@ void main() {
           namespace: 'a07_$seed',
           fetch: (_) async {
             final mine = seq++;
-            await Future<void>.delayed(
-                Duration(milliseconds: rnd.nextInt(50)));
+            await Future<void>.delayed(Duration(milliseconds: rnd.nextInt(50)));
             return mine;
           },
         );
@@ -330,11 +358,7 @@ void main() {
           async.elapse(Duration(milliseconds: rnd.nextInt(20)));
         }
         async.flushTimers();
-        expect(
-          q.currentData(),
-          expected,
-          reason: 'seed $seed',
-        );
+        expect(q.currentData(), expected, reason: 'seed $seed');
         expect(q.queryQueue.activeCount, 0, reason: 'seed $seed');
         q.dispose();
         async.flushMicrotasks();

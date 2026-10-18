@@ -143,34 +143,34 @@ dimensions:
     criteria:
       - id: ERR-01
         priority: M
-        status: null
+        status: partial
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "review error/trooper_exception.dart: sealed TrooperException with Cancelled/Timeout/Storage; fetch errors propagate unwrapped; no codec type"
+        findings: [F-022]
       - id: ERR-02
         priority: M
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "docs/audit/raw/catch_sites.md (138 sites; silent losses in side-effect callbacks, L2 read/decode, stream storage writes/deletes); error_audit_test.dart ERR-02 (2 red)"
+        findings: [F-020, F-021]
       - id: ERR-03
         priority: M
-        status: null
+        status: partial
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "error_audit_test.dart ERR-03 (exact exponential timing, maxDelay clamp, retryWhen: green; jitter: red)"
+        findings: [F-023]
       - id: ERR-04
         priority: M
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "error_audit_test.dart ERR-04/SEC-03 (not json + wrong payload fall back to fetch; missing and future version used as current: red)"
+        findings: [F-024]
       - id: ERR-05
         priority: S
-        status: null
+        status: partial
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "review of 8 throw sites and 6 asserts in lib"
+        findings: [F-025]
   - id: API
     weight: 2
     gate_min_maturity: 3
@@ -345,22 +345,22 @@ dimensions:
     criteria:
       - id: SEC-01
         priority: M
-        status: null
+        status: partial
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "review: StorageBackend/TrooperCodec allow an encrypting wrapper; README, dartdoc and skills never mention plaintext persistence"
+        findings: [F-026]
       - id: SEC-02
         priority: M
-        status: null
+        status: partial
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "error_audit_test.dart SEC-02 (payload not logged: green; query parameters logged: red); logger is opt-in via attach()"
+        findings: [F-027]
       - id: SEC-03
         priority: M
-        status: null
+        status: partial
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "error_audit_test.dart ERR-04/SEC-03 (no crash for corrupt/foreign entries; version not validated)"
+        findings: [F-024]
       - id: SEC-04
         priority: M
         status: partial
@@ -621,5 +621,45 @@ findings:
   - id: F-019
     severity: P1
     criterion: LIFE-03
+    freeze_relevant: false
+    status: open
+  - id: F-020
+    severity: P1
+    criterion: ERR-02
+    freeze_relevant: false
+    status: open
+  - id: F-021
+    severity: P1
+    criterion: ERR-02
+    freeze_relevant: false
+    status: open
+  - id: F-022
+    severity: P1
+    criterion: ERR-01
+    freeze_relevant: true
+    status: open
+  - id: F-023
+    severity: P2
+    criterion: ERR-03
+    freeze_relevant: false
+    status: open
+  - id: F-024
+    severity: P1
+    criterion: ERR-04
+    freeze_relevant: false
+    status: open
+  - id: F-025
+    severity: P3
+    criterion: ERR-05
+    freeze_relevant: false
+    status: open
+  - id: F-026
+    severity: P2
+    criterion: SEC-01
+    freeze_relevant: false
+    status: open
+  - id: F-027
+    severity: P2
+    criterion: SEC-02
     freeze_relevant: false
     status: open

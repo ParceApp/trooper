@@ -226,3 +226,94 @@ Der Soak-Test mit festem Key-Raum (10.000 Keys) blieb stabil (LIFE-05).
 **Nachweis:** Code-Review (Orte oben); `docs/audit/raw/soak.txt`
 **Empfehlung:** Optionale Größengrenze mit LRU-Eviction im `CacheStore`, Aufräumen der Per-Key-Strukturen, wenn ein Key
 keine Watcher mehr hat; Verhalten und Defaults dokumentieren.
+
+### F-020 · P1 · freeze-relevant: nein · Aufwand: S
+**Kriterium:** ERR-02
+**Ort:** `packages/trooper/lib/src/core/trooper.dart:119-121` (`runSideEffect`), `core/keyed_trooper.dart:116-118`,
+`core/trooper_mutation.dart:125,155,175`, `concurrency/cancel_token.dart:48,71`, `controller/trooper_controller.dart:646`
+**Befund:** Fehler in Nutzer-Callbacks verschwinden spurlos: Side-Effects (`onData`, `onError`, `onRequestStarted`,
+`onStarted`, `onSuccess` …), Cancel-Listener und `invalidate()` registrierter Ziele werden in `catch (_) {}` gekapselt;
+asynchrone Side-Effects werden per `.ignore()` verworfen. Weder Zone noch Telemetrie erfahren davon. Ein Bug in einem
+`onSuccess`-Handler (z. B. Navigation nach dem Speichern) bleibt damit unsichtbar.
+**Nachweis:** `packages/trooper/test/audit/error_audit_test.dart` – „ERR-02 failing side effect is not swallowed silently“ (rot);
+`docs/audit/raw/catch_sites.md`
+**Empfehlung:** Callback-Fehler mindestens als Telemetrie-Event melden (z. B. `SideEffectErrorEvent`) und in der Zone
+melden (`Zone.current.handleUncaughtError`), statt sie zu verwerfen.
+
+### F-021 · P1 · freeze-relevant: nein · Aufwand: M
+**Kriterium:** ERR-02
+**Ort:** L2-Lesepfade `core/query_trooper.dart:212`, `local_trooper.dart:293`, `keyed_local_trooper.dart:376`,
+`keyed_query_trooper.dart:223`, `stream_trooper.dart:235,484`, `keyed_stream_trooper.dart:230,497`;
+Schreiben `stream_trooper.dart:324,554-555`, `keyed_stream_trooper.dart:316,612-613`; 33 × `storage.delete(...).ignore()`
+**Befund:** Persistenzfehler werden uneinheitlich behandelt. `QueryTrooper` meldet Schreibfehler als
+`PersistenceErrorEvent`; Lese- und Decode-Fehler beim Wiederherstellen aus L2 werden dagegen in allen Troopers still
+behandelt (Eintrag löschen, weiter mit Fetch), ohne Event. `StreamTrooper` und `KeyedStreamTrooper` verwerfen auch
+Schreibfehler (`.ignore()`, `catch (_)` mit Kommentar „Non-critical“). Fehlgeschlagene `delete`-Aufrufe werden nirgends
+gemeldet; ein nicht gelöschter Eintrag bleibt dann unbemerkt im Speicher (vgl. F-014).
+**Nachweis:** `error_audit_test.dart` – „ERR-02 corrupt L2 entry is reported via telemetry“ (rot); `docs/audit/raw/catch_sites.md`
+**Empfehlung:** Eine zentrale Persistenz-Hilfsfunktion für Lesen/Schreiben/Löschen, die jeden Fehler als
+`PersistenceErrorEvent` meldet; von allen Troopers nutzen lassen (beseitigt nebenbei die Duplikation aus F-008).
+
+### F-022 · P1 · freeze-relevant: ja · Aufwand: S
+**Kriterium:** ERR-01
+**Ort:** `packages/trooper/lib/src/error/trooper_exception.dart`
+**Befund:** `TrooperException` ist `sealed` und kennt `TrooperCancelledException`, `TrooperTimeoutException` und
+`TrooperStorageException`. Codec-Fehler haben keinen eigenen Typ; sie erscheinen roh (z. B. `FormatException`) in
+`PersistenceErrorEvent` und sind dort nicht von Storage-Fehlern zu unterscheiden. Fetch-Fehler werden unverändert
+durchgereicht, das ist vertretbar. Weil die Klasse `sealed` ist, bricht jeder nach 1.0 ergänzte Subtyp exhaustive
+`switch`-Ausdrücke der Nutzer, ist also ein Breaking Change.
+**Nachweis:** Code-Review `trooper_exception.dart`; `error_audit_test.dart` ERR-04-Fälle „wrong payload type“
+**Empfehlung:** Vor dem Freeze `TrooperCodecException` ergänzen und entscheiden, ob die Hierarchie `sealed` bleiben soll
+(Erweiterbarkeit) oder bewusst geschlossen ist.
+
+### F-023 · P2 · freeze-relevant: nein · Aufwand: S
+**Kriterium:** ERR-03
+**Ort:** `packages/trooper/lib/src/config/retry_policy.dart` (`delayForAttempt`)
+**Befund:** Backoff, Obergrenze und `retryWhen` arbeiten exakt wie konfiguriert (Aufrufe bei 0/100/300/700 ms bzw.
+0/100/300/550 ms mit `maxDelay`). Jitter fehlt: Alle Clients wiederholen nach einem Serverausfall im selben Takt
+(Thundering Herd).
+**Nachweis:** `error_audit_test.dart` – ERR-03-Gruppe (3 grün, „backoff applies jitter“ rot)
+**Empfehlung:** Optionalen Jitter (z. B. „full jitter“) ergänzen, per Parameter abschaltbar für deterministische Tests.
+
+### F-024 · P1 · freeze-relevant: nein · Aufwand: M
+**Kriterium:** ERR-04
+**Ort:** `packages/trooper/lib/src/storage/storage_envelope.dart:59-61` und alle L2-Lesepfade (z. B. `query_trooper.dart:140-147`)
+**Befund:** Die Envelope-Version wird geschrieben, aber nie geprüft. Ein Eintrag ohne `version` wird als `currentVersion`
+gelesen, ein Eintrag mit `version: 999` aus einer neueren App-Version ebenso; beide werden ungeprüft dekodiert und
+ausgeliefert. Ein Migrationspfad existiert nicht. Nach 1.0 persistieren Apps Daten in diesem Format; jede Änderung am
+Format oder am Codec braucht dann eine Migration. Korrupte JSON-Daten und falsche Payload-Typen fallen korrekt auf den
+Fetch zurück (aber still, siehe F-021). Die Hypothese ERR-04 aus Spec §5 ist bestätigt.
+**Nachweis:** `error_audit_test.dart` – „ERR-04/SEC-03 … missing version“ und „… future version“ (rot), „not json“ und
+„wrong payload type“ (grün)
+**Empfehlung:** Unbekannte und fehlende Versionen verwerfen, einen Migrations-Hook pro Codec/Trooper vorsehen und
+das Format in der Doku als stabil beschreiben.
+
+### F-025 · P3 · freeze-relevant: nein · Aufwand: S
+**Kriterium:** ERR-05
+**Ort:** `packages/trooper/lib/src/concurrency/query_queue.dart:62`, `controller/trooper_controller.dart:258,315,440,588`
+**Befund:** Fehlermeldungen nennen meist, was schiefging, aber nicht, wie man es behebt. `QueryTrooper.get` nach
+`dispose` meldet „Cannot execute request on a disposed TrooperQueryQueue“, nennt also eine interne Komponente statt
+des Troopers und seines Namespace. Die Pflichtangabe „fetch oder cancellableFetch“ in den Controller-Fabriken wird nur
+per `assert` geprüft; im Release-Build führt sie zu einem unspezifischen Null-Fehler (API-Aspekt → Task 10).
+**Nachweis:** Code-Review der 8 `throw`- und 6 `assert`-Stellen in `lib/`
+**Empfehlung:** Meldungen um Namespace und Abhilfe ergänzen; Pflichtangaben zur Laufzeit mit `ArgumentError` prüfen.
+
+### F-026 · P2 · freeze-relevant: nein · Aufwand: S
+**Kriterium:** SEC-01
+**Ort:** `packages/trooper/lib/src/storage/storage_backend.dart`, `codec/trooper_codec.dart`, READMEs, `skills/*/SKILL.md`
+**Befund:** L2 speichert Payloads als Klartext-JSON. Ein Verschlüsselungs-Hook ist strukturell möglich (eigenes
+`StorageBackend` oder eigener `TrooperCodec` als Wrapper), aber nirgends dokumentiert; README, Dartdoc und Skills
+erwähnen weder Klartext-Persistenz noch den Umgang mit sensiblen Daten.
+**Nachweis:** Code-Review; `grep` nach „encrypt|plaintext|sensitive“ ohne Treffer
+**Empfehlung:** Abschnitt „Sensible Daten“ mit Beispiel eines verschlüsselnden Backends (z. B. über
+`flutter_secure_storage`) ergänzen.
+
+### F-027 · P2 · freeze-relevant: nein · Aufwand: S
+**Kriterium:** SEC-02
+**Ort:** `packages/trooper/lib/src/telemetry/trooper_logger.dart` (`ConsoleTrooperLogger.log`),
+`key/query_key.dart:87` (`describe`), `telemetry/trooper_event.dart` (`toString` von `RequestErrorEvent` u. a.)
+**Befund:** Der Logger ist opt-in (`attach()`) und gibt keine Antwort-Payloads aus. Er gibt aber jeden Query-Parameter
+im Klartext aus (`QueryKey.describe()`) sowie `error.toString()`. Parameter enthalten in der Praxis häufig
+personenbezogene Daten (im Test: eine E-Mail-Adresse), die so in Konsolen- und Crash-Logs landen.
+**Nachweis:** `error_audit_test.dart` – „SEC-02 … logger does not print query parameters“ (rot), „… response payloads“ (grün)
+**Empfehlung:** Parameter standardmäßig maskieren oder nur ihren Hash loggen; Ausgabe per Option aktivierbar machen.
