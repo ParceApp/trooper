@@ -57,46 +57,50 @@ dimensions:
     criteria:
       - id: ASYNC-01
         priority: M
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "packages/trooper/test/audit/async_audit_test.dart (ASYNC-01 group: cancel/forward green, parallel red for QueryTrooper and KeyedQueryTrooper)"
+        findings: [F-012]
       - id: ASYNC-02
         priority: M
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "packages/trooper/test/audit/async_audit_test.dart (ASYNC-02 group: 2 green, 3 red)"
+        findings: [F-013, F-014]
+        note: "cancellation of in-flight callers by invalidate is undocumented (see DOC-04)"
       - id: ASYNC-03
         priority: M
-        status: null
+        status: met
         automated_in_ci: false
-        evidence: null
+        evidence: "async_audit_test.dart ASYNC-03 (no zone errors, DataError with staleData + RequestErrorEvent); 14 discarded/unawaited sites in lib reviewed: all handled via catchError or benign cancel"
         findings: []
+        note: "lint hygiene tracked in F-001; not in CI"
       - id: ASYNC-04
         priority: M
-        status: null
+        status: met
         automated_in_ci: false
-        evidence: null
+        evidence: "async_audit_test.dart ASYNC-04 (invalidate + dispose inside listener: no zone errors)"
         findings: []
       - id: ASYNC-05
         priority: M
-        status: null
+        status: not_met
         automated_in_ci: false
-        evidence: null
-        findings: []
+        evidence: "async_audit_test.dart ASYNC-05 (QueryTrooper green, TrooperMutation red)"
+        findings: [F-015]
       - id: ASYNC-06
         priority: M
-        status: null
+        status: met
         automated_in_ci: false
-        evidence: null
+        evidence: "mutation_queue.dart:5-8 documents FIFO; async_audit_test.dart ASYNC-06 green"
         findings: []
+        note: "no optimistic update/rollback is promised anywhere, so rollback is out of scope"
       - id: ASYNC-07
         priority: S
-        status: null
+        status: met
         automated_in_ci: false
-        evidence: null
+        evidence: "async_audit_test.dart ASYNC-07 (1000 seeds, get/refresh/invalidate interleavings, default policy)"
         findings: []
+        note: "covers QueryTrooper with default forward policy only"
   - id: LIFE
     weight: 2
     gate_min_maturity: 3
@@ -575,5 +579,25 @@ findings:
   - id: F-011
     severity: P2
     criterion: PERF-02
+    freeze_relevant: false
+    status: open
+  - id: F-012
+    severity: P0
+    criterion: ASYNC-01
+    freeze_relevant: false
+    status: open
+  - id: F-013
+    severity: P1
+    criterion: ASYNC-02
+    freeze_relevant: false
+    status: open
+  - id: F-014
+    severity: P1
+    criterion: ASYNC-02
+    freeze_relevant: false
+    status: open
+  - id: F-015
+    severity: P1
+    criterion: ASYNC-05
     freeze_relevant: false
     status: open

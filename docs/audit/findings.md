@@ -129,3 +129,53 @@ Im zweiten Lauf lagen alle vier Benchmarks 20–70 % unter den anderen beiden (z
 **Nachweis:** `docs/audit/raw/bench_run1.txt` … `bench_run3.txt`, `docs/audit/raw/bench_baseline.txt`
 **Empfehlung:** Warm-up und mehrere Messwiederholungen pro Benchmark (z. B. `benchmark_harness`), Median und Streuung
 ausgeben; Regressionsprüfung erst auf dieser Basis in die CI aufnehmen.
+
+### F-012 · P0 · freeze-relevant: nein · Aufwand: M
+**Kriterium:** ASYNC-01
+**Ort:** `packages/trooper/lib/src/concurrency/query_queue.dart:110` (`case QueryConflictPolicy.parallel`),
+`packages/trooper/lib/src/core/query_trooper.dart:313`, analog `keyed_query_trooper.dart`
+**Befund:** Mit `QueryConflictPolicy.parallel` überschreibt eine ältere Antwort eine neuere: Zwei Fetches auf denselben
+Slot laufen parallel; antwortet der zuerst gestartete zuletzt, landet sein veraltetes Ergebnis in Stream, L1-Cache und
+L2-Speicher. Die einzige Schutzbedingung in `_executeFetch` ist `!isParamChanged(param)`, die bei gleichem Parameter
+nichts verhindert. Die Dartdoc verspricht ausdrücklich das Gegenteil: „Stream & Cache: Protected by sequence-ID“
+(`query_conflict_policy.dart:20`, `:91`); eine Sequence-ID existiert im Code nicht. Betroffen sind `QueryTrooper`
+und `KeyedQueryTrooper`; mit `cancel` und `forward` ist der Endzustand korrekt.
+**Nachweis:** `packages/trooper/test/audit/async_audit_test.dart` – „ASYNC-01 … QueryConflictPolicy.parallel“ (2 Tests, rot)
+**Empfehlung:** Pro Slot eine monoton steigende Request-Sequenz führen und nur Ergebnisse übernehmen, deren Sequenz
+nicht älter als die zuletzt übernommene ist.
+
+### F-013 · P1 · freeze-relevant: nein · Aufwand: M
+**Kriterium:** ASYNC-02
+**Ort:** `packages/trooper/lib/src/concurrency/query_queue.dart:107` (`_linkCompleter`) und `:137` (`completer.complete(result)`)
+**Befund:** Mit der Default-Policy `forward` verspricht die Dartdoc, dass wartende Aufrufer „auf den neuen Request
+weitergeleitet“ werden. Ignoriert der Fetch sein Cancel-Token (der Normalfall bei einfachen HTTP-Aufrufen) und
+antwortet der überholte Request zuerst, erhält der erste Aufrufer trotzdem das alte Ergebnis, und dieses wird kurz in
+Stream und Cache geschrieben, bevor das neue es ersetzt. Ursache: Der alte `runTask` vervollständigt seinen Completer
+selbst, bevor der verlinkte neue Request fertig ist. Der Endzustand ist korrekt, die Zwischenzustände nicht.
+**Nachweis:** `async_audit_test.dart` – „ASYNC-02 … refresh (forward): first caller receives the newer result“ (rot)
+**Empfehlung:** Bei `forward` den Completer des überholten Requests ausschließlich über den neuen Request vervollständigen
+und das Ergebnis des alten verwerfen.
+
+### F-014 · P1 · freeze-relevant: nein · Aufwand: S
+**Kriterium:** ASYNC-02
+**Ort:** `packages/trooper/lib/src/core/trooper.dart:172` (`invalidate`), `packages/trooper/lib/src/core/accessor.dart:58`,
+`packages/trooper/lib/src/controller/trooper_controller.dart:651` (`clearAll`)
+**Befund:** Laut Dartdoc „removes storage“ entfernt `invalidate()` auch den L2-Eintrag; tatsächlich bleibt er erhalten
+und wird beim nächsten `get` wiederhergestellt. Auch `TrooperController.clearAll()` löscht persistierte Daten
+nicht-keyed Troopers nicht. Ein Logout per `clearAll()` hinterlässt damit Nutzerdaten (im Test: eine E-Mail-Adresse)
+auf der Platte, und der nächste Nutzer bekommt sie aus L2 angezeigt. Zusätzlich bricht `invalidate()` laufende
+Requests mit `TrooperCancelledException` ab, was nirgends dokumentiert ist.
+**Nachweis:** `async_audit_test.dart` – „invalidate removes L2 storage as documented“ und
+„controller.clearAll removes persisted QueryTrooper data“ (beide rot)
+**Empfehlung:** `invalidate()` und `clearAll()` löschen die zugehörigen Storage-Keys (oder die Doku wird korrigiert und
+eine explizite `purge()`-API ergänzt); Abbruchverhalten dokumentieren.
+
+### F-015 · P1 · freeze-relevant: nein · Aufwand: S
+**Kriterium:** ASYNC-05
+**Ort:** `packages/trooper/lib/src/core/trooper_mutation.dart:134`
+**Befund:** `TrooperMutation.execute` prüft das übergebene `TrooperCancelToken` nach Abschluss der Action nicht. Wird
+die Mutation abgebrochen und liefert die Action trotzdem ein Ergebnis, emittiert sie `DataLoaded`, führt
+`invalidateOnSuccess` aus und ruft `onSuccess` auf. `QueryTrooper` verhält sich korrekt (kein State nach Cancel).
+**Nachweis:** `async_audit_test.dart` – „ASYNC-05 TrooperMutation: no DataLoaded after cancel“ (rot)
+**Empfehlung:** Nach `await action(...)` das Token prüfen und bei Abbruch `TrooperCancelledException` werfen,
+ohne State, Invalidierung oder Side-Effects auszulösen.
