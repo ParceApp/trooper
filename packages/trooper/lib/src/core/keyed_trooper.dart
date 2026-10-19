@@ -41,7 +41,7 @@ abstract base class KeyedTrooper<K extends Object, T, P extends Parameter>
     TrooperQueryQueue? queryQueue,
     TelemetryHub? telemetry,
     this.releaseUnwatchedKeys = false,
-  }) : config = config ?? defaultConfig,
+  }) : config = config ?? const TrooperConfig(),
        _ownsCache = (cache == null),
        _ownsQueryQueue = (queryQueue == null),
        cache = cache ?? CacheStore(),
@@ -50,9 +50,6 @@ abstract base class KeyedTrooper<K extends Object, T, P extends Parameter>
        stream = KeyedStatefulStream<K, T>() {
     if (releaseUnwatchedKeys) stream.onKeyUnwatched = _scheduleRelease;
   }
-
-  /// Global default configuration used when no custom config is specified.
-  static TrooperConfig get defaultConfig => TrooperConfig.defaultConfig;
 
   final bool _ownsCache;
   final bool _ownsQueryQueue;
@@ -166,8 +163,6 @@ abstract base class KeyedTrooper<K extends Object, T, P extends Parameter>
   );
 
   Accessor<T, P> operator [](K key);
-
-  Accessor<T, P> key(K key) => this[key];
 
   Map<K, StatefulData<T>> get currentStates => stream.currentStates;
 

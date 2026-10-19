@@ -43,9 +43,6 @@ final class KeyedTrooperAccessor<K extends Object, T, P extends Parameter>
   Accessor<T, P> operator [](K key) => accessorFactory(key);
 
   @override
-  Accessor<T, P> key(K key) => accessorFactory(key);
-
-  @override
   void invalidateKey(K key) => onInvalidateKey?.call(key);
 
   @override

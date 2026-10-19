@@ -70,11 +70,11 @@ void main() {
         expect(accessor.current(), isA<DataInitial<Map<int, String>>>());
         expect(accessor.currentData(), isNull);
 
-        // Read via single key accessor operator [] and key()
+        // Read via single key accessor operator []
         final user1 = await accessor[1].get(const ());
         expect(user1, 'User 1');
 
-        final user2 = await accessor.key(2).get(const ());
+        final user2 = await accessor[2].get(const ());
         expect(user2, 'User 2');
 
         expect(accessor.count, 2);

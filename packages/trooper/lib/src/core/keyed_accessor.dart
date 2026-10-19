@@ -36,9 +36,6 @@ abstract interface class KeyedAccessor<K extends Object, T, P extends Parameter>
   /// Returns a bound read-only [Accessor] scoped to entity [key].
   Accessor<T, P> operator [](K key);
 
-  /// Returns a bound read-only [Accessor] scoped to entity [key].
-  Accessor<T, P> key(K key);
-
   /// Invalidates the cache entry and state for [key] across all parameters.
   void invalidateKey(K key);
 

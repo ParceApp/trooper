@@ -27,7 +27,7 @@ import 'package:trooper/types/parameter.dart';
 /// - Request coalescing and concurrency control via [TrooperQueryQueue].
 /// - Diagnostic telemetry via [TelemetryHub].
 ///
-/// Use `operator []` or `.key(key)` to acquire a bound [Accessor] for a specific entity key.
+/// Use `operator []` to acquire a bound [Accessor] for a specific entity key.
 ///
 /// ### Example:
 /// ```dart

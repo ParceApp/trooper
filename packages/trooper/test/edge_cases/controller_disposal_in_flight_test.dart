@@ -3,9 +3,9 @@ import 'package:test/test.dart';
 import 'package:trooper/trooper.dart';
 
 class _InFlightController extends TrooperController {
-  late final itemQuery = query<String, ({int id})>(
+  late final itemQuery = cancellableQuery<String, ({int id})>(
     namespace: 'in_flight_items',
-    cancellableFetch: (param, token) async {
+    fetch: (param, token) async {
       await Future<void>.delayed(const Duration(milliseconds: 50));
       token.throwIfCancelled();
       return 'Item ${param.id}';

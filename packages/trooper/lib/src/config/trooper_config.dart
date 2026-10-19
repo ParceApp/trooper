@@ -64,9 +64,6 @@ final class TrooperConfig {
   /// Optional automated retry strategy executed when operations fail.
   final RetryPolicy? retryPolicy;
 
-  /// Shorthand alias for [conflictPolicy].
-  QueryConflictPolicy get queryConflictPolicy => conflictPolicy;
-
   /// Whether caching is enabled (TTL > zero).
   ///
   /// When `false` (e.g. [TrooperConfig.noCache]):
@@ -74,15 +71,6 @@ final class TrooperConfig {
   /// - Streams ([StreamTrooper], [KeyedStreamTrooper]): incoming frames update the stream controller directly without writing to L1 cache.
   /// - Local state ([LocalTrooper], [KeyedLocalTrooper]): in-memory state is maintained in memory as the primary source of truth.
   bool get hasCache => timeToLive > Duration.zero;
-
-  /// Global default configuration used when no custom config is specified.
-  static TrooperConfig defaultConfig = const TrooperConfig();
-
-  /// Sets the default configuration for all troopers.
-  /// This config can be overridden by individual troopers via their constructor.
-  static void setDefaultConfig(TrooperConfig config) {
-    defaultConfig = config;
-  }
 
   /// Creates a copy of this config with updated properties.
   TrooperConfig copyWith({

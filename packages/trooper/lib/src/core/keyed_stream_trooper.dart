@@ -29,7 +29,7 @@ typedef KeyedStreamFactory<K, T, P> =
 
 /// A [KeyedTrooper] managing dynamic collections of reactive, push-based data streams partitioned by key [K].
 ///
-/// Use subscript `operator []` or `.key(key)` to acquire a bound [Accessor] for a specific entity.
+/// Use subscript `operator []` to acquire a bound [Accessor] for a specific entity.
 ///
 /// Features:
 /// - **Per-Key Push Streams**: Independently subscribes to upstream streams by key.

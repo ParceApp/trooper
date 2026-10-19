@@ -29,7 +29,7 @@ abstract base class Trooper<T, P extends Parameter>
     implements Accessor<T, P> {
   /// Creates a [Trooper] with the specified [namespace] and dependencies.
   ///
-  /// [config] can be set if a custom [TrooperConfig] is desired; otherwise, the static [defaultConfig] is used.
+  /// [config] can be set if a custom [TrooperConfig] is desired; otherwise, `const TrooperConfig()` is used.
   /// In most of the use cases [cache], [queryQueue], and [telemetry] are provided by the framework, but they can be overridden for testing or advanced use cases.
   @internal
   Trooper({
@@ -40,7 +40,7 @@ abstract base class Trooper<T, P extends Parameter>
     TrooperQueryQueue? queryQueue,
     TelemetryHub? telemetry,
     StatefulData<T> initialState = const DataInitial(),
-  }) : config = config ?? defaultConfig,
+  }) : config = config ?? const TrooperConfig(),
        _ownsCache = (cache == null),
        _ownsQueryQueue = (queryQueue == null),
        cache = cache ?? CacheStore(),
@@ -49,15 +49,6 @@ abstract base class Trooper<T, P extends Parameter>
        streamController = StatefulStreamController<T>(
          initialState: initialState,
        );
-
-  // Static configuration for defaults
-  static TrooperConfig get defaultConfig => TrooperConfig.defaultConfig;
-
-  /// Sets the default configuration for all troopers.
-  /// This config can be overridden by individual troopers via their constructor.
-  static void setDefaultConfig(TrooperConfig config) {
-    TrooperConfig.setDefaultConfig(config);
-  }
 
   final bool _ownsCache;
   final bool _ownsQueryQueue;
@@ -238,9 +229,6 @@ abstract base class Trooper<T, P extends Parameter>
   ///
   /// Prevents consumers from calling mutating methods or accessing internal state directly.
   late final Accessor<T, P> accessor = _BoundTrooperAccessor<T, P>(this);
-
-  /// Callable shorthand returning the read-only [accessor].
-  Accessor<T, P> call() => accessor;
 
   /// Closes stream controllers, timers, and any resources owned by this trooper.
   @override

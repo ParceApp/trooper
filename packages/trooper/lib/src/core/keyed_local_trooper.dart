@@ -409,7 +409,10 @@ final class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
   }
 
   /// Returns the current state for [key] synchronously.
-  StatefulData<T> currentKeyState(K key) {
+  ///
+  /// A key that was never set reports [initialValueOf] as [DataLoaded].
+  @override
+  StatefulData<T> currentKey(K key) {
     if (stream.containsKey(key)) {
       return stream.stateOf(key);
     }
@@ -489,7 +492,7 @@ class _KeyedLocalBoundAccessor<K extends Object, T, P extends Parameter>
   Future<T> refresh(P parameter) => _parent.refreshKey(_key, parameter);
 
   @override
-  StatefulData<T> current() => _parent.currentKeyState(_key);
+  StatefulData<T> current() => _parent.currentKey(_key);
 
   @override
   T? currentData() => _parent.currentKeyData(_key);

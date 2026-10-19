@@ -32,11 +32,16 @@ import 'package:trooper/src/effects/trooper_mutation_side_effects.dart';
 /// ### Core Responsibilities:
 /// - **Declarative Field Declaration**: Fields can be declared directly at the attribute level
 ///   using `late final courses = query(...)` without requiring constructor assignment boilerplate.
-/// - **Factory Builders**: Conveniently build [query], [keyedQuery], [stream],
-///   [keyedStream], [local], [keyedLocal], and [mutation] instances with shared defaults.
+/// - **Factory Builders**: Conveniently build [query], [cancellableQuery], [keyedQuery],
+///   [cancellableKeyedQuery], [stream], [keyedStream], [local], [keyedLocal],
+///   [keyedLocalBuilder], [mutation], [cancellableMutation] and [loadMore]
+///   instances with shared defaults.
 /// - **Lifecycle Propagation & Hooks**: Propagates [initialize], [pause], [resume], [recover],
 ///   [didChangeDependencies], and [dispose] to all registered child troopers and [extraLifecycleChildren].
-///   Provides overridable hooks like [onInit] and [onDispose].
+///   These drivers are not overridable; override the matching hook instead:
+///   [onInit], [onPause], [onResume], [onRecover], [onDependenciesChanged] or
+///   [onDispose]. Each hook runs before the children (on [dispose]: before
+///   the children are disposed).
 /// - **Hierarchical Invalidation**: Implements [Invalidatable]. Calling [invalidate] or [clearAll]
 ///   invalidates all managed troopers and [extraInvalidatables] at once (ideal target for
 ///   `invalidateOnSuccess: \[this\]`).
@@ -247,43 +252,58 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
   /// ```
   QueryTrooper<T, P> query<T, P extends Record>({
     required String namespace,
-    Future<T> Function(P param)? fetch,
-    Future<T> Function(P param, TrooperCancelToken token)? cancellableFetch,
+    required Future<T> Function(P param) fetch,
     TrooperCodec<T>? codec,
     TrooperConfig? config,
     TrooperSideEffects<T, P>? sideEffects,
     CacheStore? cache,
     TrooperQueryQueue? queryQueue,
     TelemetryHub? telemetry,
-  }) {
-    assert(
-      fetch != null || cancellableFetch != null,
-      'Either fetch or cancellableFetch must be provided',
-    );
-    final resolvedConfig = _resolveConfig(config);
-    final trooper = cancellableFetch != null
-        ? QueryTrooper<T, P>.cancellable(
-            namespace: namespace,
-            fetch: cancellableFetch,
-            codec: codec,
-            config: resolvedConfig,
-            sideEffects: sideEffects,
-            cache: cache ?? defaultCache,
-            queryQueue: queryQueue ?? defaultQueryQueue,
-            telemetry: telemetry ?? defaultTelemetry,
-          )
-        : QueryTrooper<T, P>(
-            namespace: namespace,
-            fetch: fetch!,
-            codec: codec,
-            config: resolvedConfig,
-            sideEffects: sideEffects,
-            cache: cache ?? defaultCache,
-            queryQueue: queryQueue ?? defaultQueryQueue,
-            telemetry: telemetry ?? defaultTelemetry,
-          );
-    return manage(trooper);
-  }
+  }) => manage(
+    QueryTrooper<T, P>(
+      namespace: namespace,
+      fetch: fetch,
+      codec: codec,
+      config: _resolveConfig(config),
+      sideEffects: sideEffects,
+      cache: cache ?? defaultCache,
+      queryQueue: queryQueue ?? defaultQueryQueue,
+      telemetry: telemetry ?? defaultTelemetry,
+    ),
+  );
+
+  /// Like [query], but [fetch] receives a [TrooperCancelToken] that is
+  /// cancelled when the request is superseded, invalidated or disposed.
+  ///
+  /// ```dart
+  /// class SearchController extends TrooperController {
+  ///   late final results = cancellableQuery<List<String>, ({String term})>(
+  ///     namespace: 'search',
+  ///     fetch: (param, token) => api.search(param.term, cancelToken: token),
+  ///   );
+  /// }
+  /// ```
+  QueryTrooper<T, P> cancellableQuery<T, P extends Record>({
+    required String namespace,
+    required Future<T> Function(P param, TrooperCancelToken token) fetch,
+    TrooperCodec<T>? codec,
+    TrooperConfig? config,
+    TrooperSideEffects<T, P>? sideEffects,
+    CacheStore? cache,
+    TrooperQueryQueue? queryQueue,
+    TelemetryHub? telemetry,
+  }) => manage(
+    QueryTrooper<T, P>.cancellable(
+      namespace: namespace,
+      fetch: fetch,
+      codec: codec,
+      config: _resolveConfig(config),
+      sideEffects: sideEffects,
+      cache: cache ?? defaultCache,
+      queryQueue: queryQueue ?? defaultQueryQueue,
+      telemetry: telemetry ?? defaultTelemetry,
+    ),
+  );
 
   /// Creates and registers a new [KeyedQueryTrooper] managed by this controller.
   ///
@@ -300,9 +320,7 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
   /// ```
   KeyedQueryTrooper<K, T, P> keyedQuery<K extends Object, T, P extends Record>({
     required String namespace,
-    Future<T> Function(K key, P param)? fetch,
-    Future<T> Function(K key, P param, TrooperCancelToken token)?
-    cancellableFetch,
+    required Future<T> Function(K key, P param) fetch,
     TrooperCodec<T>? codec,
     TrooperConfig? config,
     KeyedTrooperSideEffects<K, T, P>? sideEffects,
@@ -310,37 +328,46 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
     TrooperQueryQueue? queryQueue,
     TelemetryHub? telemetry,
     bool releaseUnwatchedKeys = false,
-  }) {
-    assert(
-      fetch != null || cancellableFetch != null,
-      'Either fetch or cancellableFetch must be provided',
-    );
-    final resolvedConfig = _resolveConfig(config);
-    final trooper = cancellableFetch != null
-        ? KeyedQueryTrooper<K, T, P>.cancellable(
-            namespace: namespace,
-            fetch: cancellableFetch,
-            codec: codec,
-            config: resolvedConfig,
-            sideEffects: sideEffects,
-            cache: cache ?? defaultCache,
-            queryQueue: queryQueue ?? defaultQueryQueue,
-            telemetry: telemetry ?? defaultTelemetry,
-            releaseUnwatchedKeys: releaseUnwatchedKeys,
-          )
-        : KeyedQueryTrooper<K, T, P>(
-            namespace: namespace,
-            fetch: fetch!,
-            codec: codec,
-            config: resolvedConfig,
-            sideEffects: sideEffects,
-            cache: cache ?? defaultCache,
-            queryQueue: queryQueue ?? defaultQueryQueue,
-            telemetry: telemetry ?? defaultTelemetry,
-            releaseUnwatchedKeys: releaseUnwatchedKeys,
-          );
-    return manage(trooper);
-  }
+  }) => manage(
+    KeyedQueryTrooper<K, T, P>(
+      namespace: namespace,
+      fetch: fetch,
+      codec: codec,
+      config: _resolveConfig(config),
+      sideEffects: sideEffects,
+      cache: cache ?? defaultCache,
+      queryQueue: queryQueue ?? defaultQueryQueue,
+      telemetry: telemetry ?? defaultTelemetry,
+      releaseUnwatchedKeys: releaseUnwatchedKeys,
+    ),
+  );
+
+  /// Like [keyedQuery], but [fetch] receives a [TrooperCancelToken] that is
+  /// cancelled when the request is superseded, invalidated or disposed.
+  KeyedQueryTrooper<K, T, P>
+  cancellableKeyedQuery<K extends Object, T, P extends Record>({
+    required String namespace,
+    required Future<T> Function(K key, P param, TrooperCancelToken token) fetch,
+    TrooperCodec<T>? codec,
+    TrooperConfig? config,
+    KeyedTrooperSideEffects<K, T, P>? sideEffects,
+    CacheStore? cache,
+    TrooperQueryQueue? queryQueue,
+    TelemetryHub? telemetry,
+    bool releaseUnwatchedKeys = false,
+  }) => manage(
+    KeyedQueryTrooper<K, T, P>.cancellable(
+      namespace: namespace,
+      fetch: fetch,
+      codec: codec,
+      config: _resolveConfig(config),
+      sideEffects: sideEffects,
+      cache: cache ?? defaultCache,
+      queryQueue: queryQueue ?? defaultQueryQueue,
+      telemetry: telemetry ?? defaultTelemetry,
+      releaseUnwatchedKeys: releaseUnwatchedKeys,
+    ),
+  );
 
   /// Creates and registers a new [LoadMore] feed over an existing page query.
   ///
@@ -424,43 +451,59 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
   /// ```
   KeyedLocalTrooper<K, T, P> keyedLocal<K extends Object, T, P extends Record>({
     required String namespace,
-    T? initialValue,
-    T Function(K key)? initialValueFactory,
+    required T initialValue,
     TrooperCodec<T>? codec,
     TrooperConfig? config,
     KeyedTrooperSideEffects<K, T, P>? sideEffects,
     CacheStore? cache,
     TrooperQueryQueue? queryQueue,
     TelemetryHub? telemetry,
-  }) {
-    assert(
-      initialValue != null || initialValueFactory != null,
-      'Either initialValue or initialValueFactory must be provided',
-    );
-    final resolvedConfig = _resolveConfig(config);
-    final trooper = initialValueFactory != null
-        ? KeyedLocalTrooper<K, T, P>.builder(
-            namespace: namespace,
-            initialValueFactory: initialValueFactory,
-            codec: codec,
-            config: resolvedConfig,
-            sideEffects: sideEffects,
-            cache: cache ?? defaultCache,
-            queryQueue: queryQueue ?? defaultQueryQueue,
-            telemetry: telemetry ?? defaultTelemetry,
-          )
-        : KeyedLocalTrooper<K, T, P>(
-            namespace: namespace,
-            initialValue: initialValue as T,
-            codec: codec,
-            config: resolvedConfig,
-            sideEffects: sideEffects,
-            cache: cache ?? defaultCache,
-            queryQueue: queryQueue ?? defaultQueryQueue,
-            telemetry: telemetry ?? defaultTelemetry,
-          );
-    return manage(trooper);
-  }
+  }) => manage(
+    KeyedLocalTrooper<K, T, P>(
+      namespace: namespace,
+      initialValue: initialValue,
+      codec: codec,
+      config: _resolveConfig(config),
+      sideEffects: sideEffects,
+      cache: cache ?? defaultCache,
+      queryQueue: queryQueue ?? defaultQueryQueue,
+      telemetry: telemetry ?? defaultTelemetry,
+    ),
+  );
+
+  /// Like [keyedLocal], but every key starts with its own value from
+  /// [initialValueFactory].
+  ///
+  /// ```dart
+  /// class CartController extends TrooperController {
+  ///   late final quantities = keyedLocalBuilder<String, int, ()>(
+  ///     namespace: 'quantities',
+  ///     initialValueFactory: (sku) => 1,
+  ///   );
+  /// }
+  /// ```
+  KeyedLocalTrooper<K, T, P>
+  keyedLocalBuilder<K extends Object, T, P extends Record>({
+    required String namespace,
+    required T Function(K key) initialValueFactory,
+    TrooperCodec<T>? codec,
+    TrooperConfig? config,
+    KeyedTrooperSideEffects<K, T, P>? sideEffects,
+    CacheStore? cache,
+    TrooperQueryQueue? queryQueue,
+    TelemetryHub? telemetry,
+  }) => manage(
+    KeyedLocalTrooper<K, T, P>.builder(
+      namespace: namespace,
+      initialValueFactory: initialValueFactory,
+      codec: codec,
+      config: _resolveConfig(config),
+      sideEffects: sideEffects,
+      cache: cache ?? defaultCache,
+      queryQueue: queryQueue ?? defaultQueryQueue,
+      telemetry: telemetry ?? defaultTelemetry,
+    ),
+  );
 
   /// Creates and registers a new [StreamTrooper] managed by this controller.
   ///
@@ -571,36 +614,41 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
   /// ```
   TrooperMutation<T, P> mutation<T, P extends Record>({
     required String namespace,
-    Future<T> Function(P param)? action,
-    Future<T> Function(P param, TrooperCancelToken token)? cancellableAction,
+    required Future<T> Function(P param) action,
     List<Invalidatable>? invalidateOnSuccess,
     TrooperMutationSideEffects<T, P>? sideEffects,
     TrooperMutationQueue? queue,
     TelemetryHub? telemetry,
-  }) {
-    assert(
-      action != null || cancellableAction != null,
-      'Either action or cancellableAction must be provided',
-    );
-    final trooper = cancellableAction != null
-        ? TrooperMutation<T, P>.cancellable(
-            namespace: namespace,
-            action: cancellableAction,
-            invalidateOnSuccess: invalidateOnSuccess,
-            sideEffects: sideEffects,
-            queue: queue ?? defaultMutationQueue,
-            telemetry: telemetry ?? defaultTelemetry,
-          )
-        : TrooperMutation<T, P>(
-            namespace: namespace,
-            action: action!,
-            invalidateOnSuccess: invalidateOnSuccess,
-            sideEffects: sideEffects,
-            queue: queue ?? defaultMutationQueue,
-            telemetry: telemetry ?? defaultTelemetry,
-          );
-    return manage(trooper);
-  }
+  }) => manage(
+    TrooperMutation<T, P>(
+      namespace: namespace,
+      action: action,
+      invalidateOnSuccess: invalidateOnSuccess,
+      sideEffects: sideEffects,
+      queue: queue ?? defaultMutationQueue,
+      telemetry: telemetry ?? defaultTelemetry,
+    ),
+  );
+
+  /// Like [mutation], but [action] receives a [TrooperCancelToken] that is
+  /// cancelled when the mutation is cancelled or disposed.
+  TrooperMutation<T, P> cancellableMutation<T, P extends Record>({
+    required String namespace,
+    required Future<T> Function(P param, TrooperCancelToken token) action,
+    List<Invalidatable>? invalidateOnSuccess,
+    TrooperMutationSideEffects<T, P>? sideEffects,
+    TrooperMutationQueue? queue,
+    TelemetryHub? telemetry,
+  }) => manage(
+    TrooperMutation<T, P>.cancellable(
+      namespace: namespace,
+      action: action,
+      invalidateOnSuccess: invalidateOnSuccess,
+      sideEffects: sideEffects,
+      queue: queue ?? defaultMutationQueue,
+      telemetry: telemetry ?? defaultTelemetry,
+    ),
+  );
 
   Iterable<LifecycleAware> _allLifecycleChildren({
     bool reversed = false,
@@ -660,13 +708,10 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
     invalidate();
   }
 
-  /// Complete purge of all caches and managed state.
-  @pragma('vm:prefer-inline')
-  void executeOrder66() => clearAll();
-
   /// Initializes this controller via [onInit], followed by all managed
   /// [LifecycleAware] child components and [extraLifecycleChildren].
   @override
+  @nonVirtual
   FutureOr<void> initialize() async {
     final initResult = onInit();
     if (initResult is Future) {
@@ -694,6 +739,7 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
   /// Pauses this controller via [onPause], followed by all managed
   /// [LifecycleAware] child components and [extraLifecycleChildren].
   @override
+  @nonVirtual
   FutureOr<void> pause() async {
     defaultCache?.pause();
     final pauseResult = onPause();
@@ -722,6 +768,7 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
   /// Resumes this controller via [onResume], followed by all managed
   /// [LifecycleAware] child components and [extraLifecycleChildren].
   @override
+  @nonVirtual
   FutureOr<void> resume() async {
     final resumeResult = onResume();
     if (resumeResult is Future) {
@@ -750,6 +797,7 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
   /// Recovers this controller via [onRecover], followed by all managed
   /// [LifecycleAware] child components and [extraLifecycleChildren].
   @override
+  @nonVirtual
   FutureOr<void> recover() async {
     final recoverResult = onRecover();
     if (recoverResult is Future) {
@@ -777,6 +825,7 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
   /// Propagates dependency changes via [onDependenciesChanged], followed by
   /// all managed [LifecycleAware] child components and [extraLifecycleChildren].
   @override
+  @nonVirtual
   FutureOr<void> didChangeDependencies() async {
     final depResult = onDependenciesChanged();
     if (depResult is Future) {
@@ -805,7 +854,7 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
   /// children and [extraLifecycleChildren] in reverse registration order (LIFO),
   /// followed by shared orchestrator, mutation queue, and cache store.
   @override
-  @mustCallSuper
+  @nonVirtual
   Future<void> dispose() async {
     if (_isDisposed) return;
     _isDisposed = true;

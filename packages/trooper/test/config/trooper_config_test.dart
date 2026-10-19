@@ -3,13 +3,12 @@ import 'package:trooper/trooper.dart';
 
 void main() {
   group('TrooperConfig', () {
-    test('default configuration values and aliases', () {
+    test('default configuration values', () {
       const config = TrooperConfig();
 
       expect(config.timeToLive, const Duration(minutes: 1));
       expect(config.stalePolicy, StalePolicy.keepStaleWhileRevalidate);
       expect(config.conflictPolicy, QueryConflictPolicy.forward);
-      expect(config.queryConflictPolicy, QueryConflictPolicy.forward);
       expect(config.deduplicate, isTrue);
       expect(config.hasCache, isTrue);
       expect(config.storage, isNull);
@@ -52,21 +51,6 @@ void main() {
       expect(updated.storage, storage);
       expect(updated.timeout, const Duration(seconds: 10));
       expect(updated.retryPolicy, retry);
-    });
-
-    test('static defaultConfig and setDefaultConfig', () {
-      final original = TrooperConfig.defaultConfig;
-      const custom = TrooperConfig(timeToLive: Duration(seconds: 45));
-
-      TrooperConfig.setDefaultConfig(custom);
-      expect(
-        TrooperConfig.defaultConfig.timeToLive,
-        const Duration(seconds: 45),
-      );
-
-      // Restore
-      TrooperConfig.setDefaultConfig(original);
-      expect(TrooperConfig.defaultConfig.timeToLive, original.timeToLive);
     });
   });
 }
