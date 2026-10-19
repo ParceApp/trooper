@@ -46,7 +46,7 @@ abstract interface class Watched<T> {
 }
 
 /// Concrete implementation of [Watched] supporting snapshot-locking and lifecycle events.
-class WatchedHandle<T, P extends Parameter> implements Watched<T> {
+final class WatchedHandle<T, P extends Parameter> implements Watched<T> {
   /// Creates a [WatchedHandle] bound to [accessor] with an optional [initialParameter].
   WatchedHandle({
     required Accessor<T, P> accessor,

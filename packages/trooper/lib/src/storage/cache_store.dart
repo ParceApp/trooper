@@ -41,7 +41,7 @@ import 'package:trooper/src/stream/keyed_stateful_stream.dart';
 /// // Invalidate all lectures:
 /// cache.invalidateNamespace('lecture');
 /// ```
-class CacheStore with LifecycleAware implements Invalidatable {
+final class CacheStore with LifecycleAware implements Invalidatable {
   /// Creates an in-memory [CacheStore].
   ///
   /// If [evictionInterval] is provided, an internal timer periodically runs

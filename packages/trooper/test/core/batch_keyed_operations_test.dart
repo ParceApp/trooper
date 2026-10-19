@@ -69,15 +69,15 @@ void main() {
           key: 'user2',
           parameter: const (),
         );
-        expect(await storage.containsKey(k1.storageKey), isTrue);
-        expect(await storage.containsKey(k2.storageKey), isTrue);
+        expect(await storage.read(k1.storageKey), isNotNull);
+        expect(await storage.read(k2.storageKey), isNotNull);
 
         // resetKeysAsync
         await trooper.resetKeysAsync(['user1', 'user2'], const ());
         expect(trooper.currentKeyData('user1'), 'init');
         expect(trooper.currentKeyData('user2'), 'init');
-        expect(await storage.containsKey(k1.storageKey), isFalse);
-        expect(await storage.containsKey(k2.storageKey), isFalse);
+        expect(await storage.read(k1.storageKey), isNull);
+        expect(await storage.read(k2.storageKey), isNull);
 
         trooper.dispose();
       },

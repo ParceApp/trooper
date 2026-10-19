@@ -27,16 +27,10 @@ class EncryptedStorageBackend implements StorageBackend {
       inner.write(key, await encrypt(value));
 
   @override
-  Future<String?> delete(String key) => inner.delete(key);
-
-  @override
-  Future<void> clear() => inner.clear();
+  Future<void> delete(String key) => inner.delete(key);
 
   @override
   Future<Set<String>> getAllKeys() => inner.getAllKeys();
-
-  @override
-  Future<bool> containsKey(String key) => inner.containsKey(key);
 }
 
 void main() {

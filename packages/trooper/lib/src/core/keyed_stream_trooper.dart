@@ -14,7 +14,6 @@ import 'package:trooper/src/codec/trooper_codec.dart';
 import 'package:trooper/src/storage/cache_entry.dart';
 import 'package:trooper/src/storage/storage_envelope.dart';
 import 'package:trooper/src/storage/cache_store.dart';
-import 'package:trooper/src/stream/keyed_stateful_stream.dart';
 import 'package:trooper/src/stream/stateful_stream.dart';
 import 'package:trooper/src/telemetry/telemetry_hub.dart';
 import 'package:trooper/src/telemetry/trooper_event.dart';
@@ -60,7 +59,7 @@ typedef KeyedStreamFactory<K, T, P> =
 ///   print('Active rooms: ${roomStates.keys}');
 /// });
 /// ```
-class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
+final class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
     extends KeyedTrooper<K, T, P> {
   /// Creates a [KeyedStreamTrooper] with the specified [streamFactory].
   KeyedStreamTrooper({
@@ -76,7 +75,6 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
     super.cache,
     super.queryQueue,
     super.telemetry,
-    super.stream,
     super.releaseUnwatchedKeys,
   });
 
@@ -94,7 +92,6 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
     CacheStore? cache,
     TrooperQueryQueue? queryQueue,
     TelemetryHub? telemetry,
-    KeyedStatefulStream<K, T>? streamManager,
     bool releaseUnwatchedKeys = false,
   }) => KeyedStreamTrooper<K, T, ()>(
     namespace: namespace,
@@ -111,7 +108,6 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
     cache: cache,
     queryQueue: queryQueue,
     telemetry: telemetry,
-    stream: streamManager,
     releaseUnwatchedKeys: releaseUnwatchedKeys,
   );
 

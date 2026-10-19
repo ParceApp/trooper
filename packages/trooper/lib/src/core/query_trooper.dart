@@ -14,7 +14,6 @@ import 'package:trooper/src/error/trooper_exception.dart';
 import 'package:trooper/src/key/query_key.dart';
 import 'package:trooper/src/state/data_metadata.dart';
 import 'package:trooper/src/state/stateful_data.dart';
-import 'package:trooper/src/stream/stateful_stream_controller.dart';
 import 'package:trooper/src/telemetry/telemetry_hub.dart';
 import 'package:trooper/src/telemetry/trooper_event.dart';
 import 'package:trooper/types/parameter.dart';
@@ -43,7 +42,7 @@ import 'package:trooper/types/parameter.dart';
 ///   print(state);
 /// });
 /// ```
-class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
+final class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
   /// Creates a [QueryTrooper] with a standard fetch function.
   factory QueryTrooper({
     required String namespace,
@@ -54,7 +53,6 @@ class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
     CacheStore? cache,
     TrooperQueryQueue? queryQueue,
     TelemetryHub? telemetry,
-    StatefulStreamController<T>? streamController,
   }) => QueryTrooper.cancellable(
     namespace: namespace,
     fetch: (param, _) => fetch(param),
@@ -64,7 +62,6 @@ class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
     cache: cache,
     queryQueue: queryQueue,
     telemetry: telemetry,
-    streamController: streamController,
   );
 
   /// Creates a [QueryTrooper] with cooperative cancellation support via [TrooperCancelToken].
@@ -77,7 +74,6 @@ class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
     super.cache,
     super.queryQueue,
     super.telemetry,
-    super.streamController,
   });
 
   /// The underlying fetch function executed to retrieve data.

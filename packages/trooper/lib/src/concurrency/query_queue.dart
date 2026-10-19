@@ -26,7 +26,7 @@ import 'package:trooper/src/lifecycle/lifecycle_aware.dart';
 /// final f2 = queryQueue.execute(key: key, action: (token) => fetchApi(42, token));
 /// assert(identical(f1, f2));
 /// ```
-class TrooperQueryQueue with LifecycleAware {
+final class TrooperQueryQueue with LifecycleAware {
   final List<_OngoingRequest<dynamic>> _ongoingList = [];
   bool _isDisposed = false;
 

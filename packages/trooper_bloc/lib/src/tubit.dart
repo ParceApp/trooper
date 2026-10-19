@@ -41,6 +41,10 @@ import 'package:trooper_bloc/src/sources/trooper_sources.dart';
 ///   Future<void> refresh() => store.users.refreshKey(userId);
 /// }
 /// ```
+///
+/// ### Extending
+/// Extend this class; do not `implements` it. Implementing it is not
+/// supported, and new members can be added in minor releases.
 abstract class Tubit<State> extends Cubit<State> with TrooperSources<State> {
   /// Creates a [Tubit] initialized with [initialState].
   Tubit(super.initialState) {

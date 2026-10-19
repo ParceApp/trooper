@@ -18,7 +18,7 @@ import 'package:trooper/src/key/query_key.dart';
 /// app release). Such entries are deleted and the data is fetched again; there is
 /// no migration. The envelope version is independent of the storage key layout
 /// version in [QueryKey.storageKey] (`trooper:1:…`).
-class StorageEnvelope {
+final class StorageEnvelope {
   /// Creates a [StorageEnvelope] with the provided [payload] and timestamps.
   const StorageEnvelope({
     required this.payload,

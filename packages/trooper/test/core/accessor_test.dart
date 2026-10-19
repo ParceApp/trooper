@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:test/test.dart';
 import 'package:trooper/trooper.dart';
+import 'package:trooper/src/core/keyed_trooper_accessor.dart';
+import 'package:trooper/src/stream/keyed_stateful_stream.dart';
 
 void main() {
   group('Accessor & ParameterlessAccessor', () {

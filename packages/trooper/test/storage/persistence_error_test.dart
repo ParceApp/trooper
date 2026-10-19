@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:test/test.dart';
 import 'package:trooper/trooper.dart';
 
-class _FailingStorage extends InMemoryStorageBackend {
+import '../fixtures/delegating_storage_backend.dart';
+
+class _FailingStorage extends DelegatingStorageBackend {
   bool failWrite = false;
   bool failDelete = false;
 
@@ -14,7 +16,7 @@ class _FailingStorage extends InMemoryStorageBackend {
   }
 
   @override
-  Future<String?> delete(String key) async {
+  Future<void> delete(String key) async {
     if (failDelete) throw StateError('disk locked');
     return super.delete(key);
   }

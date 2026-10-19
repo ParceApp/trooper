@@ -14,7 +14,7 @@ import 'dart:math' as math;
 ///   ),
 /// );
 /// ```
-class RetryPolicy {
+final class RetryPolicy {
   /// Creates a custom [RetryPolicy].
   const RetryPolicy({
     this.maxRetries = 3,

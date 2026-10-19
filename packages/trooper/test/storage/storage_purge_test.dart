@@ -1,6 +1,8 @@
 import 'package:test/test.dart';
 import 'package:trooper/trooper.dart';
 
+import '../fixtures/delegating_storage_backend.dart';
+
 QueryTrooper<String, ()> _query(
   StorageBackend storage,
   String namespace, {
@@ -110,7 +112,7 @@ void main() {
   });
 }
 
-class _NoKeysStorage extends InMemoryStorageBackend {
+class _NoKeysStorage extends DelegatingStorageBackend {
   @override
   Future<Set<String>> getAllKeys() async => throw StateError('unsupported');
 }

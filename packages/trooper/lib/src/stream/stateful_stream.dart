@@ -24,7 +24,7 @@ import 'package:trooper/src/state/stateful_data.dart';
 ///   print('Is loading: $isLoading');
 /// });
 /// ```
-class StatefulStream<T> extends StreamView<StatefulData<T>> {
+final class StatefulStream<T> extends StreamView<StatefulData<T>> {
   /// Creates a [StatefulStream] wrapping an underlying [stream] with a state-reading supplier.
   StatefulStream(
     super.stream, {

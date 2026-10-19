@@ -17,7 +17,7 @@ import 'package:trooper/src/telemetry/trooper_logger.dart';
 ///   }
 /// });
 /// ```
-class TelemetryHub with LifecycleAware {
+final class TelemetryHub with LifecycleAware {
   TelemetryHub._() {
     _controller = StreamController<TrooperEvent>.broadcast(sync: true);
   }

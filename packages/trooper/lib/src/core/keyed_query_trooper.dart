@@ -15,7 +15,6 @@ import 'package:trooper/src/state/stateful_data.dart';
 import 'package:trooper/src/storage/cache_entry.dart';
 import 'package:trooper/src/storage/cache_store.dart';
 import 'package:trooper/src/storage/storage_envelope.dart';
-import 'package:trooper/src/stream/keyed_stateful_stream.dart';
 import 'package:trooper/src/stream/stateful_stream.dart';
 import 'package:trooper/src/telemetry/telemetry_hub.dart';
 import 'package:trooper/src/telemetry/trooper_event.dart';
@@ -46,7 +45,7 @@ import 'package:trooper/types/parameter.dart';
 ///   print('Loaded ${map.length} lectures');
 /// });
 /// ```
-class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
+final class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
     extends KeyedTrooper<K, T, P> {
   /// Creates a [KeyedQueryTrooper] with a standard fetch function.
   factory KeyedQueryTrooper({
@@ -58,7 +57,6 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
     CacheStore? cache,
     TrooperQueryQueue? queryQueue,
     TelemetryHub? telemetry,
-    KeyedStatefulStream<K, T>? stream,
     bool releaseUnwatchedKeys = false,
   }) => KeyedQueryTrooper.cancellable(
     namespace: namespace,
@@ -69,7 +67,6 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
     cache: cache,
     queryQueue: queryQueue,
     telemetry: telemetry,
-    stream: stream,
     releaseUnwatchedKeys: releaseUnwatchedKeys,
   );
 
@@ -83,7 +80,6 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
     super.cache,
     super.queryQueue,
     super.telemetry,
-    super.stream,
     super.releaseUnwatchedKeys,
   });
 

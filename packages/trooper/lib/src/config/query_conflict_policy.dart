@@ -109,6 +109,3 @@ enum QueryConflictPolicy {
   /// ```
   parallel,
 }
-
-/// Shorthand alias for [QueryConflictPolicy].
-typedef ConflictPolicy = QueryConflictPolicy;

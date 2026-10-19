@@ -19,8 +19,6 @@ import 'package:trooper/src/core/accessor.dart';
 import 'package:trooper/src/pagination/load_more.dart';
 import 'package:trooper/src/lifecycle/lifecycle_aware.dart';
 import 'package:trooper/src/state/stateful_data.dart';
-import 'package:trooper/src/stream/keyed_stateful_stream.dart';
-import 'package:trooper/src/stream/stateful_stream_controller.dart';
 import 'package:trooper/src/telemetry/telemetry_hub.dart';
 import 'package:trooper/src/effects/trooper_side_effects.dart';
 import 'package:trooper/src/effects/trooper_keyed_side_effects.dart';
@@ -61,6 +59,10 @@ import 'package:trooper/src/effects/trooper_mutation_side_effects.dart';
 ///   );
 /// }
 /// ```
+///
+/// ### Extending
+/// Extend this class; do not `implements` it. Implementing it is not
+/// supported, and new members can be added in minor releases.
 abstract class TrooperController with LifecycleAware implements Invalidatable {
   /// Creates a [TrooperController] with optional shared default configuration.
   TrooperController({
@@ -253,7 +255,6 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
     CacheStore? cache,
     TrooperQueryQueue? queryQueue,
     TelemetryHub? telemetry,
-    StatefulStreamController<T>? streamController,
   }) {
     assert(
       fetch != null || cancellableFetch != null,
@@ -270,7 +271,6 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
             cache: cache ?? defaultCache,
             queryQueue: queryQueue ?? defaultQueryQueue,
             telemetry: telemetry ?? defaultTelemetry,
-            streamController: streamController,
           )
         : QueryTrooper<T, P>(
             namespace: namespace,
@@ -281,7 +281,6 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
             cache: cache ?? defaultCache,
             queryQueue: queryQueue ?? defaultQueryQueue,
             telemetry: telemetry ?? defaultTelemetry,
-            streamController: streamController,
           );
     return manage(trooper);
   }
@@ -310,7 +309,6 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
     CacheStore? cache,
     TrooperQueryQueue? queryQueue,
     TelemetryHub? telemetry,
-    KeyedStatefulStream<K, T>? stream,
     bool releaseUnwatchedKeys = false,
   }) {
     assert(
@@ -328,7 +326,6 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
             cache: cache ?? defaultCache,
             queryQueue: queryQueue ?? defaultQueryQueue,
             telemetry: telemetry ?? defaultTelemetry,
-            stream: stream,
             releaseUnwatchedKeys: releaseUnwatchedKeys,
           )
         : KeyedQueryTrooper<K, T, P>(
@@ -340,7 +337,6 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
             cache: cache ?? defaultCache,
             queryQueue: queryQueue ?? defaultQueryQueue,
             telemetry: telemetry ?? defaultTelemetry,
-            stream: stream,
             releaseUnwatchedKeys: releaseUnwatchedKeys,
           );
     return manage(trooper);
@@ -400,7 +396,6 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
     CacheStore? cache,
     TrooperQueryQueue? queryQueue,
     TelemetryHub? telemetry,
-    StatefulStreamController<T>? streamController,
   }) {
     final trooper = LocalTrooper<T, P>(
       namespace: namespace,
@@ -411,7 +406,6 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
       cache: cache ?? defaultCache,
       queryQueue: queryQueue ?? defaultQueryQueue,
       telemetry: telemetry ?? defaultTelemetry,
-      streamController: streamController,
     );
     return manage(trooper);
   }
@@ -438,7 +432,6 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
     CacheStore? cache,
     TrooperQueryQueue? queryQueue,
     TelemetryHub? telemetry,
-    KeyedStatefulStream<K, T>? stream,
   }) {
     assert(
       initialValue != null || initialValueFactory != null,
@@ -455,7 +448,6 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
             cache: cache ?? defaultCache,
             queryQueue: queryQueue ?? defaultQueryQueue,
             telemetry: telemetry ?? defaultTelemetry,
-            stream: stream,
           )
         : KeyedLocalTrooper<K, T, P>(
             namespace: namespace,
@@ -466,7 +458,6 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
             cache: cache ?? defaultCache,
             queryQueue: queryQueue ?? defaultQueryQueue,
             telemetry: telemetry ?? defaultTelemetry,
-            stream: stream,
           );
     return manage(trooper);
   }
@@ -546,7 +537,6 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
     CacheStore? cache,
     TrooperQueryQueue? queryQueue,
     TelemetryHub? telemetry,
-    KeyedStatefulStream<K, T>? stream,
     bool releaseUnwatchedKeys = false,
   }) {
     final trooper = KeyedStreamTrooper<K, T, P>(
@@ -561,7 +551,6 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
       cache: cache ?? defaultCache,
       queryQueue: queryQueue ?? defaultQueryQueue,
       telemetry: telemetry ?? defaultTelemetry,
-      stream: stream,
       releaseUnwatchedKeys: releaseUnwatchedKeys,
     );
     return manage(trooper);
@@ -588,7 +577,6 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
     TrooperMutationSideEffects<T, P>? sideEffects,
     TrooperMutationQueue? queue,
     TelemetryHub? telemetry,
-    StatefulStreamController<T>? streamController,
   }) {
     assert(
       action != null || cancellableAction != null,
@@ -602,7 +590,6 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
             sideEffects: sideEffects,
             queue: queue ?? defaultMutationQueue,
             telemetry: telemetry ?? defaultTelemetry,
-            streamController: streamController,
           )
         : TrooperMutation<T, P>(
             namespace: namespace,
@@ -611,7 +598,6 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
             sideEffects: sideEffects,
             queue: queue ?? defaultMutationQueue,
             telemetry: telemetry ?? defaultTelemetry,
-            streamController: streamController,
           );
     return manage(trooper);
   }

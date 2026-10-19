@@ -5,6 +5,7 @@ import 'package:trooper/src/concurrency/query_queue.dart';
 import 'package:trooper/src/config/trooper_config.dart';
 import 'package:trooper/src/core/accessor.dart';
 import 'package:trooper/src/core/keyed_accessor.dart';
+import 'package:trooper/src/core/keyed_trooper_accessor.dart';
 import 'package:trooper/src/effects/trooper_keyed_side_effects.dart';
 import 'package:trooper/src/storage/storage_access.dart';
 import 'package:trooper/src/key/query_key.dart';
@@ -27,10 +28,11 @@ import 'package:trooper/types/parameter.dart';
 /// - Diagnostic telemetry through [telemetry].
 /// - Configuration parameters through [config].
 /// - Per-key parameter tracking through [_lastParams].
-abstract class KeyedTrooper<K extends Object, T, P extends Parameter>
+abstract base class KeyedTrooper<K extends Object, T, P extends Parameter>
     with LifecycleAware, StorageAccess
     implements Invalidatable {
   /// Creates a [KeyedTrooper] with the specified [namespace] and dependencies.
+  @internal
   KeyedTrooper({
     required this.namespace,
     this.sideEffects,
@@ -38,7 +40,6 @@ abstract class KeyedTrooper<K extends Object, T, P extends Parameter>
     CacheStore? cache,
     TrooperQueryQueue? queryQueue,
     TelemetryHub? telemetry,
-    KeyedStatefulStream<K, T>? stream,
     this.releaseUnwatchedKeys = false,
   }) : config = config ?? defaultConfig,
        _ownsCache = (cache == null),
@@ -46,8 +47,8 @@ abstract class KeyedTrooper<K extends Object, T, P extends Parameter>
        cache = cache ?? CacheStore(),
        queryQueue = queryQueue ?? TrooperQueryQueue(),
        telemetry = telemetry ?? TelemetryHub.global,
-       stream = stream ?? KeyedStatefulStream<K, T>() {
-    if (releaseUnwatchedKeys) this.stream.onKeyUnwatched = _scheduleRelease;
+       stream = KeyedStatefulStream<K, T>() {
+    if (releaseUnwatchedKeys) stream.onKeyUnwatched = _scheduleRelease;
   }
 
   /// Global default configuration used when no custom config is specified.
@@ -78,6 +79,7 @@ abstract class KeyedTrooper<K extends Object, T, P extends Parameter>
   final TelemetryHub telemetry;
 
   /// Keyed stateful stream emitting [StatefulData] transitions per key.
+  @internal
   final KeyedStatefulStream<K, T> stream;
 
   /// Whether the in-memory state of a key is dropped once nobody watches it.
@@ -103,27 +105,27 @@ abstract class KeyedTrooper<K extends Object, T, P extends Parameter>
   bool get isDisposed => _isDisposed;
 
   /// Internal tracking map of the most recently used parameters for each key.
-  @protected
+  @internal
   Map<K, P> get lastParams => _lastParams;
 
   /// The parameter used for the most recent operation on [key], or `null` if none has been recorded yet.
   P? lastParamOf(K key) => _lastParams[key];
 
   /// Records the last executed parameter for [key].
-  @protected
+  @internal
   void recordParam(K key, P parameter) {
     _lastParams[key] = parameter;
   }
 
   /// Builds the unique [QueryKey] for [key] and [parameter] and records the parameter.
-  @protected
+  @internal
   QueryKey buildQueryKey(K key, P parameter) {
     recordParam(key, parameter);
     return QueryKey.keyed(namespace, key: key, parameter: parameter);
   }
 
   /// Checks whether [parameter] differs from the last parameter used for [key].
-  @protected
+  @internal
   bool isParamChanged(K key, P parameter) {
     final last = _lastParams[key];
     if (last == null) return false;
@@ -136,7 +138,7 @@ abstract class KeyedTrooper<K extends Object, T, P extends Parameter>
   /// A synchronous or asynchronous failure is reported to the current [Zone]
   /// as an uncaught error (like a failing stream listener), so it reaches
   /// `runZonedGuarded`, `PlatformDispatcher.onError` or a crash reporter.
-  @protected
+  @internal
   void runSideEffect(FutureOr<void> Function()? callback) {
     if (callback == null) return;
     try {
@@ -305,14 +307,14 @@ abstract class KeyedTrooper<K extends Object, T, P extends Parameter>
 
   /// Whether the in-memory state of [key] may be dropped now, see
   /// [releaseUnwatchedKeys]. Subclasses add their own conditions.
-  @protected
+  @internal
   @mustCallSuper
   bool canReleaseKey(K key) => !queryQueue.hasOngoing(
     QueryKey.keyed(namespace, key: key, parameter: const ()),
   );
 
   /// Drops the in-memory state of [key] but keeps cache and storage.
-  @protected
+  @internal
   @mustCallSuper
   void releaseKeyState(K key) {
     _lastParams.remove(key);

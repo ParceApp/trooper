@@ -29,7 +29,7 @@ enum DataSource {
 /// }
 /// ```
 @immutable
-class DataMetadata {
+final class DataMetadata {
   /// Creates metadata for a loaded data state.
   const DataMetadata({
     required this.fetchedAt,

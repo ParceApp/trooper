@@ -5,7 +5,7 @@ import 'package:trooper/src/key/query_key.dart';
 import 'package:trooper/src/storage/storage_backend.dart';
 
 /// Configuration specifying caching, staleness, deduplication, conflict, timeout, and retry policies for a Trooper query.
-class TrooperConfig {
+final class TrooperConfig {
   /// Creates a [TrooperConfig] with customizable TTL, stale policy, conflict policy, deduplication, timeout, and optional storage.
   ///
   /// Defaults to standard Stale-While-Revalidate caching with 1 minute TTL, [QueryConflictPolicy.forward], and `deduplicate: true`.

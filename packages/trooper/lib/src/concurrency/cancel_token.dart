@@ -20,7 +20,7 @@ import 'package:trooper/src/error/trooper_exception.dart';
 /// // Cancel when no longer needed:
 /// token.cancel(reason: 'User navigated away');
 /// ```
-class TrooperCancelToken {
+final class TrooperCancelToken {
   /// Creates a new uncancelled [TrooperCancelToken].
   TrooperCancelToken();
 

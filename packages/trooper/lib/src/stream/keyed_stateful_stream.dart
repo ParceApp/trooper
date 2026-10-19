@@ -30,7 +30,7 @@ import 'package:trooper/src/stream/stateful_stream_controller.dart';
 ///
 /// keyed.emitData('math-101', Lecture(id: 'math-101', title: 'Calculus'));
 /// ```
-class KeyedStatefulStream<K, T> with LifecycleAware {
+final class KeyedStatefulStream<K, T> with LifecycleAware {
   /// Creates an empty [KeyedStatefulStream].
   KeyedStatefulStream({this._distinct = true}) {
     _allController = StreamController<Map<K, StatefulData<T>>>.broadcast(

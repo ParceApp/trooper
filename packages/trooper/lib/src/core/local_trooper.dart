@@ -7,7 +7,6 @@ import 'package:trooper/src/error/trooper_exception.dart';
 import 'package:trooper/src/state/data_metadata.dart';
 import 'package:trooper/src/state/stateful_data.dart';
 import 'package:trooper/src/stream/stateful_stream.dart';
-import 'package:trooper/src/stream/stateful_stream_controller.dart';
 import 'package:trooper/src/storage/cache_entry.dart';
 import 'package:trooper/src/storage/storage_envelope.dart';
 import 'package:trooper/src/telemetry/trooper_event.dart';
@@ -42,7 +41,7 @@ import 'package:trooper/types/parameter.dart';
 /// // Reset back to initial value:
 /// themeTrooper.reset(());
 /// ```
-class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
+final class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
   /// Creates a [LocalTrooper] with the specified [initialValue].
   LocalTrooper({
     required super.namespace,
@@ -53,16 +52,11 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
     super.cache,
     super.queryQueue,
     super.telemetry,
-    StatefulStreamController<T>? streamController,
   }) : super(
-         streamController:
-             streamController ??
-             StatefulStreamController<T>(
-               initialState: DataLoaded(
-                 initialValue,
-                 metadata: DataMetadata.now(source: DataSource.local),
-               ),
-             ),
+         initialState: DataLoaded(
+           initialValue,
+           metadata: DataMetadata.now(source: DataSource.local),
+         ),
        ) {
     if (const () is P) {
       final key = buildQueryKey(const () as P);

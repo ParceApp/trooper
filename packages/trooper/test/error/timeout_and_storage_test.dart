@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:test/test.dart';
 import 'package:trooper/trooper.dart';
 
+import '../fixtures/delegating_storage_backend.dart';
+
 final failingCodec = TrooperCodec.custom<String>(
   to: (value) {
     if (value == 'THROW') {
@@ -12,7 +14,7 @@ final failingCodec = TrooperCodec.custom<String>(
   from: (serialized) => serialized,
 );
 
-class ThrowingStorageBackend extends InMemoryStorageBackend {
+class ThrowingStorageBackend extends DelegatingStorageBackend {
   ThrowingStorageBackend({this.failWrite = false, this.failDelete = false});
 
   bool failWrite;
@@ -27,7 +29,7 @@ class ThrowingStorageBackend extends InMemoryStorageBackend {
   }
 
   @override
-  Future<String?> delete(String key) async {
+  Future<void> delete(String key) async {
     if (failDelete) {
       throw StateError('Disk delete failure');
     }

@@ -18,7 +18,7 @@ abstract interface class TrooperLogger {
 /// correlated. Set [logParameters] to print them in plain text, e.g. in local
 /// debug builds. Messages of errors thrown by your own fetch code are printed
 /// as they are.
-class ConsoleTrooperLogger implements TrooperLogger {
+final class ConsoleTrooperLogger implements TrooperLogger {
   /// Creates a [ConsoleTrooperLogger].
   const ConsoleTrooperLogger({
     this.printFunction = print,

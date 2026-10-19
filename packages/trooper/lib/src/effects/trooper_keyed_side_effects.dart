@@ -21,7 +21,7 @@ import 'package:trooper/types/parameter.dart';
 /// request, its result or the other callbacks. The error is reported to the
 /// current [Zone] as an uncaught error, so it reaches `runZonedGuarded`,
 /// `PlatformDispatcher.onError` or your crash reporter.
-class KeyedTrooperSideEffects<K, T, P extends Parameter> {
+final class KeyedTrooperSideEffects<K, T, P extends Parameter> {
   /// Creates a [KeyedTrooperSideEffects] bundle.
   const KeyedTrooperSideEffects({
     this.onData,

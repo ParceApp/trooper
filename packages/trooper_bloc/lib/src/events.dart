@@ -12,6 +12,10 @@ import 'package:meta/meta.dart';
 ///   const LoadUserEvent();
 /// }
 /// ```
+///
+/// ### Extending
+/// Extend this class; do not `implements` it. Implementing it is not
+/// supported, and new members can be added in minor releases.
 @immutable
 abstract class TlocEvent {
   /// Const constructor for subclasses.
@@ -20,6 +24,9 @@ abstract class TlocEvent {
 
 /// Internal framework event dispatched when a [Tloc] emits a state from watched sources
 /// or via direct state emissions.
+///
+/// Not exported. It still reaches `BlocObserver.onEvent` and `onTransition`,
+/// where it shows up by its `toString()`.
 final class TlocSourceUpdateEvent extends TlocEvent {
   /// Creates a [TlocSourceUpdateEvent] wrapping [state].
   const TlocSourceUpdateEvent(this.state);

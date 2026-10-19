@@ -14,7 +14,6 @@ import 'package:trooper/src/key/query_key.dart';
 import 'package:trooper/src/state/data_metadata.dart';
 import 'package:trooper/src/state/stateful_data.dart';
 import 'package:trooper/src/stream/stateful_stream.dart';
-import 'package:trooper/src/stream/stateful_stream_controller.dart';
 import 'package:trooper/src/telemetry/telemetry_hub.dart';
 import 'package:trooper/src/telemetry/trooper_event.dart';
 import 'package:trooper/types/parameter.dart';
@@ -53,7 +52,7 @@ typedef StreamFactory<T, P extends Parameter> =
 ///   print('Live BTC price: $price');
 /// });
 /// ```
-class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
+final class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
   /// Creates a [StreamTrooper] with the provided [streamFactory].
   StreamTrooper({
     required super.namespace,
@@ -69,12 +68,8 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
     super.telemetry,
     this.keepAlive = false,
     bool autoConnect = false,
-    StatefulData<T> initialState = const DataInitial(),
-  }) : super(
-         streamController: StatefulStreamController<T>(
-           initialState: initialState,
-         ),
-       ) {
+    super.initialState,
+  }) {
     // If autoConnect is requested and P is the empty record (), connect immediately
     if (autoConnect && const () is P) {
       connect(const () as P).ignore();

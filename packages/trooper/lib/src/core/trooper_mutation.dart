@@ -33,7 +33,7 @@ import 'package:trooper/types/parameter.dart';
 ///
 /// final lecture = await createLecture((title: 'Algorithms'));
 /// ```
-class TrooperMutation<T, P extends Parameter>
+final class TrooperMutation<T, P extends Parameter>
     with LifecycleAware
     implements Invalidatable {
   /// Creates a [TrooperMutation] with a standard action function.
@@ -44,7 +44,6 @@ class TrooperMutation<T, P extends Parameter>
     TrooperMutationSideEffects<T, P>? sideEffects,
     TrooperMutationQueue? queue,
     TelemetryHub? telemetry,
-    StatefulStreamController<T>? streamController,
   }) => TrooperMutation.cancellable(
     namespace: namespace,
     action: (param, _) => action(param),
@@ -52,7 +51,6 @@ class TrooperMutation<T, P extends Parameter>
     sideEffects: sideEffects,
     queue: queue,
     telemetry: telemetry,
-    streamController: streamController,
   );
 
   /// Creates a [TrooperMutation] with cooperative cancellation support via [TrooperCancelToken].
@@ -63,11 +61,10 @@ class TrooperMutation<T, P extends Parameter>
     this.sideEffects,
     TrooperMutationQueue? queue,
     TelemetryHub? telemetry,
-    StatefulStreamController<T>? streamController,
   }) : _ownsQueue = (queue == null),
        queue = queue ?? TrooperMutationQueue(),
        telemetry = telemetry ?? TelemetryHub.global,
-       _streamController = streamController ?? StatefulStreamController<T>();
+       _streamController = StatefulStreamController<T>();
 
   final bool _ownsQueue;
 

@@ -31,7 +31,7 @@ mixin StorageAccess {
   /// or [key] has no stable storage key (see [QueryKey.hasStableStorageKey]).
   ///
   /// Reports the first unstable key as a [PersistenceErrorEvent].
-  @protected
+  @internal
   StorageBackend? storageFor(QueryKey key) {
     final storage = _storage;
     if (storage == null || key.hasStableStorageKey) return storage;
@@ -53,7 +53,7 @@ mixin StorageAccess {
 
   /// Reports a failed persistence operation for [key] as a
   /// [PersistenceErrorEvent].
-  @protected
+  @internal
   void reportPersistenceError(
     QueryKey key,
     Object error, [
@@ -71,7 +71,7 @@ mixin StorageAccess {
   }
 
   /// Writes [value] for [key] in the background; failures are reported.
-  @protected
+  @internal
   void writeStored(
     StorageBackend storage,
     QueryKey key,
@@ -88,7 +88,7 @@ mixin StorageAccess {
   }
 
   /// Deletes the entry for [key] in the background; failures are reported.
-  @protected
+  @internal
   void deleteStored(StorageBackend storage, QueryKey key) {
     final stopwatch = Stopwatch()..start();
     storage
@@ -104,7 +104,7 @@ mixin StorageAccess {
   ///
   /// Without [error], the entry was not a readable envelope of the current
   /// version (see [StorageEnvelope.tryDecode]).
-  @protected
+  @internal
   void discardStored(
     StorageBackend storage,
     QueryKey key, [
@@ -127,7 +127,7 @@ mixin StorageAccess {
   /// in earlier sessions, optionally narrowed by [where].
   ///
   /// Runs in the background; failures are reported as [PersistenceErrorEvent].
-  @protected
+  @internal
   void purgeStorage({bool Function(String storageKey)? where}) {
     final storage = _storage;
     if (storage == null) return;
@@ -190,15 +190,8 @@ final class _PurgeAwareStorage implements StorageBackend {
       _afterPurge(() => _backend.write(key, value));
 
   @override
-  Future<String?> delete(String key) => _afterPurge(() => _backend.delete(key));
-
-  @override
-  Future<void> clear() => _afterPurge(_backend.clear);
+  Future<void> delete(String key) => _afterPurge(() => _backend.delete(key));
 
   @override
   Future<Set<String>> getAllKeys() => _afterPurge(_backend.getAllKeys);
-
-  @override
-  Future<bool> containsKey(String key) =>
-      _afterPurge(() => _backend.containsKey(key));
 }

@@ -41,7 +41,7 @@ import 'package:trooper/types/parameter.dart';
 ///   print('Active drafts: ${map.length}');
 /// });
 /// ```
-class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
+final class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
     extends KeyedTrooper<K, T, P> {
   /// Creates a [KeyedLocalTrooper] with a static [initialValue] for all keys.
   KeyedLocalTrooper({
@@ -53,7 +53,6 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
     this.codec,
     super.queryQueue,
     super.telemetry,
-    super.stream,
   }) : initialValueFactory = ((_) => initialValue);
 
   /// Creates a [KeyedLocalTrooper] using a dynamic [initialValueFactory] per key.
@@ -66,7 +65,6 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
     this.codec,
     super.queryQueue,
     super.telemetry,
-    super.stream,
   });
 
   /// Function generating baseline initial value for any given key.

@@ -19,18 +19,19 @@ import 'package:trooper/types/parameter.dart';
 /// Abstract base class for all single-resource troopers.
 ///
 /// Implements [Accessor] and [LifecycleAware], managing:
-/// - Reactive state broadcast through [streamController].
+/// - Reactive state broadcast through [stream].
 /// - In-memory L1 cache through [cache].
 /// - Concurrency, deduplication, and cancellation through [queryQueue].
 /// - Diagnostic telemetry through [telemetry].
 /// - Configuration parameters through [config].
-abstract class Trooper<T, P extends Parameter>
+abstract base class Trooper<T, P extends Parameter>
     with LifecycleAware, StorageAccess
     implements Accessor<T, P> {
   /// Creates a [Trooper] with the specified [namespace] and dependencies.
   ///
   /// [config] can be set if a custom [TrooperConfig] is desired; otherwise, the static [defaultConfig] is used.
   /// In most of the use cases [cache], [queryQueue], and [telemetry] are provided by the framework, but they can be overridden for testing or advanced use cases.
+  @internal
   Trooper({
     required this.namespace,
     this.sideEffects,
@@ -38,14 +39,16 @@ abstract class Trooper<T, P extends Parameter>
     CacheStore? cache,
     TrooperQueryQueue? queryQueue,
     TelemetryHub? telemetry,
-    StatefulStreamController<T>? streamController,
+    StatefulData<T> initialState = const DataInitial(),
   }) : config = config ?? defaultConfig,
        _ownsCache = (cache == null),
        _ownsQueryQueue = (queryQueue == null),
        cache = cache ?? CacheStore(),
        queryQueue = queryQueue ?? TrooperQueryQueue(),
        telemetry = telemetry ?? TelemetryHub.global,
-       streamController = streamController ?? StatefulStreamController<T>();
+       streamController = StatefulStreamController<T>(
+         initialState: initialState,
+       );
 
   // Static configuration for defaults
   static TrooperConfig get defaultConfig => TrooperConfig.defaultConfig;
@@ -81,6 +84,7 @@ abstract class Trooper<T, P extends Parameter>
   final TelemetryHub telemetry;
 
   /// Replay-enabled stateful stream controller.
+  @internal
   final StatefulStreamController<T> streamController;
 
   /// The underlying [StatefulStream] emitting [StatefulData] transitions.
@@ -97,17 +101,17 @@ abstract class Trooper<T, P extends Parameter>
   P? get lastParam => _lastParam;
 
   /// Records the last executed parameter.
-  @protected
+  @internal
   void recordParam(P parameter) {
     _lastParam = parameter;
   }
 
   /// Builds the unique [QueryKey] for this trooper.
-  @protected
+  @internal
   QueryKey buildQueryKey(P parameter) => QueryKey(namespace, parameter);
 
   /// Returns `true` if [parameter] differs from the last used parameter.
-  @protected
+  @internal
   bool isParamChanged(P parameter) {
     if (_lastParam == null) return false;
     return parameter != _lastParam;
@@ -119,7 +123,7 @@ abstract class Trooper<T, P extends Parameter>
   /// A synchronous or asynchronous failure is reported to the current [Zone]
   /// as an uncaught error (like a failing stream listener), so it reaches
   /// `runZonedGuarded`, `PlatformDispatcher.onError` or a crash reporter.
-  @protected
+  @internal
   void runSideEffect(FutureOr<void> Function()? callback) {
     if (callback == null) return;
     try {

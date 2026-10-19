@@ -148,7 +148,7 @@ extension LoadMoreItems<E, PP extends Object> on LoadMoreData<List<E>, PP> {
 /// When the wrapped source is invalidated (for example by a mutation's
 /// `invalidateOnSuccess`), the feed reloads its first page if it has listeners,
 /// or resets to [DataInitial] otherwise.
-class LoadMore<TPage, F extends Parameter, PP extends Object>
+final class LoadMore<TPage, F extends Parameter, PP extends Object>
     with LifecycleAware
     implements Accessor<LoadMoreData<TPage, PP>, F> {
   /// Creates a [LoadMore] feed over [source].
