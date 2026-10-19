@@ -167,7 +167,7 @@ void main() {
     await pumpEventQueue();
     expect(events.whereType<PersistenceErrorEvent>(), isNotEmpty);
     await q.dispose();
-  }, skip: 'F-021');
+  });
 
   test('ERR-02 failing side effect is not swallowed silently', () async {
     final hub = TelemetryHub.isolated();

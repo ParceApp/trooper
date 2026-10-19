@@ -3,6 +3,7 @@ import 'package:trooper/src/config/trooper_config.dart';
 import 'package:trooper/src/error/trooper_exception.dart';
 import 'package:trooper/src/key/query_key.dart';
 import 'package:trooper/src/storage/storage_backend.dart';
+import 'package:trooper/src/storage/storage_envelope.dart';
 import 'package:trooper/src/telemetry/telemetry_hub.dart';
 import 'package:trooper/src/telemetry/trooper_event.dart';
 
@@ -50,6 +51,78 @@ mixin StorageAccess {
     return null;
   }
 
+  /// Reports a failed persistence operation for [key] as a
+  /// [PersistenceErrorEvent].
+  @protected
+  void reportPersistenceError(
+    QueryKey key,
+    Object error, [
+    StackTrace? stackTrace,
+    Duration duration = Duration.zero,
+  ]) {
+    telemetry.emit(
+      PersistenceErrorEvent(
+        key,
+        error: error,
+        duration: duration,
+        stackTrace: stackTrace,
+      ),
+    );
+  }
+
+  /// Writes [value] for [key] in the background; failures are reported.
+  @protected
+  void writeStored(
+    StorageBackend storage,
+    QueryKey key,
+    String value, {
+    Stopwatch? stopwatch,
+  }) {
+    final watch = stopwatch ?? (Stopwatch()..start());
+    storage
+        .write(key.storageKey, value)
+        .catchError(
+          (Object error, StackTrace stackTrace) =>
+              reportPersistenceError(key, error, stackTrace, watch.elapsed),
+        );
+  }
+
+  /// Deletes the entry for [key] in the background; failures are reported.
+  @protected
+  void deleteStored(StorageBackend storage, QueryKey key) {
+    final stopwatch = Stopwatch()..start();
+    storage
+        .delete(key.storageKey)
+        .then<void>(
+          (_) {},
+          onError: (Object error, StackTrace stackTrace) =>
+              reportPersistenceError(key, error, stackTrace, stopwatch.elapsed),
+        );
+  }
+
+  /// Reports why the entry for [key] could not be restored and deletes it.
+  ///
+  /// Without [error], the entry was not a readable envelope of the current
+  /// version (see [StorageEnvelope.tryDecode]).
+  @protected
+  void discardStored(
+    StorageBackend storage,
+    QueryKey key, [
+    Object? error,
+    StackTrace? stackTrace,
+  ]) {
+    reportPersistenceError(
+      key,
+      error ??
+          TrooperStorageException(
+            'Discarded the L2 entry for ${key.describe()}: it is not a '
+            'readable envelope of version ${StorageEnvelope.currentVersion}.',
+          ),
+      stackTrace,
+    );
+    deleteStored(storage, key);
+  }
+
   /// Deletes every persisted entry of [namespace], including entries written
   /// in earlier sessions, optionally narrowed by [where].
   ///
@@ -62,16 +135,14 @@ mixin StorageAccess {
     final stopwatch = Stopwatch()..start();
     storage
         .purge((k) => k.startsWith(prefix) && (where == null || where(k)))
-        .catchError((Object error, StackTrace stackTrace) {
-          telemetry.emit(
-            PersistenceErrorEvent(
-              QueryKey(namespace, const ()),
-              error: error,
-              duration: stopwatch.elapsed,
-              stackTrace: stackTrace,
-            ),
-          );
-        });
+        .catchError(
+          (Object error, StackTrace stackTrace) => reportPersistenceError(
+            QueryKey(namespace, const ()),
+            error,
+            stackTrace,
+            stopwatch.elapsed,
+          ),
+        );
   }
 }
 

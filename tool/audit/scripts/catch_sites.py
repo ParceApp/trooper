@@ -20,7 +20,7 @@ def classify(b):
     inner = re.sub(r'^.*?\{', '', text, count=1, flags=re.S).rsplit('}', 1)[0].strip()
     if re.search(r'\brethrow\b|\bthrow\b', text): return 'rethrow/throw'
     if re.search(r'emitError|completeError|addError|\.emit\(DataError|staleData', text): return '→ State'
-    if 'telemetry.emit' in text: return '→ Telemetrie'
+    if re.search(r'telemetry\.emit|reportPersistenceError|discardStored', text): return '→ Telemetrie'
     if re.search(r'onSourceException|onAnyError|onError\?*\.call|reportError', text): return '→ Callback'
     if not inner or re.fullmatch(r'(return( null| false| true)?;|break;|continue;)?', inner): return 'verschluckt'
     if re.fullmatch(r'(storage\.delete\([^;]*\)\.ignore\(\);\s*)+', inner): return 'verschluckt (löscht L2-Eintrag)'

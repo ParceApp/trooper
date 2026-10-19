@@ -143,7 +143,7 @@ class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
             if (serialized != null) {
               final envelope = StorageEnvelope.tryDecode(serialized);
               if (envelope == null) {
-                storage.delete(key.storageKey).ignore();
+                discardStored(storage, key);
               } else if (envelope.isExpired) {
                 if (config.stalePolicy ==
                     StalePolicy.keepStaleWhileRevalidate) {
@@ -182,7 +182,7 @@ class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
 
                   return restoredData;
                 } else {
-                  storage.delete(key.storageKey).ignore();
+                  deleteStored(storage, key);
                 }
               } else {
                 final restoredData = currentCodec.decode(envelope.payload);
@@ -212,8 +212,8 @@ class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
                 return restoredData;
               }
             }
-          } catch (_) {
-            storage.delete(key.storageKey).ignore();
+          } catch (error, stackTrace) {
+            discardStored(storage, key, error, stackTrace);
           }
         }
       }
@@ -255,28 +255,9 @@ class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
               ? config.timeToLive.inMilliseconds
               : null,
         );
-        storage.write(key.storageKey, envelope.encode()).catchError((
-          Object error,
-          StackTrace stacktrace,
-        ) {
-          telemetry.emit(
-            PersistenceErrorEvent(
-              key,
-              error: error,
-              duration: Duration.zero,
-              stackTrace: stacktrace,
-            ),
-          );
-        });
-      } catch (error, stacktrace) {
-        telemetry.emit(
-          PersistenceErrorEvent(
-            key,
-            error: error,
-            duration: Duration.zero,
-            stackTrace: stacktrace,
-          ),
-        );
+        writeStored(storage, key, envelope.encode());
+      } catch (error, stackTrace) {
+        reportPersistenceError(key, error, stackTrace);
       }
     }
     return data;
@@ -346,29 +327,9 @@ class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
                   ? config.timeToLive.inMilliseconds
                   : null,
             );
-            storage.write(key.storageKey, envelope.encode()).catchError((
-              Object error,
-              StackTrace stacktrace,
-            ) {
-              telemetry.emit(
-                PersistenceErrorEvent(
-                  key,
-                  error: error,
-                  duration: stopwatch.elapsed,
-                  stackTrace: stacktrace,
-                ),
-              );
-            });
-          } catch (error, stacktrace) {
-            telemetry.emit(
-              PersistenceErrorEvent(
-                key,
-                error: error,
-                duration: stopwatch.elapsed,
-                stackTrace: stacktrace,
-              ),
-            );
-            // Non-critical persistence failure
+            writeStored(storage, key, envelope.encode(), stopwatch: stopwatch);
+          } catch (error, stackTrace) {
+            reportPersistenceError(key, error, stackTrace, stopwatch.elapsed);
           }
         }
       }

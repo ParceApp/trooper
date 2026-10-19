@@ -151,7 +151,7 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
             if (serialized != null) {
               final envelope = StorageEnvelope.tryDecode(serialized);
               if (envelope == null) {
-                storage.delete(qKey.storageKey).ignore();
+                discardStored(storage, qKey);
               } else if (envelope.isExpired) {
                 if (config.stalePolicy ==
                     StalePolicy.keepStaleWhileRevalidate) {
@@ -192,7 +192,7 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
 
                   return restoredData;
                 } else {
-                  storage.delete(qKey.storageKey).ignore();
+                  deleteStored(storage, qKey);
                 }
               } else {
                 final restoredData = currentCodec.decode(envelope.payload);
@@ -223,8 +223,8 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
                 return restoredData;
               }
             }
-          } catch (_) {
-            storage.delete(qKey.storageKey).ignore();
+          } catch (error, stackTrace) {
+            discardStored(storage, qKey, error, stackTrace);
           }
         }
       }
@@ -348,28 +348,9 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
               ? config.timeToLive.inMilliseconds
               : null,
         );
-        storage.write(qKey.storageKey, envelope.encode()).catchError((
-          Object error,
-          StackTrace stacktrace,
-        ) {
-          telemetry.emit(
-            PersistenceErrorEvent(
-              qKey,
-              error: error,
-              duration: Duration.zero,
-              stackTrace: stacktrace,
-            ),
-          );
-        });
-      } catch (error, stacktrace) {
-        telemetry.emit(
-          PersistenceErrorEvent(
-            qKey,
-            error: error,
-            duration: Duration.zero,
-            stackTrace: stacktrace,
-          ),
-        );
+        writeStored(storage, qKey, envelope.encode());
+      } catch (error, stackTrace) {
+        reportPersistenceError(qKey, error, stackTrace);
       }
     }
 
@@ -465,29 +446,9 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
                   ? config.timeToLive.inMilliseconds
                   : null,
             );
-            storage.write(qKey.storageKey, envelope.encode()).catchError((
-              Object error,
-              StackTrace stacktrace,
-            ) {
-              telemetry.emit(
-                PersistenceErrorEvent(
-                  qKey,
-                  error: error,
-                  duration: stopwatch.elapsed,
-                  stackTrace: stacktrace,
-                ),
-              );
-            });
-          } catch (error, stacktrace) {
-            telemetry.emit(
-              PersistenceErrorEvent(
-                qKey,
-                error: error,
-                duration: stopwatch.elapsed,
-                stackTrace: stacktrace,
-              ),
-            );
-            // Non-critical persistence failure
+            writeStored(storage, qKey, envelope.encode(), stopwatch: stopwatch);
+          } catch (error, stackTrace) {
+            reportPersistenceError(qKey, error, stackTrace, stopwatch.elapsed);
           }
         }
 

@@ -193,7 +193,7 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
         if (raw != null) {
           final envelope = StorageEnvelope.tryDecode(raw);
           if (envelope == null) {
-            storage.delete(qKey.storageKey).ignore();
+            discardStored(storage, qKey);
             streamController.emitLoading();
           } else if (envelope.isExpired) {
             if (config.stalePolicy == StalePolicy.keepStaleWhileRevalidate) {
@@ -211,7 +211,7 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
                 metadata: restoredEntry.metadata,
               );
             } else {
-              storage.delete(qKey.storageKey).ignore();
+              deleteStored(storage, qKey);
               streamController.emitLoading();
             }
           } else {
@@ -232,8 +232,8 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
         } else {
           streamController.emitLoading();
         }
-      } catch (_) {
-        storage.delete(qKey.storageKey).ignore();
+      } catch (error, stackTrace) {
+        discardStored(storage, qKey, error, stackTrace);
         streamController.emitLoading();
       }
     } else {
@@ -321,18 +321,9 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
                   ? config.timeToLive.inMilliseconds
                   : null,
             );
-            storage.write(qKey.storageKey, envelope.encode()).ignore();
-          } catch (error, stacktrace) {
-            if (telemetry.hasListeners) {
-              telemetry.emit(
-                PersistenceErrorEvent(
-                  qKey,
-                  error: error,
-                  duration: Duration.zero,
-                  stackTrace: stacktrace,
-                ),
-              );
-            }
+            writeStored(storage, qKey, envelope.encode());
+          } catch (error, stackTrace) {
+            reportPersistenceError(qKey, error, stackTrace);
           }
         }
 
@@ -446,7 +437,7 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
           try {
             final envelope = StorageEnvelope.tryDecode(raw);
             if (envelope == null) {
-              storage.delete(qKey.storageKey).ignore();
+              discardStored(storage, qKey);
             } else if (envelope.isExpired) {
               if (config.stalePolicy == StalePolicy.keepStaleWhileRevalidate) {
                 final restoredData = currentCodec.decode(envelope.payload);
@@ -463,7 +454,7 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
                   metadata: restoredEntry.metadata,
                 );
               } else {
-                storage.delete(qKey.storageKey).ignore();
+                deleteStored(storage, qKey);
               }
             } else {
               final restoredData = currentCodec.decode(envelope.payload);
@@ -481,8 +472,8 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
               );
               return restoredData;
             }
-          } catch (_) {
-            storage.delete(qKey.storageKey).ignore();
+          } catch (error, stackTrace) {
+            discardStored(storage, qKey, error, stackTrace);
           }
         }
       }
@@ -551,9 +542,9 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
               ? config.timeToLive.inMilliseconds
               : null,
         );
-        storage.write(qKey.storageKey, envelope.encode()).ignore();
-      } catch (_) {
-        // Non-critical persistence failure
+        writeStored(storage, qKey, envelope.encode());
+      } catch (error, stackTrace) {
+        reportPersistenceError(qKey, error, stackTrace);
       }
     }
     return data;

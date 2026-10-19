@@ -125,28 +125,9 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
               ? config.timeToLive.inMilliseconds
               : null,
         );
-        storage.write(qKey.storageKey, envelope.encode()).catchError((
-          Object error,
-          StackTrace stackTrace,
-        ) {
-          telemetry.emit(
-            PersistenceErrorEvent(
-              qKey,
-              error: error,
-              duration: Duration.zero,
-              stackTrace: stackTrace,
-            ),
-          );
-        });
+        writeStored(storage, qKey, envelope.encode());
       } catch (error, stackTrace) {
-        telemetry.emit(
-          PersistenceErrorEvent(
-            qKey,
-            error: error,
-            duration: Duration.zero,
-            stackTrace: stackTrace,
-          ),
-        );
+        reportPersistenceError(qKey, error, stackTrace);
         throw TrooperStorageException(
           'Failed to serialize state for ${qKey.name}',
           error: error,
@@ -177,14 +158,7 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
         );
         await storage.write(qKey.storageKey, envelope.encode());
       } catch (error, stackTrace) {
-        telemetry.emit(
-          PersistenceErrorEvent(
-            qKey,
-            error: error,
-            duration: Duration.zero,
-            stackTrace: stackTrace,
-          ),
-        );
+        reportPersistenceError(qKey, error, stackTrace);
         throw TrooperStorageException(
           'Failed to persist state for ${qKey.name} to storage backend',
           error: error,
@@ -212,7 +186,7 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
     final qKey = buildQueryKey(key, parameter);
     final storage = storageFor(qKey);
     if (storage != null) {
-      storage.delete(qKey.storageKey).ignore();
+      deleteStored(storage, qKey);
     }
     return initial;
   }
@@ -227,14 +201,7 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
       try {
         await storage.delete(qKey.storageKey);
       } catch (error, stackTrace) {
-        telemetry.emit(
-          PersistenceErrorEvent(
-            qKey,
-            error: error,
-            duration: Duration.zero,
-            stackTrace: stackTrace,
-          ),
-        );
+        reportPersistenceError(qKey, error, stackTrace);
         throw TrooperStorageException(
           'Failed to delete persisted state for ${qKey.name} from storage backend',
           error: error,
@@ -347,9 +314,9 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
         if (serialized != null) {
           final envelope = StorageEnvelope.tryDecode(serialized);
           if (envelope == null) {
-            storage.delete(qKey.storageKey).ignore();
+            discardStored(storage, qKey);
           } else if (envelope.isExpired) {
-            storage.delete(qKey.storageKey).ignore();
+            deleteStored(storage, qKey);
           } else {
             final decoded = currentCodec.decode(envelope.payload);
             final entry = CacheEntry<T>(
@@ -373,8 +340,8 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
             return decoded;
           }
         }
-      } catch (_) {
-        storage.delete(qKey.storageKey).ignore();
+      } catch (error, stackTrace) {
+        discardStored(storage, qKey, error, stackTrace);
       }
 
       _hydratedKeys.add(key);

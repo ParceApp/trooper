@@ -150,10 +150,11 @@ dimensions:
         findings: [F-022]
       - id: ERR-02
         priority: M
-        status: not_met
+        status: partial
         automated_in_ci: false
-        evidence: "docs/audit/raw/catch_sites.md (138 sites; silent losses in side-effect callbacks, L2 read/decode, stream storage writes/deletes); error_audit_test.dart ERR-02 (2 red)"
+        evidence: "docs/audit/raw/catch_sites.md (102 sites; L2 read/decode/write/delete now reported via StorageAccess helpers, 0 swallowed storage futures); error_audit_test.dart ERR-02 corrupt L2 entry green; test/storage/persistence_error_test.dart"
         findings: [F-020, F-021]
+        note: "side-effect, cancel-listener and invalidate-target errors still swallowed (F-020)"
       - id: ERR-03
         priority: M
         status: partial
@@ -637,7 +638,7 @@ findings:
     severity: P1
     criterion: ERR-02
     freeze_relevant: false
-    status: open
+    status: closed
   - id: F-022
     severity: P1
     criterion: ERR-01

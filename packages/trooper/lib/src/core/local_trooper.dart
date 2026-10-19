@@ -130,28 +130,9 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
               ? config.timeToLive.inMilliseconds
               : null,
         );
-        storage.write(key.storageKey, envelope.encode()).catchError((
-          Object error,
-          StackTrace stackTrace,
-        ) {
-          telemetry.emit(
-            PersistenceErrorEvent(
-              key,
-              error: error,
-              duration: Duration.zero,
-              stackTrace: stackTrace,
-            ),
-          );
-        });
+        writeStored(storage, key, envelope.encode());
       } catch (error, stackTrace) {
-        telemetry.emit(
-          PersistenceErrorEvent(
-            key,
-            error: error,
-            duration: Duration.zero,
-            stackTrace: stackTrace,
-          ),
-        );
+        reportPersistenceError(key, error, stackTrace);
         throw TrooperStorageException(
           'Failed to serialize state for ${key.name}',
           error: error,
@@ -183,14 +164,7 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
         );
         await storage.write(key.storageKey, envelope.encode());
       } catch (error, stackTrace) {
-        telemetry.emit(
-          PersistenceErrorEvent(
-            key,
-            error: error,
-            duration: Duration.zero,
-            stackTrace: stackTrace,
-          ),
-        );
+        reportPersistenceError(key, error, stackTrace);
         throw TrooperStorageException(
           'Failed to persist state for ${key.name} to storage backend',
           error: error,
@@ -219,7 +193,7 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
 
     final storage = storageFor(key);
     if (storage != null) {
-      storage.delete(key.storageKey).ignore();
+      deleteStored(storage, key);
     }
 
     return initialValue;
@@ -235,14 +209,7 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
       try {
         await storage.delete(key.storageKey);
       } catch (error, stackTrace) {
-        telemetry.emit(
-          PersistenceErrorEvent(
-            key,
-            error: error,
-            duration: Duration.zero,
-            stackTrace: stackTrace,
-          ),
-        );
+        reportPersistenceError(key, error, stackTrace);
         throw TrooperStorageException(
           'Failed to delete persisted state for ${key.name} from storage backend',
           error: error,
@@ -271,9 +238,9 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
         if (serialized != null) {
           final envelope = StorageEnvelope.tryDecode(serialized);
           if (envelope == null) {
-            storage.delete(key.storageKey).ignore();
+            discardStored(storage, key);
           } else if (envelope.isExpired) {
-            storage.delete(key.storageKey).ignore();
+            deleteStored(storage, key);
           } else {
             final decoded = currentCodec.decode(envelope.payload);
             final entry = CacheEntry<T>(
@@ -290,9 +257,8 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
             return decoded;
           }
         }
-      } catch (_) {
-        // Corrupted storage entry
-        storage.delete(key.storageKey).ignore();
+      } catch (error, stackTrace) {
+        discardStored(storage, key, error, stackTrace);
       }
 
       _isHydrated = true;

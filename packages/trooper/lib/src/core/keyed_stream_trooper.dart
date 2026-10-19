@@ -186,7 +186,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
         if (raw != null) {
           final envelope = StorageEnvelope.tryDecode(raw);
           if (envelope == null) {
-            storage.delete(qKey.storageKey).ignore();
+            discardStored(storage, qKey);
             stream.emitLoading(key);
           } else if (envelope.isExpired) {
             if (config.stalePolicy == StalePolicy.keepStaleWhileRevalidate) {
@@ -205,7 +205,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
                 metadata: restoredEntry.metadata,
               );
             } else {
-              storage.delete(qKey.storageKey).ignore();
+              deleteStored(storage, qKey);
               stream.emitLoading(key);
             }
           } else {
@@ -227,8 +227,8 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
         } else {
           stream.emitLoading(key);
         }
-      } catch (_) {
-        storage.delete(qKey.storageKey).ignore();
+      } catch (error, stackTrace) {
+        discardStored(storage, qKey, error, stackTrace);
         stream.emitLoading(key);
       }
     } else {
@@ -313,18 +313,9 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
                   ? config.timeToLive.inMilliseconds
                   : null,
             );
-            storage.write(qKey.storageKey, envelope.encode()).ignore();
-          } catch (error, stacktrace) {
-            if (telemetry.hasListeners) {
-              telemetry.emit(
-                PersistenceErrorEvent(
-                  qKey,
-                  error: error,
-                  duration: Duration.zero,
-                  stackTrace: stacktrace,
-                ),
-              );
-            }
+            writeStored(storage, qKey, envelope.encode());
+          } catch (error, stackTrace) {
+            reportPersistenceError(qKey, error, stackTrace);
           }
         }
 
@@ -457,7 +448,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
           try {
             final envelope = StorageEnvelope.tryDecode(raw);
             if (envelope == null) {
-              storage.delete(qKey.storageKey).ignore();
+              discardStored(storage, qKey);
             } else if (envelope.isExpired) {
               if (config.stalePolicy == StalePolicy.keepStaleWhileRevalidate) {
                 final restoredData = currentCodec.decode(envelope.payload);
@@ -475,7 +466,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
                   metadata: restoredEntry.metadata,
                 );
               } else {
-                storage.delete(qKey.storageKey).ignore();
+                deleteStored(storage, qKey);
               }
             } else {
               final restoredData = currentCodec.decode(envelope.payload);
@@ -494,8 +485,8 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
               );
               return restoredData;
             }
-          } catch (_) {
-            storage.delete(qKey.storageKey).ignore();
+          } catch (error, stackTrace) {
+            discardStored(storage, qKey, error, stackTrace);
           }
         }
       }
@@ -609,9 +600,9 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
               ? config.timeToLive.inMilliseconds
               : null,
         );
-        storage.write(qKey.storageKey, envelope.encode()).ignore();
-      } catch (_) {
-        // Non-critical persistence failure
+        writeStored(storage, qKey, envelope.encode());
+      } catch (error, stackTrace) {
+        reportPersistenceError(qKey, error, stackTrace);
       }
     }
 
