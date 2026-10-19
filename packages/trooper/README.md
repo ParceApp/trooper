@@ -289,13 +289,16 @@ controller.articleFeed.fetchNextPage();
 Configure declarative retry strategies with linear or exponential backoff:
 
 ```dart
-// Exponential backoff: 3 retries, initial delay 250ms, multiplier 2.0
+// Exponential backoff: 3 retries, initial delay 250ms, multiplier 2.0, with jitter
 final retryPolicy = RetryPolicy.exponential(
   maxRetries: 3,
   initialDelay: const Duration(milliseconds: 250),
-  multiplier: 2.0,
+  backoffMultiplier: 2.0,
   maxDelay: const Duration(seconds: 5),
   retryWhen: (error) => error is SocketException,
+  // Each delay is randomized down to 50% (default) so clients that failed
+  // together do not retry in lockstep. Use jitter: 0 for exact delays.
+  jitter: 0.5,
 );
 
 // Apply via TrooperConfig

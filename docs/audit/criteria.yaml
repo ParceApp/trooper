@@ -157,10 +157,11 @@ dimensions:
         note: "callback errors (side effects, cancel listeners, invalidate targets) go to Zone.current.handleUncaughtError; persistence errors to PersistenceErrorEvent"
       - id: ERR-03
         priority: M
-        status: partial
+        status: met
         automated_in_ci: false
-        evidence: "error_audit_test.dart ERR-03 (exact exponential timing, maxDelay clamp, retryWhen: green; jitter: red)"
+        evidence: "error_audit_test.dart ERR-03 (exact exponential timing and maxDelay clamp with jitter: 0, retryWhen, jitter spreads schedules: 4 green); retry_policy_test.dart jitter group (bounds, maxDelay cap, jitter 0 deterministic)"
         findings: [F-023]
+        note: "RetryPolicy.jitter (additive, default 0.5): delay drawn from [d*(1-jitter), d] after the maxDelay cap"
       - id: ERR-04
         priority: M
         status: met
@@ -648,7 +649,7 @@ findings:
     severity: P1
     criterion: ERR-03
     freeze_relevant: false
-    status: open
+    status: closed
   - id: F-024
     severity: P1
     criterion: ERR-04

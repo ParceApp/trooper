@@ -35,6 +35,7 @@ void main() {
           const RetryPolicy.exponential(
             maxRetries: 3,
             initialDelay: Duration(milliseconds: 100),
+            jitter: 0,
           ),
         ),
         [0, 100, 300, 700],
@@ -48,6 +49,7 @@ void main() {
             maxRetries: 3,
             initialDelay: Duration(milliseconds: 100),
             maxDelay: Duration(milliseconds: 250),
+            jitter: 0,
           ),
         ),
         [0, 100, 300, 550],
@@ -76,7 +78,7 @@ void main() {
           ).join(','),
       };
       expect(schedules.length, greaterThan(1));
-    }, skip: 'F-023');
+    });
   });
 
   group('ERR-04/SEC-03 corrupt L2 entry falls back to fetch', () {

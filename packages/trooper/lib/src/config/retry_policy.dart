@@ -22,8 +22,10 @@ class RetryPolicy {
     this.backoffMultiplier = 1.0,
     this.maxDelay,
     this.retryWhen,
+    this.jitter = defaultJitter,
   }) : assert(maxRetries >= 0, 'maxRetries must be non-negative'),
-       assert(backoffMultiplier >= 1.0, 'backoffMultiplier must be >= 1.0');
+       assert(backoffMultiplier >= 1.0, 'backoffMultiplier must be >= 1.0'),
+       assert(jitter >= 0.0 && jitter <= 1.0, 'jitter must be in [0, 1]');
 
   /// No-op retry policy that never retries failed operations.
   const RetryPolicy.none()
@@ -31,7 +33,8 @@ class RetryPolicy {
       delay = Duration.zero,
       backoffMultiplier = 1.0,
       maxDelay = null,
-      retryWhen = null;
+      retryWhen = null,
+      jitter = 0.0;
 
   /// Retries immediately without delay up to [maxRetries] times.
   const RetryPolicy.immediate({
@@ -43,6 +46,7 @@ class RetryPolicy {
          backoffMultiplier: 1.0,
          maxDelay: null,
          retryWhen: retryWhen,
+         jitter: 0.0,
        );
 
   /// Retries with a fixed [delay] between attempts.
@@ -51,12 +55,14 @@ class RetryPolicy {
     Duration delay = const Duration(milliseconds: 500),
     Duration? maxDelay,
     bool Function(Object error)? retryWhen,
+    double jitter = defaultJitter,
   }) : this(
          maxRetries: maxRetries,
          delay: delay,
          backoffMultiplier: 1.0,
          maxDelay: maxDelay,
          retryWhen: retryWhen,
+         jitter: jitter,
        );
 
   /// Retries with exponential backoff increasing by [backoffMultiplier] on each attempt.
@@ -66,12 +72,14 @@ class RetryPolicy {
     double backoffMultiplier = 2.0,
     Duration? maxDelay,
     bool Function(Object error)? retryWhen,
+    double jitter = defaultJitter,
   }) : this(
          maxRetries: maxRetries,
          delay: initialDelay,
          backoffMultiplier: backoffMultiplier,
          maxDelay: maxDelay,
          retryWhen: retryWhen,
+         jitter: jitter,
        );
 
   /// The maximum number of retry attempts after the initial failure.
@@ -91,11 +99,33 @@ class RetryPolicy {
   /// If `null`, all non-cancellation errors are retried.
   final bool Function(Object error)? retryWhen;
 
+  /// Default share of each delay that is randomized, see [jitter].
+  static const double defaultJitter = 0.5;
+
+  static final math.Random _random = math.Random();
+
+  /// Share of each delay that is randomized, between `0.0` and `1.0`.
+  ///
+  /// Each delay is drawn uniformly from `[d * (1 - jitter), d]`, where `d` is
+  /// the backoff delay after the [maxDelay] cap, so clients that failed
+  /// together do not retry in lockstep (thundering herd). [maxDelay] stays
+  /// the upper bound. Defaults to [defaultJitter]; use `0.0` for exact,
+  /// deterministic delays (e.g. in tests).
+  final double jitter;
+
   /// Whether retries are enabled (`maxRetries > 0`).
   bool get isEnabled => maxRetries > 0;
 
-  /// Calculates the backoff delay duration for a 1-based [attempt] index.
+  /// Calculates the backoff delay duration for a 1-based [attempt] index,
+  /// randomized by [jitter].
   Duration delayForAttempt(int attempt) {
+    final base = _backoffDelay(attempt);
+    if (jitter == 0.0 || base == Duration.zero) return base;
+    final spread = 1.0 - jitter * _random.nextDouble();
+    return Duration(microseconds: (base.inMicroseconds * spread).round());
+  }
+
+  Duration _backoffDelay(int attempt) {
     if (attempt <= 1 || backoffMultiplier == 1.0 || delay == Duration.zero) {
       if (maxDelay != null && delay > maxDelay!) return maxDelay!;
       return delay;
