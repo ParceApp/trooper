@@ -116,7 +116,7 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
     runSideEffect(() => sideEffects?.onData?.call(value, parameter));
 
     // Persist to L2 storage asynchronously if configured
-    final storage = config.storage;
+    final storage = storageFor(key);
     final currentCodec = codec;
     if (storage != null && currentCodec != null) {
       try {
@@ -166,10 +166,10 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
   /// throwing a [TrooperStorageException] if writing to persistent storage fails.
   Future<T> setAsync(T value, P parameter) async {
     set(value, parameter);
-    final storage = config.storage;
+    final key = buildQueryKey(parameter);
+    final storage = storageFor(key);
     final currentCodec = codec;
     if (storage != null && currentCodec != null) {
-      final key = buildQueryKey(parameter);
       try {
         final serialized = currentCodec.encode(value);
         final now = DateTime.now();
@@ -217,7 +217,7 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
 
     set(initialValue, parameter);
 
-    final storage = config.storage;
+    final storage = storageFor(key);
     if (storage != null) {
       storage.delete(key.storageKey).ignore();
     }
@@ -229,9 +229,9 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
   /// throwing a [TrooperStorageException] if storage deletion fails.
   Future<T> resetAsync(P parameter) async {
     reset(parameter);
-    final storage = config.storage;
+    final key = buildQueryKey(parameter);
+    final storage = storageFor(key);
     if (storage != null) {
-      final key = buildQueryKey(parameter);
       try {
         await storage.delete(key.storageKey);
       } catch (error, stackTrace) {
@@ -262,8 +262,8 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
     final key = buildQueryKey(parameter);
 
     // Hydrate from L2 storage if configured and not yet hydrated
-    if (!_isHydrated && config.storage != null && codec != null) {
-      final storage = config.storage!;
+    if (!_isHydrated && storageFor(key) != null && codec != null) {
+      final storage = storageFor(key)!;
       final currentCodec = codec!;
 
       try {

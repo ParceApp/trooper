@@ -1,6 +1,7 @@
 import 'package:trooper/src/config/query_conflict_policy.dart';
 import 'package:trooper/src/config/retry_policy.dart';
 import 'package:trooper/src/config/stale_policy.dart';
+import 'package:trooper/src/key/query_key.dart';
 import 'package:trooper/src/storage/storage_backend.dart';
 
 /// Configuration specifying caching, staleness, deduplication, conflict, timeout, and retry policies for a Trooper query.
@@ -48,6 +49,10 @@ class TrooperConfig {
   final bool deduplicate;
 
   /// Optional persistent storage backend for L2 persistence.
+  ///
+  /// Entries are stored under [QueryKey.storageKey], which is built from the
+  /// `toString()` of the parameter (and entity key). Parameters without a
+  /// stable `toString()` are not persisted (see [QueryKey.hasStableStorageKey]).
   final StorageBackend? storage;
 
   /// Whether `didChangeDependencies()` should trigger a refresh directly after invalidating.

@@ -184,9 +184,9 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
       streamController.emitRefreshing(current);
     } else if (current == null &&
         config.hasCache &&
-        config.storage != null &&
+        storageFor(qKey) != null &&
         codec != null) {
-      final storage = config.storage!;
+      final storage = storageFor(qKey)!;
       final currentCodec = codec!;
       try {
         final raw = await storage.read(qKey.storageKey);
@@ -307,7 +307,7 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
         streamController.emitData(data, metadata: entry?.metadata);
 
         // Persist to L2 storage asynchronously if configured
-        final storage = config.storage;
+        final storage = storageFor(qKey);
         final currentCodec = codec;
         if (storage != null && currentCodec != null) {
           try {
@@ -438,7 +438,7 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
         return cached;
       }
 
-      final storage = config.storage;
+      final storage = storageFor(qKey);
       final currentCodec = codec;
       if (storage != null && currentCodec != null) {
         final raw = await storage.read(qKey.storageKey);
@@ -536,11 +536,11 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
   @override
   T set(T data, P parameter) {
     super.set(data, parameter);
-    final storage = config.storage;
+    final qKey = buildQueryKey(parameter);
+    final storage = storageFor(qKey);
     final currentCodec = codec;
     if (storage != null && currentCodec != null) {
       try {
-        final qKey = buildQueryKey(parameter);
         final serialized = currentCodec.encode(data);
         final now = DateTime.now();
         final envelope = StorageEnvelope(

@@ -135,7 +135,7 @@ class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
 
       // 2. Check L2 Storage only if L1 missed (entry == null)
       if (entry == null) {
-        final storage = config.storage;
+        final storage = storageFor(key);
         final currentCodec = codec;
         if (storage != null && currentCodec != null) {
           try {
@@ -240,10 +240,10 @@ class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
   @override
   T set(T data, P parameter) {
     super.set(data, parameter);
-    final storage = config.storage;
+    final key = buildQueryKey(parameter);
+    final storage = storageFor(key);
     final currentCodec = codec;
     if (storage != null && currentCodec != null) {
-      final key = buildQueryKey(parameter);
       try {
         final serialized = currentCodec.encode(data);
         final now = DateTime.now();
@@ -332,7 +332,7 @@ class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
         streamController.emitData(result, metadata: entry?.metadata);
 
         // Persist to L2 storage asynchronously if configured
-        final storage = config.storage;
+        final storage = storageFor(key);
         final currentCodec = codec;
         if (storage != null && currentCodec != null) {
           try {

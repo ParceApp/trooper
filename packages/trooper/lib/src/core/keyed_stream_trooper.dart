@@ -177,9 +177,9 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
       stream.emitRefreshing(key, currentKeyDataVal, metadata: entry?.metadata);
     } else if (currentKeyDataVal == null &&
         config.hasCache &&
-        config.storage != null &&
+        storageFor(qKey) != null &&
         codec != null) {
-      final storage = config.storage!;
+      final storage = storageFor(qKey)!;
       final currentCodec = codec!;
       try {
         final raw = await storage.read(qKey.storageKey);
@@ -299,7 +299,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
         stream.emitData(key, data, metadata: entry?.metadata);
 
         // Persist to L2 storage asynchronously if configured
-        final storage = config.storage;
+        final storage = storageFor(qKey);
         final currentCodec = codec;
         if (storage != null && currentCodec != null) {
           try {
@@ -449,7 +449,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
         return cached;
       }
 
-      final storage = config.storage;
+      final storage = storageFor(qKey);
       final currentCodec = codec;
       if (storage != null && currentCodec != null) {
         final raw = await storage.read(qKey.storageKey);
@@ -595,7 +595,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
       telemetry.emit(DataSetEvent(qKey, source: DataSource.local));
     }
 
-    final storage = config.storage;
+    final storage = storageFor(qKey);
     final currentCodec = codec;
     if (storage != null && currentCodec != null) {
       try {

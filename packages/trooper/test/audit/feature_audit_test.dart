@@ -181,7 +181,7 @@ void main() {
       final reader = make(); // cold start
       expect(await reader.get((f: const _Filter('A'))), 'data-for-A');
       await reader.dispose();
-    }, skip: 'F-060');
+    });
 
     test('fetch result is written through to L2', () async {
       final storage = InMemoryStorageBackend();

@@ -74,14 +74,42 @@ extension type const QueryKey._(
     return buffer.toString();
   }
 
+  /// Version of the [storageKey] layout. Keys written by an older layout are
+  /// never read again.
+  static const int storageKeyVersion = 1;
+
+  /// Prefix shared by the [storageKey] of every query in [namespace].
+  ///
+  /// Used to find all persisted entries of a namespace, including those
+  /// written in earlier sessions.
+  static String storagePrefix(String namespace) =>
+      'trooper:$storageKeyVersion:${Uri.encodeComponent(namespace)}:';
+
   /// Generates a deterministic key suitable for persistence backends
   /// (Filesystem, SharedPreferences, SQLite, Redis).
+  ///
+  /// Layout: `trooper:<version>:<name>:<parameter>[:<key>]`, each segment
+  /// URI-encoded. Parameter and key are taken from their `toString()`, which
+  /// must therefore be stable across sessions and distinct for unequal
+  /// values. See [hasStableStorageKey].
   String get storageKey {
-    final buffer = StringBuffer(name);
-    if (hasParameter) buffer.write(':$parameter');
-    if (isKeyed) buffer.write(':$key');
+    final buffer = StringBuffer(storagePrefix(name))
+      ..write(Uri.encodeComponent('$parameter'));
+    if (isKeyed) buffer.write(':${Uri.encodeComponent('$key')}');
     return buffer.toString();
   }
+
+  /// Whether [storageKey] can identify this query across sessions.
+  ///
+  /// `false` if the parameter or key falls back to the default
+  /// `Object.toString()` (`Instance of '…'`) or is a closure: unequal values
+  /// would then share one [storageKey]. Troopers skip L2 storage for such
+  /// keys; give the parameter class a stable `toString()` to persist it.
+  bool get hasStableStorageKey =>
+      _isStable('$parameter') && (!isKeyed || _isStable('$key'));
+
+  static bool _isStable(String text) =>
+      !text.contains("Instance of '") && !text.contains('Closure: ');
 
   /// Formatted representation of this query key for logging and diagnostics.
   String describe() {

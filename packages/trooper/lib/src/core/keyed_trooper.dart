@@ -5,6 +5,8 @@ import 'package:trooper/src/config/trooper_config.dart';
 import 'package:trooper/src/core/accessor.dart';
 import 'package:trooper/src/core/keyed_accessor.dart';
 import 'package:trooper/src/effects/trooper_keyed_side_effects.dart';
+import 'package:trooper/src/error/trooper_exception.dart';
+import 'package:trooper/src/storage/storage_backend.dart';
 import 'package:trooper/src/key/query_key.dart';
 import 'package:trooper/src/lifecycle/lifecycle_aware.dart';
 import 'package:trooper/src/state/stateful_data.dart';
@@ -98,6 +100,32 @@ abstract class KeyedTrooper<K extends Object, T, P extends Parameter>
     return QueryKey.keyed(namespace, key: key, parameter: parameter);
   }
 
+  bool _reportedUnstableStorageKey = false;
+
+  /// The L2 backend to use for [key], or `null` if no storage is configured
+  /// or [key] has no stable storage key (see [QueryKey.hasStableStorageKey]).
+  ///
+  /// Reports the first unstable key as a [PersistenceErrorEvent].
+  @protected
+  StorageBackend? storageFor(QueryKey key) {
+    final storage = config.storage;
+    if (storage == null || key.hasStableStorageKey) return storage;
+    if (!_reportedUnstableStorageKey) {
+      _reportedUnstableStorageKey = true;
+      telemetry.emit(
+        PersistenceErrorEvent(
+          key,
+          error: TrooperStorageException(
+            'L2 storage skipped for ${key.describe()}: parameter or key has '
+            'no stable toString(), so unequal values would share a storage key.',
+          ),
+          duration: Duration.zero,
+        ),
+      );
+    }
+    return null;
+  }
+
   /// Checks whether [parameter] differs from the last parameter used for [key].
   @protected
   bool isParamChanged(K key, P parameter) {
@@ -185,7 +213,7 @@ abstract class KeyedTrooper<K extends Object, T, P extends Parameter>
     final param = _lastParams.remove(key);
     if (param != null) {
       final qKey = QueryKey.keyed(namespace, key: key, parameter: param);
-      final storage = config.storage;
+      final storage = storageFor(qKey);
       if (storage != null) {
         storage.delete(qKey.storageKey).ignore();
       }
@@ -261,9 +289,9 @@ abstract class KeyedTrooper<K extends Object, T, P extends Parameter>
       (k) => k.matchesNameAndKey(name: namespace, entityKey: key),
     );
     if (param != null) {
-      final storage = config.storage;
+      final qKey = QueryKey.keyed(namespace, key: key, parameter: param);
+      final storage = storageFor(qKey);
       if (storage != null) {
-        final qKey = QueryKey.keyed(namespace, key: key, parameter: param);
         storage.delete(qKey.storageKey).ignore();
       }
     }

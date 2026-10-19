@@ -5,6 +5,8 @@ import 'package:trooper/src/storage/cache_store.dart';
 import 'package:trooper/src/config/trooper_config.dart';
 import 'package:trooper/src/core/accessor.dart';
 import 'package:trooper/src/effects/trooper_side_effects.dart';
+import 'package:trooper/src/error/trooper_exception.dart';
+import 'package:trooper/src/storage/storage_backend.dart';
 import 'package:trooper/src/key/query_key.dart';
 import 'package:trooper/src/lifecycle/lifecycle_aware.dart';
 import 'package:trooper/src/state/data_metadata.dart';
@@ -101,6 +103,32 @@ abstract class Trooper<T, P extends Parameter>
   /// Builds the unique [QueryKey] for this trooper.
   @protected
   QueryKey buildQueryKey(P parameter) => QueryKey(namespace, parameter);
+
+  bool _reportedUnstableStorageKey = false;
+
+  /// The L2 backend to use for [key], or `null` if no storage is configured
+  /// or [key] has no stable storage key (see [QueryKey.hasStableStorageKey]).
+  ///
+  /// Reports the first unstable key as a [PersistenceErrorEvent].
+  @protected
+  StorageBackend? storageFor(QueryKey key) {
+    final storage = config.storage;
+    if (storage == null || key.hasStableStorageKey) return storage;
+    if (!_reportedUnstableStorageKey) {
+      _reportedUnstableStorageKey = true;
+      telemetry.emit(
+        PersistenceErrorEvent(
+          key,
+          error: TrooperStorageException(
+            'L2 storage skipped for ${key.describe()}: parameter or key has '
+            'no stable toString(), so unequal values would share a storage key.',
+          ),
+          duration: Duration.zero,
+        ),
+      );
+    }
+    return null;
+  }
 
   /// Returns `true` if [parameter] differs from the last used parameter.
   @protected

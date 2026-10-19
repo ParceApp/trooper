@@ -830,4 +830,4 @@ findings:
     severity: P0
     criterion: FEAT-05
     freeze_relevant: true
-    status: open
+    status: closed

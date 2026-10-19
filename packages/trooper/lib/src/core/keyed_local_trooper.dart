@@ -111,7 +111,7 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
 
     runSideEffect(() => sideEffects?.onData?.call(key, value, parameter));
 
-    final storage = config.storage;
+    final storage = storageFor(qKey);
     final currentCodec = codec;
     if (storage != null && currentCodec != null) {
       try {
@@ -160,10 +160,10 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
   /// throwing a [TrooperStorageException] if writing to persistent storage fails.
   Future<T> setKeyAsync(K key, T value, P parameter) async {
     setKey(key, value, parameter);
-    final storage = config.storage;
+    final qKey = buildQueryKey(key, parameter);
+    final storage = storageFor(qKey);
     final currentCodec = codec;
     if (storage != null && currentCodec != null) {
-      final qKey = buildQueryKey(key, parameter);
       try {
         final serialized = currentCodec.encode(value);
         final now = DateTime.now();
@@ -209,9 +209,9 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
     final initial = initialValueFactory(key);
     setKey(key, initial, parameter);
 
-    final storage = config.storage;
+    final qKey = buildQueryKey(key, parameter);
+    final storage = storageFor(qKey);
     if (storage != null) {
-      final qKey = buildQueryKey(key, parameter);
       storage.delete(qKey.storageKey).ignore();
     }
     return initial;
@@ -221,9 +221,9 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
   /// throwing a [TrooperStorageException] if storage deletion fails.
   Future<T> resetKeyAsync(K key, P parameter) async {
     resetKey(key, parameter);
-    final storage = config.storage;
+    final qKey = buildQueryKey(key, parameter);
+    final storage = storageFor(qKey);
     if (storage != null) {
-      final qKey = buildQueryKey(key, parameter);
       try {
         await storage.delete(qKey.storageKey);
       } catch (error, stackTrace) {
@@ -337,9 +337,9 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
 
     // 2. Hydrate from L2 Storage if configured and not yet hydrated
     if (!_hydratedKeys.contains(key) &&
-        config.storage != null &&
+        storageFor(qKey) != null &&
         codec != null) {
-      final storage = config.storage!;
+      final storage = storageFor(qKey)!;
       final currentCodec = codec!;
 
       try {

@@ -143,7 +143,7 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
 
       // 2. Check L2 Storage only if L1 missed (entry == null)
       if (entry == null) {
-        final storage = config.storage;
+        final storage = storageFor(qKey);
         final currentCodec = codec;
         if (storage != null && currentCodec != null) {
           try {
@@ -334,7 +334,7 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
       telemetry.emit(DataSetEvent(qKey, source: DataSource.local));
     }
 
-    final storage = config.storage;
+    final storage = storageFor(qKey);
     final currentCodec = codec;
     if (storage != null && currentCodec != null) {
       try {
@@ -451,7 +451,7 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
         final entry = config.hasCache ? cache.getEntry<T>(qKey) : null;
 
         // Persist to L2 storage asynchronously if configured
-        final storage = config.storage;
+        final storage = storageFor(qKey);
         final currentCodec = codec;
         if (storage != null && currentCodec != null) {
           try {
