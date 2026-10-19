@@ -327,6 +327,26 @@ const customConfig = TrooperConfig(
 const noCache = TrooperConfig.noCache();
 ```
 
+### Memory bounds
+
+By default nothing is bounded: the L1 `CacheStore` keeps entries until they expire and are
+accessed (or `evictionInterval` prunes them), and keyed troopers keep the state of every key
+they have seen. For a growing key space (chat rooms, detail pages by ID), bound both:
+
+```dart
+class ChatController extends TrooperController {
+  ChatController() : super(defaultCache: CacheStore(maxEntries: 500)); // LRU
+
+  late final rooms = keyedQuery<String, Room, ()>(
+    namespace: 'room',
+    fetch: (id, _) => api.room(id),
+    // Drop a room's in-memory state once nobody watches it; the cached
+    // data comes back instantly on the next watch/get.
+    releaseUnwatchedKeys: true,
+  );
+}
+```
+
 ## Persistence & Sensitive Data
 
 With a `codec` and `TrooperConfig(storage: ...)`, troopers persist their data (L2) so it

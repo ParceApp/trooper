@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:meta/meta.dart';
 import 'package:trooper/src/lifecycle/lifecycle_aware.dart';
 import 'package:trooper/src/state/data_metadata.dart';
 import 'package:trooper/src/state/stateful_data.dart';
@@ -49,6 +50,18 @@ class KeyedStatefulStream<K, T> with LifecycleAware {
 
   bool _isEmittingKeys = false;
   final List<Set<K>> _pendingKeysEvents = [];
+
+  /// Called when [key] has no listener anymore: its last listener cancelled,
+  /// or it received a state while nobody listened. Used by keyed troopers
+  /// with `releaseUnwatchedKeys`.
+  @internal
+  void Function(K key)? onKeyUnwatched;
+
+  /// Whether [watchAll] or [watchKeys] currently has listeners.
+  @internal
+  bool get hasAggregateListeners =>
+      (!_allController.isClosed && _allController.hasListener) ||
+      (!_keysController.isClosed && _keysController.hasListener);
 
   void _notifyAll() {
     if (_isClosed || !_allController.hasListener) return;
@@ -180,6 +193,7 @@ class KeyedStatefulStream<K, T> with LifecycleAware {
     final previousState = controller.currentState;
 
     controller.emit(state);
+    if (!controller.hasListeners) onKeyUnwatched?.call(key);
 
     // Notify aggregate listeners if state changed or new key added
     if (isNewKey || previousState != state) {
@@ -265,6 +279,12 @@ class KeyedStatefulStream<K, T> with LifecycleAware {
   @override
   Future<void> dispose() => close();
 
-  StatefulStreamController<T> _getOrCreateController(K key) => _controllers
-      .putIfAbsent(key, () => StatefulStreamController<T>(distinct: _distinct));
+  StatefulStreamController<T> _getOrCreateController(K key) =>
+      _controllers.putIfAbsent(
+        key,
+        () => StatefulStreamController<T>(
+          distinct: _distinct,
+          onCancel: () => onKeyUnwatched?.call(key),
+        ),
+      );
 }

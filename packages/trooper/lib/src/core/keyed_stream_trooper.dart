@@ -77,6 +77,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
     super.queryQueue,
     super.telemetry,
     super.stream,
+    super.releaseUnwatchedKeys,
   });
 
   /// Factory method for parameterless keyed streams.
@@ -94,6 +95,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
     TrooperQueryQueue? queryQueue,
     TelemetryHub? telemetry,
     KeyedStatefulStream<K, T>? streamManager,
+    bool releaseUnwatchedKeys = false,
   }) => KeyedStreamTrooper<K, T, ()>(
     namespace: namespace,
     streamFactory: (key, _, _) => stream(key),
@@ -110,6 +112,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
     queryQueue: queryQueue,
     telemetry: telemetry,
     stream: streamManager,
+    releaseUnwatchedKeys: releaseUnwatchedKeys,
   );
 
   /// Factory creating the upstream [Stream] for a given key.
@@ -367,6 +370,16 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
     runSideEffect(
       () => sideEffects?.onError?.call(key, error, stackTrace, param),
     );
+  }
+
+  @override
+  bool canReleaseKey(K key) => super.canReleaseKey(key) && !isConnectedKey(key);
+
+  @override
+  void releaseKeyState(K key) {
+    _lastLoadedData.remove(key);
+    _pausedKeys.remove(key);
+    super.releaseKeyState(key);
   }
 
   void _cleanupKey(K key) {

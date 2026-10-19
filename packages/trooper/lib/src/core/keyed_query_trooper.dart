@@ -59,6 +59,7 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
     TrooperQueryQueue? queryQueue,
     TelemetryHub? telemetry,
     KeyedStatefulStream<K, T>? stream,
+    bool releaseUnwatchedKeys = false,
   }) => KeyedQueryTrooper.cancellable(
     namespace: namespace,
     fetch: (key, param, _) => fetch(key, param),
@@ -69,6 +70,7 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
     queryQueue: queryQueue,
     telemetry: telemetry,
     stream: stream,
+    releaseUnwatchedKeys: releaseUnwatchedKeys,
   );
 
   /// Creates a [KeyedQueryTrooper] with cooperative cancellation support via [TrooperCancelToken].
@@ -82,6 +84,7 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
     super.queryQueue,
     super.telemetry,
     super.stream,
+    super.releaseUnwatchedKeys,
   });
 
   /// The underlying fetch function executed to retrieve data for a key.

@@ -39,13 +39,16 @@ abstract class KeyedTrooper<K extends Object, T, P extends Parameter>
     TrooperQueryQueue? queryQueue,
     TelemetryHub? telemetry,
     KeyedStatefulStream<K, T>? stream,
+    this.releaseUnwatchedKeys = false,
   }) : config = config ?? defaultConfig,
        _ownsCache = (cache == null),
        _ownsQueryQueue = (queryQueue == null),
        cache = cache ?? CacheStore(),
        queryQueue = queryQueue ?? TrooperQueryQueue(),
        telemetry = telemetry ?? TelemetryHub.global,
-       stream = stream ?? KeyedStatefulStream<K, T>();
+       stream = stream ?? KeyedStatefulStream<K, T>() {
+    if (releaseUnwatchedKeys) this.stream.onKeyUnwatched = _scheduleRelease;
+  }
 
   /// Global default configuration used when no custom config is specified.
   static TrooperConfig get defaultConfig => TrooperConfig.defaultConfig;
@@ -76,6 +79,22 @@ abstract class KeyedTrooper<K extends Object, T, P extends Parameter>
 
   /// Keyed stateful stream emitting [StatefulData] transitions per key.
   final KeyedStatefulStream<K, T> stream;
+
+  /// Whether the in-memory state of a key is dropped once nobody watches it.
+  ///
+  /// By default (`false`) a keyed trooper keeps the latest state, the last
+  /// parameter and similar per-key data of every key it has seen until
+  /// [removeKey], [clearAll] or [dispose], so memory grows with the key space.
+  ///
+  /// With `true`, a key is released when it has no listener on its stream (and
+  /// nobody listens to `stream.watchAll()` or `stream.watchKeys()`), no request
+  /// for it is in flight and, for stream troopers, no upstream connection is
+  /// open. Releasing keeps the L1 cache and L2 storage, so the next `getKey` or
+  /// eager `watchKey` serves cached data instantly; bound the cache with
+  /// `CacheStore(maxEntries: …)`. After release, [currentKeyData] returns
+  /// `null`, and a per-key stream object obtained earlier is closed: call
+  /// `watchKey` again instead of re-listening to an old stream.
+  final bool releaseUnwatchedKeys;
 
   final Map<K, P> _lastParams = {};
   bool _isDisposed = false;
@@ -273,6 +292,31 @@ abstract class KeyedTrooper<K extends Object, T, P extends Parameter>
     );
     _purgeKeyStorage(key);
     await stream.removeKey(key);
+  }
+
+  void _scheduleRelease(K key) {
+    // Deferred, so a listener that re-subscribes right away keeps the key.
+    scheduleMicrotask(() {
+      if (_isDisposed || stream.isClosed || !stream.containsKey(key)) return;
+      if (stream.hasKeyListeners(key) || stream.hasAggregateListeners) return;
+      if (canReleaseKey(key)) releaseKeyState(key);
+    });
+  }
+
+  /// Whether the in-memory state of [key] may be dropped now, see
+  /// [releaseUnwatchedKeys]. Subclasses add their own conditions.
+  @protected
+  @mustCallSuper
+  bool canReleaseKey(K key) => !queryQueue.hasOngoing(
+    QueryKey.keyed(namespace, key: key, parameter: const ()),
+  );
+
+  /// Drops the in-memory state of [key] but keeps cache and storage.
+  @protected
+  @mustCallSuper
+  void releaseKeyState(K key) {
+    _lastParams.remove(key);
+    unawaited(stream.removeKey(key));
   }
 
   /// Purges the persisted entries of [key] for every parameter, including

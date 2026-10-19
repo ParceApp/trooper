@@ -121,11 +121,11 @@ dimensions:
         note: "leak_tracker only instruments Flutter disposables"
       - id: LIFE-03
         priority: M
-        status: partial
+        status: met
         automated_in_ci: false
-        evidence: "cache_store.dart: optional maxEntries LRU (cache_store_test.dart maxEntries group), defaults (unbounded, evictionInterval null) documented in CacheStore dartdoc; keyed per-key state (KeyedStatefulStream controllers, lastParams, KeyedStreamTrooper last data) documented, still unbounded until removeKey/clearAll"
+        evidence: "cache_store.dart: optional maxEntries LRU (cache_store_test.dart maxEntries group); keyed troopers: opt-in releaseUnwatchedKeys drops per-key state (test/core/release_unwatched_keys_test.dart); defaults (unbounded) documented in CacheStore and KeyedTrooper dartdoc and README 'Memory bounds'"
         findings: [F-019]
-        note: "per-key state of keyed troopers holds the data itself; automatic cleanup is a behavior change and still to be decided"
+        note: "both bounds are opt-in (additive API); defaults stay unbounded and are documented"
       - id: LIFE-04
         priority: M
         status: met
@@ -632,7 +632,7 @@ findings:
     severity: P1
     criterion: LIFE-03
     freeze_relevant: false
-    status: open
+    status: closed
   - id: F-020
     severity: P1
     criterion: ERR-02

@@ -24,7 +24,9 @@ import 'package:trooper/src/stream/keyed_stateful_stream.dart';
 ///
 /// Keyed troopers also keep each key's latest state in their
 /// [KeyedStatefulStream] until `removeKey`, `clearAll` or `dispose`, independent
-/// of this store. With an unbounded key space, remove keys you no longer need.
+/// of this store. With an unbounded key space, create `KeyedQueryTrooper` and
+/// `KeyedStreamTrooper` with `releaseUnwatchedKeys: true` (drops a key's
+/// in-memory state once nobody watches it) or remove keys you no longer need.
 ///
 /// ### Example:
 /// ```dart
