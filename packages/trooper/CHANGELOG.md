@@ -9,6 +9,8 @@
 * **Docs**: `invalidate()` cancels in-flight requests; their callers receive a `TrooperCancelledException`.
 * **Fix**: `QueryConflictPolicy.parallel` no longer lets an older response overwrite a newer one in stream, cache, or storage.
 * **Fix**: `KeyedStreamTrooper.dispose()` no longer fails with `ConcurrentModificationError` when a listener changes keys or disposes during cancellation.
+* **Fix**: `QueryConflictPolicy.forward` now always resolves a superseded caller with the newer request's result (or error), as documented. Before, the caller received the superseded result if that fetch ignored its token and answered first, which also reached stream and cache briefly, and it failed with `TrooperCancelledException` if the fetch honored its token or was waiting for a retry.
+* **Fix**: A `LoadMore.fetchNextPage()` that a filter change, refresh or invalidate overtakes now completes right away, independent of the source's conflict policy.
 * **Fix**: A cancelled `TrooperMutation` whose action ignores its `TrooperCancelToken` no longer emits `DataLoaded`, runs `invalidateOnSuccess` or calls `onSuccess`; it fails with `TrooperCancelledException` like a cooperative cancel.
 
 ## 0.1.0-beta.1

@@ -183,6 +183,7 @@ class LoadMore<TPage, F extends Parameter, PP extends Object>
   int _generation = 0;
   Future<LoadMoreData<TPage, PP>>? _firstPageFuture;
   Future<void>? _nextPageFuture;
+  Completer<void>? _nextPageDone;
   bool _sourceHadState = false;
   bool _isDisposed = false;
 
@@ -242,7 +243,8 @@ class LoadMore<TPage, F extends Parameter, PP extends Object>
   /// Does nothing if no pages are loaded, the end was reached, the first page is
   /// reloading, or the last next-page request failed (use [retryNextPage]).
   /// Concurrent calls share the in-flight request. Never throws: failures are
-  /// reported through [LoadMoreData.nextPageError].
+  /// reported through [LoadMoreData.nextPageError]. Completes early, without
+  /// appending, when the feed is reset (filter change, refresh or invalidate).
   Future<void> fetchNextPage() {
     final pending = _nextPageFuture;
     if (pending != null) return pending;
@@ -263,7 +265,13 @@ class LoadMore<TPage, F extends Parameter, PP extends Object>
     _controller.emitData(
       data.copyWith(isFetchingNextPage: true, clearNextPageError: true),
     );
-    return _nextPageFuture = _fetchNextPage(filter, pageParam, generation);
+    // Completes when the page is applied or dropped, or when the feed resets,
+    // whichever comes first, independent of the source's conflict policy.
+    final done = _nextPageDone = Completer<void>();
+    _fetchNextPage(filter, pageParam, generation).whenComplete(() {
+      if (!done.isCompleted) done.complete();
+    });
+    return _nextPageFuture = done.future;
   }
 
   /// Clears a failed next-page request and loads the next page again.
@@ -403,6 +411,9 @@ class LoadMore<TPage, F extends Parameter, PP extends Object>
     _generation++;
     _firstPageFuture = null;
     _nextPageFuture = null;
+    final done = _nextPageDone;
+    _nextPageDone = null;
+    if (done != null && !done.isCompleted) done.complete();
   }
 
   /// Reacts to the wrapped source being invalidated (a transition to [DataInitial]).

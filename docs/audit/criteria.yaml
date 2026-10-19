@@ -63,11 +63,11 @@ dimensions:
         findings: [F-012]
       - id: ASYNC-02
         priority: M
-        status: not_met
+        status: met
         automated_in_ci: false
-        evidence: "packages/trooper/test/audit/async_audit_test.dart (ASYNC-02 group: 2 green, 3 red)"
+        evidence: "packages/trooper/test/audit/async_audit_test.dart (ASYNC-02 group: 7 green); test/concurrency/query_queue_test.dart forward group (late result, honored token, retry pause, error, chains)"
         findings: [F-013, F-014]
-        note: "cancellation of in-flight callers by invalidate is undocumented (see DOC-04)"
+        note: "invalidate cancels in-flight callers (documented with F-014); forward completes superseded callers only via the newer request (QueryConflictPolicy dartdoc)"
       - id: ASYNC-03
         priority: M
         status: met
@@ -596,7 +596,7 @@ findings:
     severity: P1
     criterion: ASYNC-02
     freeze_relevant: false
-    status: open
+    status: closed
   - id: F-014
     severity: P0
     criterion: ASYNC-02

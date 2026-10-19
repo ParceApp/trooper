@@ -101,6 +101,10 @@ class TrooperQueryQueue with LifecycleAware {
           _ongoingList.remove(existing);
 
         case QueryConflictPolicy.forward:
+          // From now on only the new request completes the prior caller;
+          // whatever the superseded action yields (late result, cancellation,
+          // retry abort) is discarded.
+          existing.isForwarded = true;
           existing.cancelToken.cancel(
             reason: 'Superseded by newer request for ${key.describe()}',
           );
@@ -114,6 +118,8 @@ class TrooperQueryQueue with LifecycleAware {
     }
 
     _ongoingList.add(ongoing);
+
+    bool mayComplete() => !ongoing.isForwarded && !completer.isCompleted;
 
     Future<void> runTask() async {
       try {
@@ -133,7 +139,7 @@ class TrooperQueryQueue with LifecycleAware {
               );
             }
             final result = await actionFuture;
-            if (!completer.isCompleted) {
+            if (mayComplete()) {
               completer.complete(result);
             }
             break;
@@ -151,7 +157,7 @@ class TrooperQueryQueue with LifecycleAware {
                 await Future<void>.delayed(delay);
               }
               if (cancelToken.isCancelled) {
-                if (!completer.isCompleted) {
+                if (mayComplete()) {
                   completer.completeError(
                     TrooperCancelledException(
                       message: cancelToken.reason ?? 'Operation cancelled',
@@ -164,7 +170,7 @@ class TrooperQueryQueue with LifecycleAware {
               continue;
             }
 
-            if (!completer.isCompleted) {
+            if (mayComplete()) {
               completer.completeError(error, stackTrace);
             }
             break;
@@ -299,7 +305,7 @@ class TrooperQueryQueue with LifecycleAware {
 }
 
 class _OngoingRequest<T> {
-  const _OngoingRequest({
+  _OngoingRequest({
     required this.key,
     required this.future,
     required this.completer,
@@ -310,4 +316,8 @@ class _OngoingRequest<T> {
   final Future<T> future;
   final Completer<T> completer;
   final TrooperCancelToken cancelToken;
+
+  /// Set once a newer request took over this caller under
+  /// [QueryConflictPolicy.forward].
+  bool isForwarded = false;
 }

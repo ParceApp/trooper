@@ -154,7 +154,7 @@ void main() {
         reason: 'superseded result must not reach the stream',
       );
       await q.dispose();
-    }, skip: 'F-013');
+    });
 
     test(
       'mutation invalidateOnSuccess: late query result is not cached',

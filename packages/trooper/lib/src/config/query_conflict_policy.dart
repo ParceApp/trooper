@@ -62,7 +62,10 @@ enum QueryConflictPolicy {
   ///   preventing redundant data transfer.
   /// - **Prior Caller**: The [Future] of the prior caller is chained to the new request.
   ///   It does NOT throw a [TrooperCancelledException]; instead, it awaits and resolves
-  ///   with the new request's result without error.
+  ///   with the new request's result without error. This holds even if the superseded
+  ///   fetch ignores its token and resolves first, throws because it honors the token,
+  ///   or was waiting for a retry: its own outcome is discarded and never reaches the
+  ///   stream or cache. If the new request fails, the prior caller receives that error.
   /// - **New Request**: Executes and fulfills all awaiting callers in the chain simultaneously.
   ///
   /// ### Use Cases:
