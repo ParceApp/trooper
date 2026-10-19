@@ -101,7 +101,7 @@ dependencies:
 import 'package:trooper/trooper.dart';
 
 class ArticleController extends TrooperController {
-  ArticleController(this._api) : super('ArticleController');
+  ArticleController(this._api);
 
   final ApiService _api;
 
@@ -134,11 +134,11 @@ class ArticleController extends TrooperController {
 
 #### 3. Consume in Application
 ```dart
-// Fetch cached or fresh data
-final articles = await controller.feed.get();
+// Fetch cached or fresh data (P is `()`, so pass the empty record)
+final articles = await controller.feed.get(());
 
 // React to state changes via pattern matching
-controller.feed.watch().listen((state) {
+controller.feed.watch(initialParameter: (), eager: true).listen((state) {
   switch (state) {
     case DataInitial():
       print('Idle');
@@ -158,7 +158,7 @@ controller.feed.watch().listen((state) {
 
 ### Option B: Flutter + BLoC (`trooper_bloc`)
 
-When using Flutter, depend on `trooper_bloc`. It re-exports 100% of `package:trooper/trooper.dart`:
+When using Flutter, depend on `trooper_bloc`. It re-exports 100% of `package:trooper/trooper.dart` and always shares its major version, so one dependency is enough. It does not re-export `flutter_bloc` or `dart:async`; import those yourself where you need `BlocProvider`, `Emitter` or `FutureOr`:
 
 #### 1. Add Dependency
 ```yaml
@@ -230,7 +230,7 @@ class FeedTloc extends Tloc<FeedEvent, FeedState> {
   @override
   void handlers() {
     on<RefreshFeedRequested>((event, emit) async {
-      await _controller.feed.refresh();
+      await _controller.feed.refresh(());
     });
   }
 }

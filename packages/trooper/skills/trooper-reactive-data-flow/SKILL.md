@@ -98,11 +98,13 @@ For queries that require arguments (e.g. `({int id})` or `({String query, int pa
 - `watch({P? initialParameter, bool eager = false})`: `initialParameter` is optional. If provided and `eager: true`, an initial fetch is triggered immediately.
 
 ### Parameterless Troopers (`P == ()`)
-When no arguments are required, declare `P` as `()`. Trooper provides extension methods (`ParameterlessAccessor`, `ParameterlessQueryTrooper`, etc.) allowing calls without arguments:
-- `await query.get()` (no `const ()` needed!)
-- `await query.refresh()`
-- `query.trigger()`
-- `query.watch()`
+When no arguments are required, declare `P` as `()` and pass the empty record explicitly. There are no shorthand overloads; a missing parameter is a compile-time error:
+- `await query.get(())`
+- `await query.refresh(())`
+- `query.trigger(())`
+- `query.watch(initialParameter: (), eager: true)`
+- `await keyed.getKey(42, ())`, `keyed.setKey(42, value, ())`
+- `await mutation(())`
 
 ### Synchronous Inspection (`current()` and `currentData()`)
 `current()` and `currentData()` are **always parameterless**:
@@ -129,7 +131,7 @@ final userQuery = QueryTrooper<User, ({int id})>(
 ```
 
 ### Cooperative Cancellation
-For long-running or cancellable HTTP requests:
+For long-running or cancellable HTTP requests (inside a controller: `cancellableQuery(...)`, `cancellableKeyedQuery(...)`, `cancellableMutation(...)`):
 ```dart
 final searchTrooper = QueryTrooper<List<Item>, ({String query})>.cancellable(
   namespace: 'search',
@@ -152,7 +154,7 @@ final productQuery = KeyedQueryTrooper<String, Product, ()>(
 
 // Access a single key as a standard Accessor<Product, ()>:
 final laptopAccessor = productQuery['macbook-pro'];
-final product = await laptopAccessor.get();
+final product = await laptopAccessor.get(());
 
 // Batch operations:
 final products = await productQuery.getAll(['macbook-pro', 'ipad-air'], const ());
@@ -226,9 +228,9 @@ final counter = LocalTrooper<int, ()>(
   initialValue: 0,
 );
 
-counter.update((current) => current + 1);
-counter.set(10);
-counter.reset();
+counter.update((current) => current + 1, ());
+counter.set(10, ());
+counter.reset(());
 ```
 
 ### Persistent Storage Support
@@ -290,6 +292,9 @@ Group related troopers into a feature controller. The controller automatically p
 - Shared memory cache across all child troopers.
 - Shared query and mutation queues.
 - Automatic cascade of `initialize()`, `pause()`, `resume()`, `recover()`, and `dispose()`.
+- Shared defaults via `TrooperController(defaultConfig: ..., defaultStorage: ...)`. There is no global default config.
+
+Extend `TrooperController`; never `implements` it. The lifecycle drivers are `@nonVirtual`: override the hooks `onInit`, `onPause`, `onResume`, `onRecover`, `onDependenciesChanged` and `onDispose` instead. Factories come in pairs where the callback differs: `query`/`cancellableQuery`, `keyedQuery`/`cancellableKeyedQuery`, `keyedLocal`/`keyedLocalBuilder`, `mutation`/`cancellableMutation`.
 
 ```dart
 class UserFeatureController extends TrooperController {
@@ -320,7 +325,7 @@ class UserFeatureController extends TrooperController {
    - `query.current()` and `query.currentData()` never take arguments.
    - Keyed troopers use `query.currentKey(key)` and `query.currentKeyData(key)` to inspect an individual key.
 2. **`eager` Defaults to `false`**:
-   - Calling `trooper.watch()` does not trigger an automatic network call unless `eager: true` is explicitly provided.
+   - `trooper.watch()` does not trigger a network call. Pass both `initialParameter` and `eager: true` (for `P == ()`: `watch(initialParameter: (), eager: true)`); without `initialParameter`, `eager` has no effect.
 3. **Invalidation Scope**:
    - `trooper.invalidate()` clears all cache entries for that namespace across all parameters.
    - `keyedTrooper.invalidate()` clears all keys and parameters in that namespace.
@@ -330,6 +335,15 @@ class UserFeatureController extends TrooperController {
 5. **Class Naming Consistency**:
    - Always use `QueryTrooper` (not `TrooperQuery`).
    - Always use `KeyedQueryTrooper` (not `KeyedTrooperQuery`).
+6. **Keyed access**:
+   - Read a single key through the subscript operator: `keyed[id].get(())` returns via an `Accessor<T, P>`. There is no `key(id)` alias.
+7. **After `dispose()`**:
+   - Loading, writing, emitting, connecting, executing and watching throw a `StateError`; `current()`/`currentData()` return the last state; `invalidate()` and lifecycle calls are no-ops.
+8. **Open-ended catalogues**:
+   - `TrooperEvent` and `TrooperException` can gain subtypes in minor releases: give every `switch` over them a default case. Codec failures are `TrooperCodecException`, backend failures `TrooperStorageException`.
+9. **Testing**:
+   - Concrete troopers are `final` and cannot be mocked with `implements`. Depend on `Accessor`/`KeyedAccessor` and use `FakeAccessor` (`package:trooper_bloc/testing.dart`), or use a real controller with a fake API.
+10. **`StorageBackend`** has exactly `read`, `write`, `delete` (returns `Future<void>`) and `getAllKeys`. Methods may throw; Trooper reports and continues without L2.
 
 ---
 

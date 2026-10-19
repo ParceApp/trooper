@@ -19,13 +19,17 @@ If you know TanStack Query from the web, Trooper follows a similar mental model:
 - [The 7 Core Building Blocks](#the-7-core-building-blocks)
 - [Batch Operations for Keyed Troopers](#batch-operations-for-keyed-troopers)
 - [Pagination](#pagination)
+- [Parameterless Troopers](#parameterless-troopers)
 - [The State Model: StatefulData](#the-state-model-statefuldata)
 - [Concurrency & Request Deduplication](#concurrency--request-deduplication)
 - [Retry Policies & Timeouts](#retry-policies--timeouts)
 - [Cache Configuration](#cache-configuration-trooperconfig)
 - [Persistence & Sensitive Data](#persistence--sensitive-data)
 - [Observability & Logging](#observability--logging)
+- [Errors](#errors)
+- [Lifecycle & Disposal](#lifecycle--disposal)
 - [Testing](#testing)
+- [API Stability](#api-stability)
 - [Ecosystem](#ecosystem)
 - [License](#license)
 
@@ -148,13 +152,45 @@ Trooper provides seven specialized building blocks depending on what kind of dat
 
 | Building Block | Controller Method | What it is for |
 | :--- | :--- | :--- |
-| **`QueryTrooper<T, P>`** | `query(...)` | Asynchronous reads with caching, SWR background refresh, and request deduplication. |
-| **`KeyedQueryTrooper<K, T, P>`** | `keyedQuery(...)` | Queries partitioned dynamically by entity key `K` (e.g. ID, slug, category). |
+| **`QueryTrooper<T, P>`** | `query(...)`, `cancellableQuery(...)` | Asynchronous reads with caching, SWR background refresh, and request deduplication. |
+| **`KeyedQueryTrooper<K, T, P>`** | `keyedQuery(...)`, `cancellableKeyedQuery(...)` | Queries partitioned dynamically by entity key `K` (e.g. ID, slug, category). |
 | **`LocalTrooper<T, P>`** | `local(...)` | In-memory reactive state with optional persistent storage backing. |
-| **`KeyedLocalTrooper<K, T, P>`** | `keyedLocal(...)` | In-memory state partitioned by key (e.g. drafts or dynamic filters per item). |
+| **`KeyedLocalTrooper<K, T, P>`** | `keyedLocal(...)`, `keyedLocalBuilder(...)` | In-memory state partitioned by key (e.g. drafts or dynamic filters per item). |
 | **`StreamTrooper<T, P>`** | `stream(...)` | Connects push-based streams (WebSockets, SSE, event buses) into `StatefulData`. |
 | **`KeyedStreamTrooper<K, T, P>`** | `keyedStream(...)` | Multi-channel push streams partitioned by key (e.g. chat rooms, live sensors). |
-| **`TrooperMutation<T, P>`** | `mutation(...)` | Command operations with sequential execution queuing and declarative cache invalidation. |
+| **`TrooperMutation<T, P>`** | `mutation(...)`, `cancellableMutation(...)` | Command operations with sequential execution queuing and declarative cache invalidation. |
+
+The `cancellable…` variants pass a `TrooperCancelToken` to the fetch or action, which is
+cancelled when the request is superseded, invalidated or disposed.
+`keyedLocalBuilder` takes an `initialValueFactory` per key instead of one `initialValue`.
+
+Keyed troopers are read per key through the subscript operator, which returns an
+`Accessor`: `controller.orders[42].get(())`. The `…Key` methods (`getKey`, `setKey`,
+`watchKey` …) are the trooper-side primitives behind it.
+
+## Parameterless Troopers
+
+When a trooper needs no parameter, declare `P` as `()` and pass the empty record
+explicitly. There is no shorthand: a forgotten parameter stays a compile-time error.
+
+```dart
+class ProfileController extends TrooperController {
+  late final profile = query<User, ()>(
+    namespace: 'profile',
+    fetch: (_) => api.getProfile(),
+  );
+
+  late final logout = mutation<void, ()>(
+    namespace: 'logout',
+    action: (_) => api.logout(),
+    invalidateOnSuccess: [this],
+  );
+}
+
+await controller.profile.get(());
+controller.profile.watch(initialParameter: (), eager: true);
+await controller.logout(());
+```
 
 
 ## The State Model: StatefulData
@@ -393,16 +429,10 @@ class EncryptedStorageBackend implements StorageBackend {
       inner.write(key, await encrypt(value));
 
   @override
-  Future<String?> delete(String key) => inner.delete(key);
-
-  @override
-  Future<void> clear() => inner.clear();
+  Future<void> delete(String key) => inner.delete(key);
 
   @override
   Future<Set<String>> getAllKeys() => inner.getAllKeys();
-
-  @override
-  Future<bool> containsKey(String key) => inner.containsKey(key);
 }
 ```
 
@@ -429,23 +459,24 @@ class SecureStorageBackend implements StorageBackend {
       _storage.write(key: key, value: value);
 
   @override
-  Future<String?> delete(String key) async {
-    final previous = await _storage.read(key: key);
-    await _storage.delete(key: key);
-    return previous;
-  }
-
-  @override
-  Future<void> clear() => _storage.deleteAll();
+  Future<void> delete(String key) => _storage.delete(key: key);
 
   @override
   Future<Set<String>> getAllKeys() async =>
       (await _storage.readAll()).keys.toSet();
-
-  @override
-  Future<bool> containsKey(String key) => _storage.containsKey(key: key);
 }
 ```
+
+### The `StorageBackend` contract
+
+`StorageBackend` has four methods: `read`, `write`, `delete` and `getAllKeys`.
+
+- Every method may throw. Trooper reports the failure as a `PersistenceErrorEvent` and
+  continues without L2; a failing backend never fails a read.
+- Calls can overlap, also for the same key. Trooper only waits for its own purges: after
+  `invalidate()` or `clearAll()`, later calls start once the purge's deletes are done.
+- The backend may be shared with app data. Trooper only touches keys with its
+  `trooper:1:<namespace>:` prefix and never clears the backend as a whole.
 
 ## Observability & Logging
 
@@ -456,7 +487,7 @@ Trooper includes a built-in event bus for logging and diagnostics:
 TelemetryHub.global.registerLogger(ConsoleTrooperLogger());
 
 // Or listen directly to events
-TelemetryHub.global.addListener((event) {
+TelemetryHub.global.events.listen((event) {
   print('[Trooper Event] $event');
 });
 ```
@@ -468,6 +499,44 @@ for plain text, e.g. only in debug builds. Events themselves (`event.toString()`
 listener) still contain the parameters, so mask them in your own loggers too.
 
 Events track cache hits, cache misses, request durations, SWR triggers, persistence errors, and network failures with microsecond precision.
+
+The set of events is closed (you cannot add your own), but new event types can appear in
+minor releases. A `switch` over `TrooperEvent` therefore needs a default case.
+
+## Errors
+
+Fetch and action errors reach the caller unchanged. Errors raised by Trooper itself are
+`TrooperException`s:
+
+| Type | When |
+| :--- | :--- |
+| `TrooperCancelledException` | A request was cancelled (token, newer request, `invalidate()`). |
+| `TrooperTimeoutException` | A request exceeded `TrooperConfig.timeout`. |
+| `TrooperStorageException` | The storage backend failed, or Trooper discarded an unreadable entry. |
+| `TrooperCodecException` | A codec failed to encode a value or decode a persisted string. |
+
+Persistence failures never fail a read; they are reported as `PersistenceErrorEvent` with
+one of the last two types. Like the events, the set of exception types can grow in minor
+releases, so `switch` statements need a default case.
+
+## Lifecycle & Disposal
+
+Disposing a controller disposes every trooper it created. After `dispose()`, every Trooper
+type behaves the same:
+
+- Calls that load, write, emit, connect, execute or start watching throw a `StateError`
+  (methods returning a `Future` complete with it).
+- `current()`, `currentData()` and other snapshots return the last state.
+- `invalidate()`, `pause()`, `resume()`, `recover()` and `didChangeDependencies()` do
+  nothing, so a mutation's `invalidateOnSuccess` never fails because a target is gone.
+- `dispose()` can be called more than once.
+
+To hook into the lifecycle of a controller, override `onInit`, `onPause`, `onResume`,
+`onRecover`, `onDependenciesChanged` or `onDispose`. The drivers (`initialize()`,
+`dispose()` …) cannot be overridden; they call your hook and then the children.
+
+There is no global default configuration. Share defaults through the controller:
+`TrooperController(defaultConfig: ..., defaultStorage: ...)`.
 
 ## Testing
 
@@ -492,6 +561,25 @@ test('fetches user and serves subsequent read from cache', () async {
   await controller.dispose();
 });
 ```
+
+Concrete troopers are `final` classes and cannot be mocked with `implements`. Let the code
+under test depend on `Accessor<T, P>` (or `KeyedAccessor`) and pass a `FakeAccessor` from
+`package:trooper_bloc/testing.dart`, or test against a real controller with a fake API as
+above.
+
+## API Stability
+
+From 1.0 on, `trooper` follows semantic versioning:
+
+- Concrete troopers, configuration classes, `CacheStore` and the queues are `final`. New
+  members can be added in minor releases.
+- `TrooperController` is meant to be extended, not implemented. New members can be added
+  in minor releases.
+- `StorageBackend`, `TrooperLogger`, `Accessor`, `KeyedAccessor` and `Invalidatable` are
+  interfaces to implement. They stay unchanged within a major version; new capabilities
+  come as separate interfaces.
+- `TrooperEvent` and `TrooperException` can gain subtypes in minor releases.
+- `trooper_bloc` re-exports `trooper` and always shares its major version.
 
 
 ## Architecture at a Glance (visualized by AI 🙃)
