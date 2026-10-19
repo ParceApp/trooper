@@ -340,7 +340,7 @@ void main() {
 
     expect(m.currentState, isNot(isA<DataLoaded<String>>()));
     await m.dispose();
-  }, skip: 'F-015');
+  });
 
   test('ASYNC-06 mutation queue serializes in submission order', () async {
     final queue = TrooperMutationQueue();

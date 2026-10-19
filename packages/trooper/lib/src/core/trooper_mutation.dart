@@ -129,6 +129,9 @@ class TrooperMutation<T, P extends Parameter>
 
       try {
         final result = await action(parameter, effectiveCancelToken);
+        // An action may ignore its token; a cancelled mutation must not
+        // apply its result, invalidate targets or report success.
+        effectiveCancelToken.throwIfCancelled();
         stopwatch.stop();
 
         _streamController.emitData(result);

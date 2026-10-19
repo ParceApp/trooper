@@ -9,6 +9,7 @@
 * **Docs**: `invalidate()` cancels in-flight requests; their callers receive a `TrooperCancelledException`.
 * **Fix**: `QueryConflictPolicy.parallel` no longer lets an older response overwrite a newer one in stream, cache, or storage.
 * **Fix**: `KeyedStreamTrooper.dispose()` no longer fails with `ConcurrentModificationError` when a listener changes keys or disposes during cancellation.
+* **Fix**: A cancelled `TrooperMutation` whose action ignores its `TrooperCancelToken` no longer emits `DataLoaded`, runs `invalidateOnSuccess` or calls `onSuccess`; it fails with `TrooperCancelledException` like a cooperative cancel.
 
 ## 0.1.0-beta.1
 

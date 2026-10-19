@@ -83,10 +83,11 @@ dimensions:
         findings: []
       - id: ASYNC-05
         priority: M
-        status: not_met
+        status: met
         automated_in_ci: false
-        evidence: "async_audit_test.dart ASYNC-05 (QueryTrooper green, TrooperMutation red)"
+        evidence: "async_audit_test.dart ASYNC-05 (QueryTrooper and TrooperMutation green); trooper_mutation_test.dart: token-ignoring action after cancel skips DataLoaded, invalidateOnSuccess and onSuccess"
         findings: [F-015]
+        note: "a cancelled mutation ends in DataError(TrooperCancelledException), the documented terminal state; no result is applied"
       - id: ASYNC-06
         priority: M
         status: met
@@ -605,7 +606,7 @@ findings:
     severity: P1
     criterion: ASYNC-05
     freeze_relevant: false
-    status: open
+    status: closed
   - id: F-016
     severity: P1
     criterion: LIFE-01
