@@ -53,7 +53,7 @@ abstract interface class StorageBackend {
 
   /// Deletes the entry associated with [key]. Deleting a missing key is not
   /// an error.
-  Future<void> delete(String key);
+  Future<String?> delete(String key);
 
   /// Returns all currently stored keys.
   ///
@@ -81,9 +81,7 @@ final class InMemoryStorageBackend implements StorageBackend {
   }
 
   @override
-  Future<void> delete(String key) async {
-    _data.remove(key);
-  }
+  Future<String?> delete(String key) async => _data.remove(key);
 
   @override
   Future<Set<String>> getAllKeys() async => Set.unmodifiable(_data.keys);

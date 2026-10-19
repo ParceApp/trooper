@@ -16,7 +16,7 @@ class _FailingStorage extends DelegatingStorageBackend {
   }
 
   @override
-  Future<void> delete(String key) async {
+  Future<String?> delete(String key) async {
     if (failDelete) throw StateError('disk locked');
     return super.delete(key);
   }

@@ -49,9 +49,9 @@ class MockStorageBackend implements StorageBackend {
   }
 
   @override
-  Future<void> delete(String key) async {
+  Future<String?> delete(String key) async {
     deleteCount++;
-    _data.remove(key);
+    return _data.remove(key);
   }
 
   @override

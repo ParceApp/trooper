@@ -13,7 +13,7 @@ abstract class DelegatingStorageBackend implements StorageBackend {
   Future<void> write(String key, String value) => inner.write(key, value);
 
   @override
-  Future<void> delete(String key) => inner.delete(key);
+  Future<String?> delete(String key) => inner.delete(key);
 
   @override
   Future<Set<String>> getAllKeys() => inner.getAllKeys();

@@ -190,7 +190,7 @@ final class _PurgeAwareStorage implements StorageBackend {
       _afterPurge(() => _backend.write(key, value));
 
   @override
-  Future<void> delete(String key) => _afterPurge(() => _backend.delete(key));
+  Future<String?> delete(String key) => _afterPurge(() => _backend.delete(key));
 
   @override
   Future<Set<String>> getAllKeys() => _afterPurge(_backend.getAllKeys);
