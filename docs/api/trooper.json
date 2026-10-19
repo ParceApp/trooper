@@ -1463,6 +1463,40 @@
                 ],
                 "executableDeclarations": [
                     {
+                        "returnTypeName": "void",
+                        "name": "setDefault",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [
+                            {
+                                "isRequired": true,
+                                "isNamed": false,
+                                "name": "config",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "TrooperConfig",
+                                "relativePath": "lib/src/config/trooper_config.dart"
+                            }
+                        ],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": true,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/config/trooper_config.dart"
+                    },
+                    {
+                        "returnTypeName": "void",
+                        "name": "resetDefault",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": true,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/config/trooper_config.dart"
+                    },
+                    {
                         "returnTypeName": "TrooperConfig",
                         "name": "copyWith",
                         "isDeprecated": false,
@@ -1786,6 +1820,17 @@
                         "isDeprecated": false,
                         "isExperimental": false,
                         "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/config/trooper_config.dart",
+                        "isReadable": true,
+                        "isWriteable": false
+                    },
+                    {
+                        "typeName": "TrooperConfig",
+                        "name": "current",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "isStatic": true,
                         "entryPoints": [],
                         "relativePath": "lib/src/config/trooper_config.dart",
                         "isReadable": true,

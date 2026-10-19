@@ -197,7 +197,7 @@ dimensions:
         priority: M
         status: met
         automated_in_ci: false
-        evidence: "docs/audit/api-freeze-decisions.md (F-030, F-044): Parameterless* extensions, executeOrder66, queryConflictPolicy, key(), Trooper.call(), global defaults removed; controller factories split into query/cancellableQuery etc.; lifecycle drivers @nonVirtual with on* hooks"
+        evidence: "docs/audit/api-freeze-decisions.md (F-030, F-044): Parameterless* extensions, executeOrder66, queryConflictPolicy, key(), Trooper.call(), mutable global defaults removed (replaced by TrooperConfig.setDefault, locked after the first trooper); controller factories split into query/cancellableQuery etc.; lifecycle drivers @nonVirtual with on* hooks"
         findings: [F-030, F-044]
       - id: API-04
         priority: M

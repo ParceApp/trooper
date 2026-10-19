@@ -292,7 +292,7 @@ Group related troopers into a feature controller. The controller automatically p
 - Shared memory cache across all child troopers.
 - Shared query and mutation queues.
 - Automatic cascade of `initialize()`, `pause()`, `resume()`, `recover()`, and `dispose()`.
-- Shared defaults via `TrooperController(defaultConfig: ..., defaultStorage: ...)`. There is no global default config.
+- Shared defaults via `TrooperController(defaultConfig: ..., defaultStorage: ...)`. An app-wide default is set once with `TrooperConfig.setDefault(config)` in `main()` before the first trooper (later calls throw a `StateError`; tests call `TrooperConfig.resetDefault()`). Precedence: trooper `config` > controller `defaultConfig` > global default > `const TrooperConfig()`.
 
 Extend `TrooperController`; never `implements` it. The lifecycle drivers are `@nonVirtual`: override the hooks `onInit`, `onPause`, `onResume`, `onRecover`, `onDependenciesChanged` and `onDispose` instead. Factories come in pairs where the callback differs: `query`/`cancellableQuery`, `keyedQuery`/`cancellableKeyedQuery`, `keyedLocal`/`keyedLocalBuilder`, `mutation`/`cancellableMutation`.
 

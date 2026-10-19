@@ -29,7 +29,7 @@ abstract base class Trooper<T, P extends Parameter>
     implements Accessor<T, P> {
   /// Creates a [Trooper] with the specified [namespace] and dependencies.
   ///
-  /// [config] can be set if a custom [TrooperConfig] is desired; otherwise, `const TrooperConfig()` is used.
+  /// [config] can be set if a custom [TrooperConfig] is desired; otherwise, the global default ([TrooperConfig.current]) is used.
   /// In most of the use cases [cache], [queryQueue], and [telemetry] are provided by the framework, but they can be overridden for testing or advanced use cases.
   @internal
   Trooper({
@@ -40,7 +40,7 @@ abstract base class Trooper<T, P extends Parameter>
     TrooperQueryQueue? queryQueue,
     TelemetryHub? telemetry,
     StatefulData<T> initialState = const DataInitial(),
-  }) : config = config ?? const TrooperConfig(),
+  }) : config = TrooperConfig.resolve(config),
        _ownsCache = (cache == null),
        _ownsQueryQueue = (queryQueue == null),
        cache = cache ?? CacheStore(),
