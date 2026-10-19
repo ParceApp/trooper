@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:trooper_audit_tool/catalog.dart';
 import 'package:trooper_audit_tool/scoring.dart';
 
-/// Usage: dart run bin/score.dart <criteria.yaml> [--out <file.md>]
+/// Usage: `dart run bin/score.dart <criteria.yaml> [--out <file.md>]`
 ///
 /// Exit codes: 0 gate passed, 1 gate failed, 2 unassessed criteria remain,
 /// 64 usage error.

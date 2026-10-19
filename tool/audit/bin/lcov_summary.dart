@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:trooper_audit_tool/lcov.dart';
 
-/// Usage: dart run bin/lcov_summary.dart <lcov.info>
+/// Usage: `dart run bin/lcov_summary.dart <lcov.info>`
 void main(List<String> args) {
   final s = summarizeLcov(File(args.single).readAsStringSync());
   stdout

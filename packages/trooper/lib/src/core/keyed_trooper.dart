@@ -114,7 +114,6 @@ abstract base class KeyedTrooper<K extends Object, T, P extends Parameter>
     }
   }
 
-
   /// The parameter used for the most recent operation on [key], or `null` if none has been recorded yet.
   P? lastParamOf(K key) => lastParams[key];
 
