@@ -41,7 +41,7 @@ abstract base class KeyedTrooper<K extends Object, T, P extends Parameter>
     TrooperQueryQueue? queryQueue,
     TelemetryHub? telemetry,
     this.releaseUnwatchedKeys = false,
-  }) : config = config ?? const TrooperConfig(),
+  }) : config = TrooperConfig.resolve(config),
        _ownsCache = (cache == null),
        _ownsQueryQueue = (queryQueue == null),
        cache = cache ?? CacheStore(),

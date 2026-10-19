@@ -535,7 +535,25 @@ To hook into the lifecycle of a controller, override `onInit`, `onPause`, `onRes
 `onRecover`, `onDependenciesChanged` or `onDispose`. The drivers (`initialize()`,
 `dispose()` …) cannot be overridden; they call your hook and then the children.
 
-There is no global default configuration. Share defaults through the controller:
+### Default configuration
+
+A trooper uses the first configuration that is set, in this order: its own `config`, the
+`defaultConfig` of its controller, the global default, `const TrooperConfig()`. Set the
+global default once in `main()`, before the first trooper is created:
+
+```dart
+void main() {
+  TrooperConfig.setDefault(
+    const TrooperConfig(timeToLive: Duration(minutes: 5)),
+  );
+  // ... create controllers and troopers afterwards
+}
+```
+
+After the first trooper, mutation or controller field exists, `setDefault` throws a
+`StateError`, so no trooper silently keeps an older default. Read the value with
+`TrooperConfig.current`; in tests, call `TrooperConfig.resetDefault()` in `tearDown`.
+Defaults for one feature go on its controller:
 `TrooperController(defaultConfig: ..., defaultStorage: ...)`.
 
 ## Testing

@@ -1,3 +1,4 @@
+import 'package:meta/meta.dart';
 import 'package:trooper/src/config/query_conflict_policy.dart';
 import 'package:trooper/src/config/retry_policy.dart';
 import 'package:trooper/src/config/stale_policy.dart';
@@ -71,6 +72,63 @@ final class TrooperConfig {
   /// - Streams ([StreamTrooper], [KeyedStreamTrooper]): incoming frames update the stream controller directly without writing to L1 cache.
   /// - Local state ([LocalTrooper], [KeyedLocalTrooper]): in-memory state is maintained in memory as the primary source of truth.
   bool get hasCache => timeToLive > Duration.zero;
+
+  static TrooperConfig _default = const TrooperConfig();
+  static bool _defaultLocked = false;
+
+  /// The global default configuration, `const TrooperConfig()` unless
+  /// [setDefault] replaced it.
+  ///
+  /// A trooper uses the first configuration that is set, in this order: its
+  /// own `config`, the `defaultConfig` of its `TrooperController`, [current],
+  /// `const TrooperConfig()`.
+  static TrooperConfig get current => _default;
+
+  /// Sets the global default configuration (see [current]).
+  ///
+  /// Call it once in `main()`, before the first trooper, mutation or
+  /// controller field is created. Afterwards it throws a [StateError], because
+  /// troopers created earlier would keep the old default.
+  ///
+  /// ```dart
+  /// void main() {
+  ///   TrooperConfig.setDefault(
+  ///     const TrooperConfig(timeToLive: Duration(minutes: 5)),
+  ///   );
+  ///   runApp(const App());
+  /// }
+  /// ```
+  static void setDefault(TrooperConfig config) {
+    if (_defaultLocked) {
+      throw StateError(
+        'TrooperConfig.setDefault() was called after the first trooper was '
+        'created, which keeps the previous default. Call '
+        'TrooperConfig.setDefault() in main() before creating any trooper, '
+        'mutation or controller field.',
+      );
+    }
+    _default = config;
+  }
+
+  /// Restores `const TrooperConfig()` as the global default and allows
+  /// [setDefault] again. Only for tests, e.g. in `tearDown`.
+  @visibleForTesting
+  static void resetDefault() {
+    _default = const TrooperConfig();
+    _defaultLocked = false;
+  }
+
+  /// Marks the global default as used, so [setDefault] throws from now on.
+  @internal
+  static void lockDefault() => _defaultLocked = true;
+
+  /// Returns [config], or the global default if it is `null`, and locks the
+  /// global default.
+  @internal
+  static TrooperConfig resolve(TrooperConfig? config) {
+    lockDefault();
+    return config ?? _default;
+  }
 
   /// Creates a copy of this config with updated properties.
   TrooperConfig copyWith({

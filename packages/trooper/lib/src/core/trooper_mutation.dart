@@ -3,6 +3,7 @@ import 'package:meta/meta.dart';
 import 'package:trooper/src/storage/invalidatable.dart';
 import 'package:trooper/src/concurrency/cancel_token.dart';
 import 'package:trooper/src/concurrency/mutation_queue.dart';
+import 'package:trooper/src/config/trooper_config.dart';
 import 'package:trooper/src/effects/trooper_mutation_side_effects.dart';
 import 'package:trooper/src/key/query_key.dart';
 import 'package:trooper/src/lifecycle/lifecycle_aware.dart';
@@ -64,7 +65,9 @@ final class TrooperMutation<T, P extends Parameter>
   }) : _ownsQueue = (queue == null),
        queue = queue ?? TrooperMutationQueue(),
        telemetry = telemetry ?? TelemetryHub.global,
-       _streamController = StatefulStreamController<T>();
+       _streamController = StatefulStreamController<T>() {
+    TrooperConfig.lockDefault();
+  }
 
   final bool _ownsQueue;
 

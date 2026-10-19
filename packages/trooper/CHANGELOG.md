@@ -20,7 +20,7 @@ release.
 | `mutation(cancellableAction: …)` | `cancellableMutation(action: (p, token) => …)` |
 | `keyedLocal(initialValueFactory: …)` | `keyedLocalBuilder(initialValueFactory: …)` |
 | `controller.executeOrder66()` | `controller.clearAll()` |
-| `TrooperConfig.setDefaultConfig(…)`, `Trooper.setDefaultConfig(…)`, `TrooperConfig.defaultConfig` | `TrooperController(defaultConfig: …)`; troopers without `config` use `const TrooperConfig()` |
+| `TrooperConfig.setDefaultConfig(…)`, `Trooper.setDefaultConfig(…)`, `TrooperConfig.defaultConfig` | `TrooperConfig.setDefault(…)` once in `main()` before the first trooper, read via `TrooperConfig.current`; or `TrooperController(defaultConfig: …)` |
 | `config.queryConflictPolicy` | `config.conflictPolicy` |
 | `ConflictPolicy` | `QueryConflictPolicy` |
 | `keyedAccessor.key(k)` | `keyedAccessor[k]` |
@@ -50,6 +50,12 @@ release.
 
 #### Other changes
 
+* **New (additive API)**: `TrooperConfig.setDefault(config)` sets a global default
+  configuration, read through `TrooperConfig.current`. It can only be set before the first
+  trooper, mutation or controller field is created; afterwards it throws a `StateError` that
+  says to call it in `main()`. `TrooperConfig.resetDefault()` (`@visibleForTesting`) restores
+  `const TrooperConfig()` and lifts the lock. A trooper uses, in this order: its own `config`,
+  the controller's `defaultConfig`, the global default, `const TrooperConfig()`.
 * **`LoadMore<TPage, F, PP>`**: Load-more (infinite scroll) decorator over an existing page query with `fetchNextPage()`, `retryNextPage()`, and `hasNextPage`, plus the `TrooperController.loadMore(...)` factory.
 * **`LoadMoreData<TPage, PP>`**: Accumulated pages with next-page status; `items` flattens list pages.
 * **Docs**: Pagination guide for classic pages and load more.
