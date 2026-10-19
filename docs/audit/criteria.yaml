@@ -615,7 +615,7 @@ findings:
     severity: P0
     criterion: LIFE-02
     freeze_relevant: false
-    status: open
+    status: closed
   - id: F-018
     severity: P2
     criterion: LIFE-02

@@ -712,14 +712,17 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
 
   @override
   Future<void> dispose() async {
-    for (final token in _cancelTokens.values) {
-      token.cancel(reason: 'KeyedStreamTrooper disposed');
-    }
-    for (final sub in _subscriptions.values) {
-      await sub.cancel();
-    }
+    // Snapshot and clear first: callbacks may touch the maps while we await.
+    final tokens = List.of(_cancelTokens.values);
+    final subs = List.of(_subscriptions.values);
     _cancelTokens.clear();
     _subscriptions.clear();
+    for (final token in tokens) {
+      token.cancel(reason: 'KeyedStreamTrooper disposed');
+    }
+    for (final sub in subs) {
+      await sub.cancel();
+    }
     _lastLoadedData.clear();
     _activeWatchers.clear();
     _pausedKeys.clear();

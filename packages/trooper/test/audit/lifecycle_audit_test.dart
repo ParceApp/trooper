@@ -168,7 +168,7 @@ void main() {
           reason: async.pendingTimersDebugString.join("\n"),
         );
       });
-    }, skip: d.name == 'KeyedStreamTrooper' ? 'F-017' : null);
+    });
   }
 
   test(
@@ -222,7 +222,6 @@ void main() {
         reason: 'dispose must complete without error',
       );
     },
-    skip: 'F-017',
   );
 
   test('LIFE-02 stream subscribers receive done after dispose', () async {
