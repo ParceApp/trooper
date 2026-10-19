@@ -4,6 +4,7 @@ import 'package:trooper/src/lifecycle/lifecycle_aware.dart';
 import 'package:trooper/src/state/data_metadata.dart';
 import 'package:trooper/src/storage/cache_entry.dart';
 import 'package:trooper/src/storage/invalidatable.dart';
+import 'package:trooper/src/stream/keyed_stateful_stream.dart';
 
 /// An in-memory L1 cache store managing cached entries partitioned by [QueryKey].
 ///
@@ -12,6 +13,18 @@ import 'package:trooper/src/storage/invalidatable.dart';
 /// - Targetable invalidation by key, namespace, or predicate.
 /// - Invalidation notification stream via [invalidationStream].
 /// - Full integration with [LifecycleAware] and [Invalidatable].
+///
+/// ### Memory bounds
+/// By default the store is unbounded: entries stay until they are removed,
+/// cleared, or evicted after expiry. Expired entries are evicted on access, or
+/// periodically if [evictionInterval] is set. For apps with a growing key space
+/// (chat rooms, detail pages by ID), set [maxEntries] to cap the store; the least
+/// recently used entries are then dropped first. Eviction only frees memory: it
+/// does not notify [invalidationStream], and the next read fetches again.
+///
+/// Keyed troopers also keep each key's latest state in their
+/// [KeyedStatefulStream] until `removeKey`, `clearAll` or `dispose`, independent
+/// of this store. With an unbounded key space, remove keys you no longer need.
 ///
 /// ### Example:
 /// ```dart
@@ -31,7 +44,11 @@ class CacheStore with LifecycleAware implements Invalidatable {
   ///
   /// If [evictionInterval] is provided, an internal timer periodically runs
   /// [removeExpired] to actively prune expired cache entries.
-  CacheStore({this.evictionInterval}) {
+  ///
+  /// If [maxEntries] is provided, the store holds at most that many entries and
+  /// evicts the least recently used one when a new entry is added.
+  CacheStore({this.evictionInterval, this.maxEntries})
+    : assert(maxEntries == null || maxEntries > 0, 'maxEntries must be > 0') {
     _invalidationController = StreamController<QueryKey>.broadcast();
     if (evictionInterval != null) {
       _evictionTimer = Timer.periodic(
@@ -44,6 +61,12 @@ class CacheStore with LifecycleAware implements Invalidatable {
   /// Optional interval at which expired cache entries are automatically evicted.
   final Duration? evictionInterval;
   Timer? _evictionTimer;
+
+  /// Optional maximum number of entries; `null` (the default) means unbounded.
+  ///
+  /// Reads via [getEntry] and [get] and writes via [put] and [putEntry] mark an
+  /// entry as recently used.
+  final int? maxEntries;
 
   final Map<QueryKey, CacheEntry<dynamic>> _entries = {};
   late final StreamController<QueryKey> _invalidationController;
@@ -74,13 +97,24 @@ class CacheStore with LifecycleAware implements Invalidatable {
   }) {
     if (_isDisposed) return;
 
-    _entries[key] = CacheEntry<T>(data, timeToLive: timeToLive, source: source);
+    _store(key, CacheEntry<T>(data, timeToLive: timeToLive, source: source));
   }
 
   /// Stores an existing [CacheEntry] under [key].
   void putEntry<T>(QueryKey key, CacheEntry<T> entry) {
     if (_isDisposed) return;
+    _store(key, entry);
+  }
+
+  void _store(QueryKey key, CacheEntry<dynamic> entry) {
+    // Re-inserting moves the key to the most recently used end.
+    _entries.remove(key);
     _entries[key] = entry;
+    final limit = maxEntries;
+    if (limit == null) return;
+    while (_entries.length > limit) {
+      _entries.remove(_entries.keys.first);
+    }
   }
 
   /// Retrieves the [CacheEntry] for [key], or `null` if not present or type mismatch.
@@ -94,6 +128,11 @@ class CacheStore with LifecycleAware implements Invalidatable {
       if (!allowExpired && entry.isExpired) {
         _entries.remove(key);
         return null;
+      }
+      if (maxEntries != null) {
+        _entries
+          ..remove(key)
+          ..[key] = entry;
       }
       return entry;
     }
