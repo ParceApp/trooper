@@ -62,6 +62,33 @@ void main() {
       await q.dispose();
     });
 
+    test('undecodable payload is reported as TrooperCodecException', () async {
+      await storage.write(
+        const QueryKey('pe_qi', ()).storageKey,
+        StorageEnvelope(payload: 'abc', createdAt: DateTime.now()).encode(),
+      );
+      final q = QueryTrooper<int, ()>(
+        namespace: 'pe_qi',
+        fetch: (_) async => 1,
+        codec: TrooperCodec.integer,
+        config: TrooperConfig(storage: storage),
+        telemetry: hub,
+      );
+
+      expect(await q.get(()), 1);
+      await pumpEventQueue();
+
+      expect(
+        events.single.error,
+        isA<TrooperCodecException>().having(
+          (e) => e.error,
+          'error',
+          isA<FormatException>(),
+        ),
+      );
+      await q.dispose();
+    });
+
     test('failed delete of an unreadable entry is reported', () async {
       await storage.write(key.storageKey, 'not json');
       storage.failDelete = true;

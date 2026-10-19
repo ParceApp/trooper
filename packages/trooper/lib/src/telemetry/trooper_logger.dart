@@ -42,14 +42,14 @@ class ConsoleTrooperLogger implements TrooperLogger {
         ? '[${event.timestamp.toIso8601String()}] '
         : '';
     var text = '$event';
-    if (!logParameters) {
-      final key = _keyOf(event);
+    final key = logParameters ? null : _keyOf(event);
+    if (key != null) {
       text = text.replaceAll(key.describe(), _maskedDescription(key));
     }
     printFunction('$prefix[Trooper:${event.runtimeType}] $text');
   }
 
-  static QueryKey _keyOf(TrooperEvent event) => switch (event) {
+  static QueryKey? _keyOf(TrooperEvent event) => switch (event) {
     RequestStartedEvent(:final key) ||
     CacheHitEvent(:final key) ||
     SWRTriggeredEvent(:final key) ||
@@ -58,6 +58,7 @@ class ConsoleTrooperLogger implements TrooperLogger {
     PersistenceErrorEvent(:final key) ||
     CacheInvalidatedEvent(:final key) ||
     DataSetEvent(:final key) => key,
+    _ => null,
   };
 
   /// [QueryKey.describe] with parameter and entity key replaced by a hash.

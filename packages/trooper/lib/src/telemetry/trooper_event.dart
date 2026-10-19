@@ -1,8 +1,12 @@
 import 'package:trooper/src/key/query_key.dart';
 import 'package:trooper/src/state/data_metadata.dart';
 
-/// Sealed hierarchy of telemetry and diagnostic events emitted by the Trooper engine.
-sealed class TrooperEvent {
+/// Base class of the telemetry and diagnostic events emitted by the Trooper engine.
+///
+/// The set of events is closed to user code but not exhaustive: new events
+/// can be added in minor releases. A `switch` over a [TrooperEvent] needs a
+/// default case.
+abstract final class TrooperEvent {
   TrooperEvent({DateTime? timestamp}) : timestamp = timestamp ?? DateTime.now();
 
   /// The exact moment this event occurred.

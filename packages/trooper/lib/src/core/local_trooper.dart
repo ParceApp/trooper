@@ -133,6 +133,7 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
         writeStored(storage, key, envelope.encode());
       } catch (error, stackTrace) {
         reportPersistenceError(key, error, stackTrace);
+        if (error is TrooperCodecException) rethrow;
         throw TrooperStorageException(
           'Failed to serialize state for ${key.name}',
           error: error,
@@ -144,7 +145,8 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
   }
 
   /// Sets [value] in memory and awaits asynchronous persistence to [StorageBackend],
-  /// throwing a [TrooperStorageException] if writing to persistent storage fails.
+  /// throwing a [TrooperStorageException] if writing to persistent storage fails
+  /// or a [TrooperCodecException] if the codec cannot encode [value].
   Future<T> setAsync(T value, P parameter) async {
     set(value, parameter);
     final key = buildQueryKey(parameter);
@@ -165,6 +167,7 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
         await storage.write(key.storageKey, envelope.encode());
       } catch (error, stackTrace) {
         reportPersistenceError(key, error, stackTrace);
+        if (error is TrooperCodecException) rethrow;
         throw TrooperStorageException(
           'Failed to persist state for ${key.name} to storage backend',
           error: error,

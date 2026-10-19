@@ -99,7 +99,7 @@ void main() {
 
   group('TrooperStorageException in LocalTrooper', () {
     test(
-      'set throws TrooperStorageException when codec fails to encode value',
+      'set throws TrooperCodecException when codec fails to encode value',
       () {
         final trooper = LocalTrooper<String, ()>(
           namespace: 'failing_codec_local',
@@ -111,10 +111,10 @@ void main() {
         expect(
           () => trooper.set('THROW', const ()),
           throwsA(
-            isA<TrooperStorageException>().having(
+            isA<TrooperCodecException>().having(
               (e) => e.message,
               'message',
-              contains('Failed to serialize state'),
+              contains('Failed to encode'),
             ),
           ),
         );
@@ -190,7 +190,7 @@ void main() {
 
   group('TrooperStorageException in KeyedLocalTrooper', () {
     test(
-      'setKey throws TrooperStorageException when codec fails to encode value',
+      'setKey throws TrooperCodecException when codec fails to encode value',
       () {
         final trooper = KeyedLocalTrooper<String, String, ()>(
           namespace: 'failing_codec_keyed',
@@ -202,10 +202,10 @@ void main() {
         expect(
           () => trooper.setKey('k1', 'THROW', const ()),
           throwsA(
-            isA<TrooperStorageException>().having(
+            isA<TrooperCodecException>().having(
               (e) => e.message,
               'message',
-              contains('Failed to serialize state'),
+              contains('Failed to encode'),
             ),
           ),
         );
