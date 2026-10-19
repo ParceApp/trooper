@@ -80,7 +80,7 @@ void main() {
         expect(q.currentData(), 'new');
         expect(q.cache.get<String>(QueryKey('a01_$policy', ())), 'new');
         await q.dispose();
-      }, skip: policy == QueryConflictPolicy.parallel ? 'F-012' : null);
+      });
     }
 
     for (final policy in QueryConflictPolicy.values) {
@@ -104,7 +104,7 @@ void main() {
 
         expect(q['k'].currentData(), 'new');
         await q.dispose();
-      }, skip: policy == QueryConflictPolicy.parallel ? 'F-012' : null);
+      });
     }
   });
 

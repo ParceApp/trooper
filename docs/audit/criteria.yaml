@@ -590,7 +590,7 @@ findings:
     severity: P0
     criterion: ASYNC-01
     freeze_relevant: false
-    status: open
+    status: closed
   - id: F-013
     severity: P1
     criterion: ASYNC-02

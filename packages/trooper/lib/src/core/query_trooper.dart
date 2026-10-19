@@ -5,6 +5,7 @@ import 'package:trooper/src/storage/storage_envelope.dart';
 import 'package:trooper/src/codec/trooper_codec.dart';
 import 'package:trooper/src/concurrency/cancel_token.dart';
 import 'package:trooper/src/concurrency/query_queue.dart';
+import 'package:trooper/src/concurrency/request_sequencer.dart';
 import 'package:trooper/src/config/stale_policy.dart';
 import 'package:trooper/src/config/trooper_config.dart';
 import 'package:trooper/src/core/trooper.dart';
@@ -84,6 +85,8 @@ class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
 
   /// Optional codec used for serializing to / deserializing from [TrooperConfig.storage].
   final TrooperCodec<T>? codec;
+
+  final RequestSequencer _sequencer = RequestSequencer();
 
   @override
   Future<T> get(P parameter, {bool forceRefresh = false}) async {
@@ -291,6 +294,11 @@ class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
     }
     runSideEffect(() => sideEffects?.onRequestStarted?.call(param));
 
+    final sequence = _sequencer.begin(key);
+    bool? isLatest;
+    // Settles exactly once; false if a newer request was applied already.
+    bool claim() => isLatest ??= _sequencer.settle(key, sequence);
+
     try {
       var result = await queryQueue.execute<T>(
         key: key,
@@ -310,7 +318,7 @@ class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
         result = transformation;
       }
 
-      if (!isParamChanged(param)) {
+      if (claim() && !isParamChanged(param)) {
         if (config.hasCache) {
           cache.put(
             key,
@@ -391,7 +399,9 @@ class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
         );
       }
 
-      if (error is! TrooperCancelledException && !isParamChanged(param)) {
+      if (error is! TrooperCancelledException &&
+          claim() &&
+          !isParamChanged(param)) {
         streamController.emitError(
           error,
           stackTrace: stackTrace,
@@ -402,6 +412,8 @@ class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
       runSideEffect(() => sideEffects?.onError?.call(error, stackTrace, param));
 
       rethrow;
+    } finally {
+      claim();
     }
   }
 }

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:trooper/src/codec/trooper_codec.dart';
 import 'package:trooper/src/concurrency/cancel_token.dart';
 import 'package:trooper/src/concurrency/query_queue.dart';
+import 'package:trooper/src/concurrency/request_sequencer.dart';
 import 'package:trooper/src/config/stale_policy.dart';
 import 'package:trooper/src/config/trooper_config.dart';
 import 'package:trooper/src/core/accessor.dart';
@@ -88,6 +89,8 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
 
   /// Optional codec for L2 storage serialization.
   final TrooperCodec<T>? codec;
+
+  final RequestSequencer _sequencer = RequestSequencer();
 
   /// Subscript operator to acquire a bound [Accessor] targeting [key].
   @override
@@ -418,6 +421,11 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
     }
     runSideEffect(() => sideEffects?.onRequestStarted?.call(key, param));
 
+    final sequence = _sequencer.begin(qKey);
+    bool? isLatest;
+    // Settles exactly once; false if a newer request was applied already.
+    bool claim() => isLatest ??= _sequencer.settle(qKey, sequence);
+
     try {
       var result = await queryQueue.execute<T>(
         key: qKey,
@@ -430,7 +438,7 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
       );
       stopwatch.stop();
 
-      if (!isParamChanged(key, param)) {
+      if (claim() && !isParamChanged(key, param)) {
         if (config.hasCache) {
           cache.put(
             qKey,
@@ -517,7 +525,9 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
         () => sideEffects?.onError?.call(key, error, stackTrace, param),
       );
 
-      if (error is! TrooperCancelledException && !isParamChanged(key, param)) {
+      if (error is! TrooperCancelledException &&
+          claim() &&
+          !isParamChanged(key, param)) {
         stream.emitError(
           key,
           error,
@@ -527,6 +537,8 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
       }
 
       rethrow;
+    } finally {
+      claim();
     }
   }
 }
