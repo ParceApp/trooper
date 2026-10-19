@@ -21,7 +21,6 @@ class MockStorageBackend implements StorageBackend {
   int readCount = 0;
   int writeCount = 0;
   int deleteCount = 0;
-  int clearCount = 0;
 
   Map<String, String> get entries => Map.unmodifiable(_data);
 
@@ -50,19 +49,10 @@ class MockStorageBackend implements StorageBackend {
   }
 
   @override
-  Future<String?> delete(String key) async {
+  Future<void> delete(String key) async {
     deleteCount++;
-    return _data.remove(key);
+    _data.remove(key);
   }
-
-  @override
-  Future<void> clear() async {
-    clearCount++;
-    _data.clear();
-  }
-
-  @override
-  Future<bool> containsKey(String key) async => _data.containsKey(key);
 
   @override
   Future<Set<String>> getAllKeys() async => Set.unmodifiable(_data.keys);
@@ -72,7 +62,6 @@ class MockStorageBackend implements StorageBackend {
     readCount = 0;
     writeCount = 0;
     deleteCount = 0;
-    clearCount = 0;
     failOnRead = false;
     failOnWrite = false;
   }

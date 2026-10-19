@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:trooper_audit_tool/class_modifiers.dart';
 
-/// Usage: dart run bin/class_modifiers.dart <dir>...
+/// Usage: `dart run bin/class_modifiers.dart <dir>...`
 /// Prints public classes without final/base/interface/sealed as `path:line Name`.
 void main(List<String> dirs) {
   var total = 0;

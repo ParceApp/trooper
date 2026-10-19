@@ -428,4 +428,28 @@ void main() {
       query.dispose();
     });
   });
+
+  group('QueryConflictPolicy.parallel', () {
+    test('late error of an older request keeps the newer data', () async {
+      final calls = <Completer<String>>[];
+      final query = QueryTrooper<String, ()>(
+        namespace: 'parallel_error',
+        fetch: (_) => (calls..add(Completer<String>())).last.future,
+        config: TrooperConfig(
+          deduplicate: false,
+          conflictPolicy: QueryConflictPolicy.parallel,
+        ),
+      );
+      final older = query.get((), forceRefresh: true);
+      final newer = query.get((), forceRefresh: true);
+      await Future<void>.value();
+      calls[1].complete('new');
+      expect(await newer, 'new');
+      calls[0].completeError(StateError('late failure'));
+      await expectLater(older, throwsStateError);
+      expect(query.current(), isA<DataLoaded<String>>());
+      expect(query.currentData(), 'new');
+      await query.dispose();
+    });
+  });
 }

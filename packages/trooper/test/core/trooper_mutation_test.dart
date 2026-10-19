@@ -149,7 +149,7 @@ void main() {
           },
         );
 
-        final callFuture = ParameterlessTrooperMutation(paramless)();
+        final callFuture = paramless(());
         await Future<void>.delayed(Duration.zero);
         expect(paramless.isLoading, isTrue);
 
@@ -158,9 +158,7 @@ void main() {
         expect(executed, isTrue);
         expect(paramless.isLoading, isFalse);
 
-        final execResult = await ParameterlessTrooperMutation(
-          paramless,
-        ).execute();
+        final execResult = await paramless.execute(());
         expect(execResult, 'Done');
 
         paramless.didChangeDependencies();
@@ -207,5 +205,44 @@ void main() {
         mutation.dispose();
       },
     );
+
+    test(
+      'cancelled mutation whose action ignores the token skips success path',
+      () async {
+        final token = TrooperCancelToken();
+        final done = Completer<String>();
+        var successCalls = 0;
+        final target = _CountingInvalidatable();
+        final mutation = TrooperMutation<String, ()>.cancellable(
+          namespace: 'ignoring_mut',
+          action: (_, _) => done.future,
+          invalidateOnSuccess: [target],
+          sideEffects: TrooperMutationSideEffects(
+            onSuccess: (_, _) => successCalls++,
+          ),
+        );
+
+        final future = mutation.execute((), cancelToken: token);
+        await Future<void>.value();
+        token.cancel(reason: 'User left');
+        done.complete('late result');
+
+        await expectLater(future, throwsA(isA<TrooperCancelledException>()));
+        expect(
+          mutation.currentState.errorOrNull,
+          isA<TrooperCancelledException>(),
+        );
+        expect(successCalls, 0);
+        expect(target.calls, 0);
+        await mutation.dispose();
+      },
+    );
   });
+}
+
+class _CountingInvalidatable implements Invalidatable {
+  int calls = 0;
+
+  @override
+  void invalidate() => calls++;
 }

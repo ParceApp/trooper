@@ -1,6 +1,8 @@
 @Tags(['audit'])
 library;
 
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:trooper_bloc/testing.dart';
 import 'package:trooper_bloc/trooper_bloc.dart';
@@ -27,20 +29,50 @@ class _ItemTubit extends Tubit<String> {
       emit('error');
 }
 
+/// Accessor whose stream reports whether anyone listens.
+final class _ListenTrackingAccessor implements Accessor<String, ()> {
+  final _controller = StreamController<StatefulData<String>>.broadcast();
+
+  bool get hasListeners => _controller.hasListener;
+
+  Future<void> close() => _controller.close();
+
+  @override
+  StatefulStream<String> get stream =>
+      StatefulStream<String>(_controller.stream, currentStateProvider: current);
+
+  @override
+  StatefulStream<String> watch({()? initialParameter, bool eager = false}) =>
+      stream;
+
+  @override
+  Future<String> get(() parameter, {bool forceRefresh = false}) async => 'a';
+
+  @override
+  Future<String> refresh(() parameter) async => 'a';
+
+  @override
+  void trigger(() parameter, {bool forceRefresh = false}) {}
+
+  @override
+  StatefulData<String> current() => const DataLoaded('a');
+
+  @override
+  String? currentData() => 'a';
+
+  @override
+  void invalidate() {}
+}
+
 void main() {
   test('LIFE-02 Tubit close cancels source subscriptions', () async {
-    final ctrl = StatefulStreamController<String>();
-    final q = QueryTrooper<String, ()>(
-      namespace: 'b_l02',
-      fetch: (_) async => 'a',
-      streamController: ctrl,
-    );
-    final t = _ItemTubit(q());
+    final source = _ListenTrackingAccessor();
+    final t = _ItemTubit(source);
     await pumpEventQueue();
-    expect(ctrl.hasListeners, isTrue);
+    expect(source.hasListeners, isTrue);
     await t.close();
-    expect(ctrl.hasListeners, isFalse);
-    await q.dispose();
+    expect(source.hasListeners, isFalse);
+    await source.close();
   });
 
   test('LIFE-01 Tubit close is idempotent', () async {

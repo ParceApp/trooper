@@ -80,7 +80,7 @@ void main() {
         expect(q.currentData(), 'new');
         expect(q.cache.get<String>(QueryKey('a01_$policy', ())), 'new');
         await q.dispose();
-      }, skip: policy == QueryConflictPolicy.parallel ? 'F-012' : null);
+      });
     }
 
     for (final policy in QueryConflictPolicy.values) {
@@ -104,7 +104,7 @@ void main() {
 
         expect(q['k'].currentData(), 'new');
         await q.dispose();
-      }, skip: policy == QueryConflictPolicy.parallel ? 'F-012' : null);
+      });
     }
   });
 
@@ -154,7 +154,7 @@ void main() {
         reason: 'superseded result must not reach the stream',
       );
       await q.dispose();
-    }, skip: 'F-013');
+    });
 
     test(
       'mutation invalidateOnSuccess: late query result is not cached',
@@ -196,7 +196,7 @@ void main() {
       await pumpEventQueue();
       expect(await storage.getAllKeys(), isEmpty);
       await q.dispose();
-    }, skip: 'F-014');
+    });
     test('controller.clearAll removes persisted QueryTrooper data', () async {
       final storage = InMemoryStorageBackend();
       final c = _StorageController(storage);
@@ -211,7 +211,7 @@ void main() {
         reason: 'e.g. logout via clearAll must not leave user data on disk',
       );
       await c.dispose();
-    }, skip: 'F-014');
+    });
     test(
       'controller.clearAll removes persisted KeyedQueryTrooper data',
       () async {
@@ -225,7 +225,6 @@ void main() {
         expect(await storage.getAllKeys(), isEmpty);
         await c.dispose();
       },
-      skip: 'F-014',
     );
 
     test(
@@ -243,7 +242,6 @@ void main() {
         expect(await storage.getAllKeys(), isEmpty);
         await second.dispose();
       },
-      skip: 'F-014',
     );
   });
 
@@ -342,7 +340,7 @@ void main() {
 
     expect(m.currentState, isNot(isA<DataLoaded<String>>()));
     await m.dispose();
-  }, skip: 'F-015');
+  });
 
   test('ASYNC-06 mutation queue serializes in submission order', () async {
     final queue = TrooperMutationQueue();

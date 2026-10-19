@@ -15,7 +15,7 @@ import 'package:trooper/src/lifecycle/lifecycle_aware.dart';
 /// queue.add(() => updateProfile(name: 'Alice'));
 /// queue.add(() => updateProfile(name: 'Bob'));
 /// ```
-class TrooperMutationQueue with LifecycleAware {
+final class TrooperMutationQueue with LifecycleAware {
   Future<void> _tail = Future<void>.value();
   int _pending = 0;
   bool _isDisposed = false;
@@ -36,8 +36,8 @@ class TrooperMutationQueue with LifecycleAware {
   /// in the queue still execute normally.
   Future<T> add<T>(Future<T> Function() task) {
     if (_isDisposed) {
-      throw StateError(
-        'Cannot enqueue task to a disposed TrooperMutationQueue',
+      return Future.error(
+        StateError('Cannot enqueue task to a disposed TrooperMutationQueue'),
       );
     }
 

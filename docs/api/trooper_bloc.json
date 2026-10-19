@@ -1,0 +1,1772 @@
+{
+    "version": 3,
+    "packageApi": {
+        "packageName": "trooper_bloc",
+        "packageVersion": "1.0.0",
+        "packagePath": "packages/trooper_bloc",
+        "interfaceDeclarations": [
+            {
+                "name": "FakeAccessor",
+                "isDeprecated": false,
+                "isExperimental": false,
+                "isSealed": false,
+                "isRequired": false,
+                "typeParameterNames": [
+                    "T",
+                    "P"
+                ],
+                "superTypeNames": [
+                    "Object",
+                    "Accessor<T, P>",
+                    "Invalidatable"
+                ],
+                "executableDeclarations": [
+                    {
+                        "returnTypeName": "void",
+                        "name": "emitState",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [
+                            {
+                                "isRequired": true,
+                                "isNamed": false,
+                                "name": "state",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "StatefulData<T>",
+                                "relativePath": "lib/testing.dart"
+                            }
+                        ],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/testing.dart"
+                    },
+                    {
+                        "returnTypeName": "void",
+                        "name": "emitData",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [
+                            {
+                                "isRequired": true,
+                                "isNamed": false,
+                                "name": "data",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "T",
+                                "relativePath": "lib/testing.dart"
+                            },
+                            {
+                                "isRequired": false,
+                                "isNamed": true,
+                                "name": "metadata",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "DataMetadata?",
+                                "relativePath": "lib/testing.dart"
+                            }
+                        ],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/testing.dart"
+                    },
+                    {
+                        "returnTypeName": "void",
+                        "name": "emitLoading",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [
+                            {
+                                "isRequired": false,
+                                "isNamed": true,
+                                "name": "progress",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "double?",
+                                "relativePath": "lib/testing.dart"
+                            }
+                        ],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/testing.dart"
+                    },
+                    {
+                        "returnTypeName": "void",
+                        "name": "emitRefreshing",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [
+                            {
+                                "isRequired": true,
+                                "isNamed": false,
+                                "name": "data",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "T",
+                                "relativePath": "lib/testing.dart"
+                            },
+                            {
+                                "isRequired": false,
+                                "isNamed": true,
+                                "name": "progress",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "double?",
+                                "relativePath": "lib/testing.dart"
+                            },
+                            {
+                                "isRequired": false,
+                                "isNamed": true,
+                                "name": "metadata",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "DataMetadata?",
+                                "relativePath": "lib/testing.dart"
+                            }
+                        ],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/testing.dart"
+                    },
+                    {
+                        "returnTypeName": "void",
+                        "name": "emitError",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [
+                            {
+                                "isRequired": true,
+                                "isNamed": false,
+                                "name": "error",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "Object",
+                                "relativePath": "lib/testing.dart"
+                            },
+                            {
+                                "isRequired": false,
+                                "isNamed": true,
+                                "name": "stackTrace",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "StackTrace?",
+                                "relativePath": "lib/testing.dart"
+                            },
+                            {
+                                "isRequired": false,
+                                "isNamed": true,
+                                "name": "staleData",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "T?",
+                                "relativePath": "lib/testing.dart"
+                            }
+                        ],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/testing.dart"
+                    },
+                    {
+                        "returnTypeName": "void",
+                        "name": "emitStreamError",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [
+                            {
+                                "isRequired": true,
+                                "isNamed": false,
+                                "name": "error",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "Object",
+                                "relativePath": "lib/testing.dart"
+                            },
+                            {
+                                "isRequired": false,
+                                "isNamed": true,
+                                "name": "stackTrace",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "StackTrace?",
+                                "relativePath": "lib/testing.dart"
+                            }
+                        ],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/testing.dart"
+                    },
+                    {
+                        "returnTypeName": "Future<void>",
+                        "name": "close",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/testing.dart"
+                    },
+                    {
+                        "returnTypeName": "FakeAccessor<T, P>",
+                        "name": "new",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [
+                            {
+                                "isRequired": false,
+                                "isNamed": true,
+                                "name": "initialData",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "T?",
+                                "relativePath": "lib/testing.dart"
+                            },
+                            {
+                                "isRequired": false,
+                                "isNamed": true,
+                                "name": "initialState",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "StatefulData<T>?",
+                                "relativePath": "lib/testing.dart"
+                            }
+                        ],
+                        "typeParameterNames": [],
+                        "type": "constructor",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/testing.dart"
+                    }
+                ],
+                "fieldDeclarations": [
+                    {
+                        "typeName": "int",
+                        "name": "getCount",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/testing.dart",
+                        "isReadable": true,
+                        "isWriteable": true
+                    },
+                    {
+                        "typeName": "int",
+                        "name": "refreshCount",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/testing.dart",
+                        "isReadable": true,
+                        "isWriteable": true
+                    },
+                    {
+                        "typeName": "int",
+                        "name": "triggerCount",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/testing.dart",
+                        "isReadable": true,
+                        "isWriteable": true
+                    },
+                    {
+                        "typeName": "int",
+                        "name": "invalidateCount",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/testing.dart",
+                        "isReadable": true,
+                        "isWriteable": true
+                    },
+                    {
+                        "typeName": "int",
+                        "name": "watchCount",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/testing.dart",
+                        "isReadable": true,
+                        "isWriteable": true
+                    },
+                    {
+                        "typeName": "StatefulStream<T>",
+                        "name": "stream",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/testing.dart",
+                        "isReadable": true,
+                        "isWriteable": false
+                    }
+                ],
+                "entryPoints": [
+                    "testing.dart"
+                ],
+                "relativePath": "lib/testing.dart"
+            },
+            {
+                "name": "Effects",
+                "isDeprecated": false,
+                "isExperimental": false,
+                "isSealed": false,
+                "isRequired": false,
+                "typeParameterNames": [
+                    "F"
+                ],
+                "superTypeNames": [
+                    "Object"
+                ],
+                "executableDeclarations": [
+                    {
+                        "returnTypeName": "void",
+                        "name": "emitEffect",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [
+                            {
+                                "isRequired": true,
+                                "isNamed": false,
+                                "name": "effect",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "F",
+                                "relativePath": "lib/src/effects/effects.dart"
+                            }
+                        ],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/effects/effects.dart"
+                    },
+                    {
+                        "returnTypeName": "Future<void>",
+                        "name": "close",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/effects/effects.dart"
+                    }
+                ],
+                "fieldDeclarations": [
+                    {
+                        "typeName": "Stream<F>",
+                        "name": "effects",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/effects/effects.dart",
+                        "isReadable": true,
+                        "isWriteable": false
+                    }
+                ],
+                "entryPoints": [
+                    "trooper_bloc.dart"
+                ],
+                "relativePath": "lib/src/effects/effects.dart"
+            },
+            {
+                "name": "TlocEvent",
+                "isDeprecated": false,
+                "isExperimental": false,
+                "isSealed": false,
+                "isRequired": false,
+                "typeParameterNames": [],
+                "superTypeNames": [
+                    "Object"
+                ],
+                "executableDeclarations": [
+                    {
+                        "returnTypeName": "TlocEvent",
+                        "name": "new",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [],
+                        "typeParameterNames": [],
+                        "type": "constructor",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/events.dart"
+                    }
+                ],
+                "fieldDeclarations": [],
+                "entryPoints": [
+                    "trooper_bloc.dart"
+                ],
+                "relativePath": "lib/src/events.dart"
+            },
+            {
+                "name": "MatchResult",
+                "isDeprecated": false,
+                "isExperimental": false,
+                "isSealed": false,
+                "isRequired": false,
+                "typeParameterNames": [],
+                "superTypeNames": [
+                    "Enum",
+                    "Object"
+                ],
+                "executableDeclarations": [],
+                "fieldDeclarations": [
+                    {
+                        "typeName": "MatchResult",
+                        "name": "handled",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "isStatic": true,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/match_result.dart",
+                        "isReadable": true,
+                        "isWriteable": false
+                    },
+                    {
+                        "typeName": "MatchResult",
+                        "name": "unhandled",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "isStatic": true,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/match_result.dart",
+                        "isReadable": true,
+                        "isWriteable": false
+                    },
+                    {
+                        "typeName": "List<MatchResult>",
+                        "name": "values",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "isStatic": true,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/match_result.dart",
+                        "isReadable": true,
+                        "isWriteable": false
+                    },
+                    {
+                        "typeName": "bool",
+                        "name": "isHandled",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/match_result.dart",
+                        "isReadable": true,
+                        "isWriteable": false
+                    },
+                    {
+                        "typeName": "bool",
+                        "name": "isUnhandled",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/match_result.dart",
+                        "isReadable": true,
+                        "isWriteable": false
+                    }
+                ],
+                "entryPoints": [
+                    "trooper_bloc.dart"
+                ],
+                "relativePath": "lib/src/match_result.dart"
+            },
+            {
+                "name": "TrooperSources",
+                "isDeprecated": false,
+                "isExperimental": false,
+                "isSealed": false,
+                "isRequired": false,
+                "typeParameterNames": [
+                    "S"
+                ],
+                "superTypeNames": [
+                    "Object"
+                ],
+                "executableDeclarations": [
+                    {
+                        "returnTypeName": "FutureOr<MatchResult>",
+                        "name": "matchSources",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [
+                            {
+                                "isRequired": true,
+                                "isNamed": false,
+                                "name": "emit",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "void Function(S)",
+                                "relativePath": "lib/src/sources/trooper_sources.dart"
+                            }
+                        ],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart"
+                    },
+                    {
+                        "returnTypeName": "void",
+                        "name": "onAnyLoading",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [
+                            {
+                                "isRequired": true,
+                                "isNamed": false,
+                                "name": "emit",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "void Function(S)",
+                                "relativePath": "lib/src/sources/trooper_sources.dart"
+                            }
+                        ],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart"
+                    },
+                    {
+                        "returnTypeName": "void",
+                        "name": "onAnyError",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [
+                            {
+                                "isRequired": true,
+                                "isNamed": false,
+                                "name": "error",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "Object",
+                                "relativePath": "lib/src/sources/trooper_sources.dart"
+                            },
+                            {
+                                "isRequired": true,
+                                "isNamed": false,
+                                "name": "stackTrace",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "StackTrace?",
+                                "relativePath": "lib/src/sources/trooper_sources.dart"
+                            },
+                            {
+                                "isRequired": true,
+                                "isNamed": false,
+                                "name": "emit",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "void Function(S)",
+                                "relativePath": "lib/src/sources/trooper_sources.dart"
+                            }
+                        ],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart"
+                    },
+                    {
+                        "returnTypeName": "Watched<T>",
+                        "name": "watch",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [
+                            {
+                                "isRequired": true,
+                                "isNamed": false,
+                                "name": "accessor",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "Accessor<T, P>",
+                                "relativePath": "lib/src/sources/trooper_sources.dart"
+                            },
+                            {
+                                "isRequired": false,
+                                "isNamed": true,
+                                "name": "initialParameter",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "P?",
+                                "relativePath": "lib/src/sources/trooper_sources.dart"
+                            },
+                            {
+                                "isRequired": false,
+                                "isNamed": true,
+                                "name": "eager",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "bool",
+                                "relativePath": "lib/src/sources/trooper_sources.dart"
+                            }
+                        ],
+                        "typeParameterNames": [
+                            "T",
+                            "P"
+                        ],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart"
+                    },
+                    {
+                        "returnTypeName": "void",
+                        "name": "initializeSources",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart"
+                    },
+                    {
+                        "returnTypeName": "void",
+                        "name": "triggerSourceEvaluation",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart"
+                    },
+                    {
+                        "returnTypeName": "Future<void>",
+                        "name": "executeSourceEvaluation",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [
+                            {
+                                "isRequired": true,
+                                "isNamed": false,
+                                "name": "emitTarget",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "void Function(S)",
+                                "relativePath": "lib/src/sources/trooper_sources.dart"
+                            }
+                        ],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart"
+                    },
+                    {
+                        "returnTypeName": "void",
+                        "name": "rederive",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart"
+                    },
+                    {
+                        "returnTypeName": "void",
+                        "name": "pauseSources",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart"
+                    },
+                    {
+                        "returnTypeName": "void",
+                        "name": "resumeSources",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart"
+                    },
+                    {
+                        "returnTypeName": "Future<void>",
+                        "name": "disposeSources",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart"
+                    },
+                    {
+                        "returnTypeName": "void",
+                        "name": "onSourceException",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [
+                            {
+                                "isRequired": true,
+                                "isNamed": false,
+                                "name": "error",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "Object",
+                                "relativePath": "lib/src/sources/trooper_sources.dart"
+                            },
+                            {
+                                "isRequired": true,
+                                "isNamed": false,
+                                "name": "stackTrace",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "StackTrace",
+                                "relativePath": "lib/src/sources/trooper_sources.dart"
+                            }
+                        ],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart"
+                    }
+                ],
+                "fieldDeclarations": [
+                    {
+                        "typeName": "List<Watched<Object?>>",
+                        "name": "sources",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart",
+                        "isReadable": true,
+                        "isWriteable": false
+                    },
+                    {
+                        "typeName": "bool",
+                        "name": "isClosed",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart",
+                        "isReadable": true,
+                        "isWriteable": false
+                    }
+                ],
+                "entryPoints": [
+                    "trooper_bloc.dart"
+                ],
+                "relativePath": "lib/src/sources/trooper_sources.dart"
+            },
+            {
+                "name": "Watched",
+                "isDeprecated": false,
+                "isExperimental": false,
+                "isSealed": false,
+                "isRequired": false,
+                "typeParameterNames": [
+                    "T"
+                ],
+                "superTypeNames": [
+                    "Object"
+                ],
+                "executableDeclarations": [
+                    {
+                        "returnTypeName": "Watched<T>",
+                        "name": "new",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [],
+                        "typeParameterNames": [],
+                        "type": "constructor",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/watched.dart"
+                    }
+                ],
+                "fieldDeclarations": [
+                    {
+                        "typeName": "StatefulData<T>",
+                        "name": "state",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/watched.dart",
+                        "isReadable": true,
+                        "isWriteable": false
+                    },
+                    {
+                        "typeName": "bool",
+                        "name": "hasData",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/watched.dart",
+                        "isReadable": true,
+                        "isWriteable": false
+                    },
+                    {
+                        "typeName": "bool",
+                        "name": "isLoading",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/watched.dart",
+                        "isReadable": true,
+                        "isWriteable": false
+                    },
+                    {
+                        "typeName": "bool",
+                        "name": "isError",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/watched.dart",
+                        "isReadable": true,
+                        "isWriteable": false
+                    },
+                    {
+                        "typeName": "T?",
+                        "name": "dataOrNull",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/watched.dart",
+                        "isReadable": true,
+                        "isWriteable": false
+                    }
+                ],
+                "entryPoints": [
+                    "trooper_bloc.dart"
+                ],
+                "relativePath": "lib/src/sources/watched.dart"
+            },
+            {
+                "name": "Tloc",
+                "isDeprecated": false,
+                "isExperimental": false,
+                "isSealed": false,
+                "isRequired": false,
+                "typeParameterNames": [
+                    "Event",
+                    "State"
+                ],
+                "superTypeNames": [
+                    "Bloc<TlocEvent, State>",
+                    "BlocBase<State>",
+                    "Object",
+                    "EmittableStateStreamableSource<State>",
+                    "StateStreamableSource<State>",
+                    "StateStreamable<State>",
+                    "Streamable<State>",
+                    "Closable",
+                    "Emittable<State>",
+                    "ErrorSink",
+                    "BlocEventSink<TlocEvent>",
+                    "TrooperSources<State>"
+                ],
+                "executableDeclarations": [
+                    {
+                        "returnTypeName": "void",
+                        "name": "handlers",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/tloc.dart"
+                    },
+                    {
+                        "returnTypeName": "void",
+                        "name": "pause",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/tloc.dart"
+                    },
+                    {
+                        "returnTypeName": "void",
+                        "name": "resume",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/tloc.dart"
+                    },
+                    {
+                        "returnTypeName": "Tloc<Event, State>",
+                        "name": "new",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [
+                            {
+                                "isRequired": true,
+                                "isNamed": false,
+                                "name": "initialState",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "State",
+                                "relativePath": "lib/src/tloc.dart"
+                            }
+                        ],
+                        "typeParameterNames": [],
+                        "type": "constructor",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/tloc.dart"
+                    },
+                    {
+                        "returnTypeName": "FutureOr<MatchResult>",
+                        "name": "matchSources",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [
+                            {
+                                "isRequired": true,
+                                "isNamed": false,
+                                "name": "emit",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "void Function(S)",
+                                "relativePath": "lib/src/sources/trooper_sources.dart"
+                            }
+                        ],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart"
+                    },
+                    {
+                        "returnTypeName": "void",
+                        "name": "onAnyLoading",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [
+                            {
+                                "isRequired": true,
+                                "isNamed": false,
+                                "name": "emit",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "void Function(S)",
+                                "relativePath": "lib/src/sources/trooper_sources.dart"
+                            }
+                        ],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart"
+                    },
+                    {
+                        "returnTypeName": "void",
+                        "name": "onAnyError",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [
+                            {
+                                "isRequired": true,
+                                "isNamed": false,
+                                "name": "error",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "Object",
+                                "relativePath": "lib/src/sources/trooper_sources.dart"
+                            },
+                            {
+                                "isRequired": true,
+                                "isNamed": false,
+                                "name": "stackTrace",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "StackTrace?",
+                                "relativePath": "lib/src/sources/trooper_sources.dart"
+                            },
+                            {
+                                "isRequired": true,
+                                "isNamed": false,
+                                "name": "emit",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "void Function(S)",
+                                "relativePath": "lib/src/sources/trooper_sources.dart"
+                            }
+                        ],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart"
+                    },
+                    {
+                        "returnTypeName": "Watched<T>",
+                        "name": "watch",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [
+                            {
+                                "isRequired": true,
+                                "isNamed": false,
+                                "name": "accessor",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "Accessor<T, P>",
+                                "relativePath": "lib/src/sources/trooper_sources.dart"
+                            },
+                            {
+                                "isRequired": false,
+                                "isNamed": true,
+                                "name": "initialParameter",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "P?",
+                                "relativePath": "lib/src/sources/trooper_sources.dart"
+                            },
+                            {
+                                "isRequired": false,
+                                "isNamed": true,
+                                "name": "eager",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "bool",
+                                "relativePath": "lib/src/sources/trooper_sources.dart"
+                            }
+                        ],
+                        "typeParameterNames": [
+                            "T",
+                            "P"
+                        ],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart"
+                    },
+                    {
+                        "returnTypeName": "void",
+                        "name": "initializeSources",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart"
+                    },
+                    {
+                        "returnTypeName": "void",
+                        "name": "triggerSourceEvaluation",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart"
+                    },
+                    {
+                        "returnTypeName": "Future<void>",
+                        "name": "executeSourceEvaluation",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [
+                            {
+                                "isRequired": true,
+                                "isNamed": false,
+                                "name": "emitTarget",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "void Function(S)",
+                                "relativePath": "lib/src/sources/trooper_sources.dart"
+                            }
+                        ],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart"
+                    },
+                    {
+                        "returnTypeName": "void",
+                        "name": "rederive",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart"
+                    },
+                    {
+                        "returnTypeName": "void",
+                        "name": "pauseSources",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart"
+                    },
+                    {
+                        "returnTypeName": "void",
+                        "name": "resumeSources",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart"
+                    },
+                    {
+                        "returnTypeName": "Future<void>",
+                        "name": "disposeSources",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart"
+                    },
+                    {
+                        "returnTypeName": "void",
+                        "name": "onSourceException",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [
+                            {
+                                "isRequired": true,
+                                "isNamed": false,
+                                "name": "error",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "Object",
+                                "relativePath": "lib/src/sources/trooper_sources.dart"
+                            },
+                            {
+                                "isRequired": true,
+                                "isNamed": false,
+                                "name": "stackTrace",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "StackTrace",
+                                "relativePath": "lib/src/sources/trooper_sources.dart"
+                            }
+                        ],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart"
+                    }
+                ],
+                "fieldDeclarations": [
+                    {
+                        "typeName": "List<Watched<Object?>>",
+                        "name": "sources",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart",
+                        "isReadable": true,
+                        "isWriteable": false
+                    },
+                    {
+                        "typeName": "bool",
+                        "name": "isClosed",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart",
+                        "isReadable": true,
+                        "isWriteable": false
+                    }
+                ],
+                "entryPoints": [
+                    "trooper_bloc.dart"
+                ],
+                "relativePath": "lib/src/tloc.dart"
+            },
+            {
+                "name": "Tubit",
+                "isDeprecated": false,
+                "isExperimental": false,
+                "isSealed": false,
+                "isRequired": false,
+                "typeParameterNames": [
+                    "State"
+                ],
+                "superTypeNames": [
+                    "Cubit<State>",
+                    "BlocBase<State>",
+                    "Object",
+                    "EmittableStateStreamableSource<State>",
+                    "StateStreamableSource<State>",
+                    "StateStreamable<State>",
+                    "Streamable<State>",
+                    "Closable",
+                    "Emittable<State>",
+                    "ErrorSink",
+                    "TrooperSources<State>"
+                ],
+                "executableDeclarations": [
+                    {
+                        "returnTypeName": "void",
+                        "name": "pause",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/tubit.dart"
+                    },
+                    {
+                        "returnTypeName": "void",
+                        "name": "resume",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/tubit.dart"
+                    },
+                    {
+                        "returnTypeName": "Tubit<State>",
+                        "name": "new",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [
+                            {
+                                "isRequired": true,
+                                "isNamed": false,
+                                "name": "initialState",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "State",
+                                "relativePath": "lib/src/tubit.dart"
+                            }
+                        ],
+                        "typeParameterNames": [],
+                        "type": "constructor",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/tubit.dart"
+                    },
+                    {
+                        "returnTypeName": "FutureOr<MatchResult>",
+                        "name": "matchSources",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [
+                            {
+                                "isRequired": true,
+                                "isNamed": false,
+                                "name": "emit",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "void Function(S)",
+                                "relativePath": "lib/src/sources/trooper_sources.dart"
+                            }
+                        ],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart"
+                    },
+                    {
+                        "returnTypeName": "void",
+                        "name": "onAnyLoading",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [
+                            {
+                                "isRequired": true,
+                                "isNamed": false,
+                                "name": "emit",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "void Function(S)",
+                                "relativePath": "lib/src/sources/trooper_sources.dart"
+                            }
+                        ],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart"
+                    },
+                    {
+                        "returnTypeName": "void",
+                        "name": "onAnyError",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [
+                            {
+                                "isRequired": true,
+                                "isNamed": false,
+                                "name": "error",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "Object",
+                                "relativePath": "lib/src/sources/trooper_sources.dart"
+                            },
+                            {
+                                "isRequired": true,
+                                "isNamed": false,
+                                "name": "stackTrace",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "StackTrace?",
+                                "relativePath": "lib/src/sources/trooper_sources.dart"
+                            },
+                            {
+                                "isRequired": true,
+                                "isNamed": false,
+                                "name": "emit",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "void Function(S)",
+                                "relativePath": "lib/src/sources/trooper_sources.dart"
+                            }
+                        ],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart"
+                    },
+                    {
+                        "returnTypeName": "Watched<T>",
+                        "name": "watch",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [
+                            {
+                                "isRequired": true,
+                                "isNamed": false,
+                                "name": "accessor",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "Accessor<T, P>",
+                                "relativePath": "lib/src/sources/trooper_sources.dart"
+                            },
+                            {
+                                "isRequired": false,
+                                "isNamed": true,
+                                "name": "initialParameter",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "P?",
+                                "relativePath": "lib/src/sources/trooper_sources.dart"
+                            },
+                            {
+                                "isRequired": false,
+                                "isNamed": true,
+                                "name": "eager",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "bool",
+                                "relativePath": "lib/src/sources/trooper_sources.dart"
+                            }
+                        ],
+                        "typeParameterNames": [
+                            "T",
+                            "P"
+                        ],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart"
+                    },
+                    {
+                        "returnTypeName": "void",
+                        "name": "initializeSources",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart"
+                    },
+                    {
+                        "returnTypeName": "void",
+                        "name": "triggerSourceEvaluation",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart"
+                    },
+                    {
+                        "returnTypeName": "Future<void>",
+                        "name": "executeSourceEvaluation",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [
+                            {
+                                "isRequired": true,
+                                "isNamed": false,
+                                "name": "emitTarget",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "void Function(S)",
+                                "relativePath": "lib/src/sources/trooper_sources.dart"
+                            }
+                        ],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart"
+                    },
+                    {
+                        "returnTypeName": "void",
+                        "name": "rederive",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart"
+                    },
+                    {
+                        "returnTypeName": "void",
+                        "name": "pauseSources",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart"
+                    },
+                    {
+                        "returnTypeName": "void",
+                        "name": "resumeSources",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart"
+                    },
+                    {
+                        "returnTypeName": "Future<void>",
+                        "name": "disposeSources",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart"
+                    },
+                    {
+                        "returnTypeName": "void",
+                        "name": "onSourceException",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [
+                            {
+                                "isRequired": true,
+                                "isNamed": false,
+                                "name": "error",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "Object",
+                                "relativePath": "lib/src/sources/trooper_sources.dart"
+                            },
+                            {
+                                "isRequired": true,
+                                "isNamed": false,
+                                "name": "stackTrace",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "StackTrace",
+                                "relativePath": "lib/src/sources/trooper_sources.dart"
+                            }
+                        ],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart"
+                    }
+                ],
+                "fieldDeclarations": [
+                    {
+                        "typeName": "List<Watched<Object?>>",
+                        "name": "sources",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart",
+                        "isReadable": true,
+                        "isWriteable": false
+                    },
+                    {
+                        "typeName": "bool",
+                        "name": "isClosed",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/sources/trooper_sources.dart",
+                        "isReadable": true,
+                        "isWriteable": false
+                    }
+                ],
+                "entryPoints": [
+                    "trooper_bloc.dart"
+                ],
+                "relativePath": "lib/src/tubit.dart"
+            },
+            {
+                "name": "TlocEffectListener",
+                "isDeprecated": false,
+                "isExperimental": false,
+                "isSealed": false,
+                "isRequired": false,
+                "typeParameterNames": [
+                    "B",
+                    "F"
+                ],
+                "superTypeNames": [
+                    "StatefulWidget",
+                    "Widget",
+                    "DiagnosticableTree",
+                    "Object",
+                    "Diagnosticable"
+                ],
+                "executableDeclarations": [
+                    {
+                        "returnTypeName": "TlocEffectListener<B, F>",
+                        "name": "new",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [
+                            {
+                                "isRequired": true,
+                                "isNamed": true,
+                                "name": "onEffect",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "void Function(BuildContext, F)",
+                                "relativePath": "lib/src/widgets/tloc_effect_listener.dart"
+                            },
+                            {
+                                "isRequired": true,
+                                "isNamed": true,
+                                "name": "child",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "Widget",
+                                "relativePath": "lib/src/widgets/tloc_effect_listener.dart"
+                            },
+                            {
+                                "isRequired": false,
+                                "isNamed": true,
+                                "name": "bloc",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "B?",
+                                "relativePath": "lib/src/widgets/tloc_effect_listener.dart"
+                            },
+                            {
+                                "isRequired": false,
+                                "isNamed": true,
+                                "name": "listenWhen",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "bool Function(F)?",
+                                "relativePath": "lib/src/widgets/tloc_effect_listener.dart"
+                            },
+                            {
+                                "isRequired": false,
+                                "isNamed": true,
+                                "name": "key",
+                                "isDeprecated": false,
+                                "isExperimental": false,
+                                "typeName": "Key?",
+                                "relativePath": "lib/src/widgets/tloc_effect_listener.dart"
+                            }
+                        ],
+                        "typeParameterNames": [],
+                        "type": "constructor",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/widgets/tloc_effect_listener.dart"
+                    }
+                ],
+                "fieldDeclarations": [
+                    {
+                        "typeName": "void Function(BuildContext, F)",
+                        "name": "onEffect",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/widgets/tloc_effect_listener.dart",
+                        "isReadable": true,
+                        "isWriteable": false
+                    },
+                    {
+                        "typeName": "bool Function(F)?",
+                        "name": "listenWhen",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/widgets/tloc_effect_listener.dart",
+                        "isReadable": true,
+                        "isWriteable": false
+                    },
+                    {
+                        "typeName": "B?",
+                        "name": "bloc",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/widgets/tloc_effect_listener.dart",
+                        "isReadable": true,
+                        "isWriteable": false
+                    },
+                    {
+                        "typeName": "Widget",
+                        "name": "child",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/widgets/tloc_effect_listener.dart",
+                        "isReadable": true,
+                        "isWriteable": false
+                    }
+                ],
+                "entryPoints": [
+                    "trooper_bloc.dart"
+                ],
+                "relativePath": "lib/src/widgets/tloc_effect_listener.dart"
+            }
+        ],
+        "executableDeclarations": [],
+        "fieldDeclarations": [],
+        "typeAliasDeclarations": [
+            {
+                "name": "Emit",
+                "aliasedTypeName": "void Function(State)",
+                "isDeprecated": false,
+                "isExperimental": false,
+                "entryPoints": [
+                    "trooper_bloc.dart"
+                ],
+                "relativePath": "lib/src/match_result.dart"
+            },
+            {
+                "name": "EffectWidgetListener",
+                "aliasedTypeName": "void Function(BuildContext, F)",
+                "isDeprecated": false,
+                "isExperimental": false,
+                "entryPoints": [
+                    "trooper_bloc.dart"
+                ],
+                "relativePath": "lib/src/widgets/tloc_effect_listener.dart"
+            }
+        ],
+        "semantics": [
+            "containsPlatformConstraints"
+        ],
+        "iosPlatformConstraints": null,
+        "androidPlatformConstraints": null,
+        "sdkType": "flutter",
+        "minSdkVersion": "3.12.0",
+        "packageDependencies": [
+            {
+                "packageName": "flutter_bloc",
+                "packageVersion": "^9.1.1"
+            },
+            {
+                "packageName": "meta",
+                "packageVersion": "^1.19.0"
+            },
+            {
+                "packageName": "trooper",
+                "packageVersion": "^1.0.0"
+            }
+        ]
+    },
+    "missingEntryPoints": []
+}

@@ -5,6 +5,7 @@ import 'package:trooper/src/storage/storage_envelope.dart';
 import 'package:trooper/src/codec/trooper_codec.dart';
 import 'package:trooper/src/concurrency/cancel_token.dart';
 import 'package:trooper/src/concurrency/query_queue.dart';
+import 'package:trooper/src/concurrency/request_sequencer.dart';
 import 'package:trooper/src/config/stale_policy.dart';
 import 'package:trooper/src/config/trooper_config.dart';
 import 'package:trooper/src/core/trooper.dart';
@@ -13,7 +14,6 @@ import 'package:trooper/src/error/trooper_exception.dart';
 import 'package:trooper/src/key/query_key.dart';
 import 'package:trooper/src/state/data_metadata.dart';
 import 'package:trooper/src/state/stateful_data.dart';
-import 'package:trooper/src/stream/stateful_stream_controller.dart';
 import 'package:trooper/src/telemetry/telemetry_hub.dart';
 import 'package:trooper/src/telemetry/trooper_event.dart';
 import 'package:trooper/types/parameter.dart';
@@ -42,7 +42,7 @@ import 'package:trooper/types/parameter.dart';
 ///   print(state);
 /// });
 /// ```
-class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
+final class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
   /// Creates a [QueryTrooper] with a standard fetch function.
   factory QueryTrooper({
     required String namespace,
@@ -53,7 +53,6 @@ class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
     CacheStore? cache,
     TrooperQueryQueue? queryQueue,
     TelemetryHub? telemetry,
-    StatefulStreamController<T>? streamController,
   }) => QueryTrooper.cancellable(
     namespace: namespace,
     fetch: (param, _) => fetch(param),
@@ -63,7 +62,6 @@ class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
     cache: cache,
     queryQueue: queryQueue,
     telemetry: telemetry,
-    streamController: streamController,
   );
 
   /// Creates a [QueryTrooper] with cooperative cancellation support via [TrooperCancelToken].
@@ -76,7 +74,6 @@ class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
     super.cache,
     super.queryQueue,
     super.telemetry,
-    super.streamController,
   });
 
   /// The underlying fetch function executed to retrieve data.
@@ -85,8 +82,11 @@ class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
   /// Optional codec used for serializing to / deserializing from [TrooperConfig.storage].
   final TrooperCodec<T>? codec;
 
+  final RequestSequencer _sequencer = RequestSequencer();
+
   @override
   Future<T> get(P parameter, {bool forceRefresh = false}) async {
+    ensureNotDisposed('get');
     final paramChanged = isParamChanged(parameter);
     recordParam(parameter);
     final key = buildQueryKey(parameter);
@@ -132,7 +132,7 @@ class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
 
       // 2. Check L2 Storage only if L1 missed (entry == null)
       if (entry == null) {
-        final storage = config.storage;
+        final storage = storageFor(key);
         final currentCodec = codec;
         if (storage != null && currentCodec != null) {
           try {
@@ -140,7 +140,7 @@ class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
             if (serialized != null) {
               final envelope = StorageEnvelope.tryDecode(serialized);
               if (envelope == null) {
-                storage.delete(key.storageKey).ignore();
+                discardStored(storage, key);
               } else if (envelope.isExpired) {
                 if (config.stalePolicy ==
                     StalePolicy.keepStaleWhileRevalidate) {
@@ -179,7 +179,7 @@ class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
 
                   return restoredData;
                 } else {
-                  storage.delete(key.storageKey).ignore();
+                  deleteStored(storage, key);
                 }
               } else {
                 final restoredData = currentCodec.decode(envelope.payload);
@@ -209,8 +209,8 @@ class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
                 return restoredData;
               }
             }
-          } catch (_) {
-            storage.delete(key.storageKey).ignore();
+          } catch (error, stackTrace) {
+            discardStored(storage, key, error, stackTrace);
           }
         }
       }
@@ -236,11 +236,12 @@ class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
 
   @override
   T set(T data, P parameter) {
+    ensureNotDisposed('set');
     super.set(data, parameter);
-    final storage = config.storage;
+    final key = buildQueryKey(parameter);
+    final storage = storageFor(key);
     final currentCodec = codec;
     if (storage != null && currentCodec != null) {
-      final key = buildQueryKey(parameter);
       try {
         final serialized = currentCodec.encode(data);
         final now = DateTime.now();
@@ -252,28 +253,9 @@ class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
               ? config.timeToLive.inMilliseconds
               : null,
         );
-        storage.write(key.storageKey, envelope.encode()).catchError((
-          Object error,
-          StackTrace stacktrace,
-        ) {
-          telemetry.emit(
-            PersistenceErrorEvent(
-              key,
-              error: error,
-              duration: Duration.zero,
-              stackTrace: stacktrace,
-            ),
-          );
-        });
-      } catch (error, stacktrace) {
-        telemetry.emit(
-          PersistenceErrorEvent(
-            key,
-            error: error,
-            duration: Duration.zero,
-            stackTrace: stacktrace,
-          ),
-        );
+        writeStored(storage, key, envelope.encode());
+      } catch (error, stackTrace) {
+        reportPersistenceError(key, error, stackTrace);
       }
     }
     return data;
@@ -290,6 +272,11 @@ class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
       telemetry.emit(RequestStartedEvent(key));
     }
     runSideEffect(() => sideEffects?.onRequestStarted?.call(param));
+
+    final sequence = _sequencer.begin(key);
+    bool? isLatest;
+    // Settles exactly once; false if a newer request was applied already.
+    bool claim() => isLatest ??= _sequencer.settle(key, sequence);
 
     try {
       var result = await queryQueue.execute<T>(
@@ -310,7 +297,7 @@ class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
         result = transformation;
       }
 
-      if (!isParamChanged(param)) {
+      if (claim() && !isParamChanged(param)) {
         if (config.hasCache) {
           cache.put(
             key,
@@ -324,7 +311,7 @@ class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
         streamController.emitData(result, metadata: entry?.metadata);
 
         // Persist to L2 storage asynchronously if configured
-        final storage = config.storage;
+        final storage = storageFor(key);
         final currentCodec = codec;
         if (storage != null && currentCodec != null) {
           try {
@@ -338,29 +325,9 @@ class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
                   ? config.timeToLive.inMilliseconds
                   : null,
             );
-            storage.write(key.storageKey, envelope.encode()).catchError((
-              Object error,
-              StackTrace stacktrace,
-            ) {
-              telemetry.emit(
-                PersistenceErrorEvent(
-                  key,
-                  error: error,
-                  duration: stopwatch.elapsed,
-                  stackTrace: stacktrace,
-                ),
-              );
-            });
-          } catch (error, stacktrace) {
-            telemetry.emit(
-              PersistenceErrorEvent(
-                key,
-                error: error,
-                duration: stopwatch.elapsed,
-                stackTrace: stacktrace,
-              ),
-            );
-            // Non-critical persistence failure
+            writeStored(storage, key, envelope.encode(), stopwatch: stopwatch);
+          } catch (error, stackTrace) {
+            reportPersistenceError(key, error, stackTrace, stopwatch.elapsed);
           }
         }
       }
@@ -391,7 +358,9 @@ class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
         );
       }
 
-      if (error is! TrooperCancelledException && !isParamChanged(param)) {
+      if (error is! TrooperCancelledException &&
+          claim() &&
+          !isParamChanged(param)) {
         streamController.emitError(
           error,
           stackTrace: stackTrace,
@@ -402,6 +371,8 @@ class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
       runSideEffect(() => sideEffects?.onError?.call(error, stackTrace, param));
 
       rethrow;
+    } finally {
+      claim();
     }
   }
 }

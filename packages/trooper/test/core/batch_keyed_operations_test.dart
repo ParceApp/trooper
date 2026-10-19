@@ -69,48 +69,40 @@ void main() {
           key: 'user2',
           parameter: const (),
         );
-        expect(await storage.containsKey(k1.storageKey), isTrue);
-        expect(await storage.containsKey(k2.storageKey), isTrue);
+        expect(await storage.read(k1.storageKey), isNotNull);
+        expect(await storage.read(k2.storageKey), isNotNull);
 
         // resetKeysAsync
         await trooper.resetKeysAsync(['user1', 'user2'], const ());
         expect(trooper.currentKeyData('user1'), 'init');
         expect(trooper.currentKeyData('user2'), 'init');
-        expect(await storage.containsKey(k1.storageKey), isFalse);
-        expect(await storage.containsKey(k2.storageKey), isFalse);
+        expect(await storage.read(k1.storageKey), isNull);
+        expect(await storage.read(k2.storageKey), isNull);
 
         trooper.dispose();
       },
     );
 
-    test('ParameterlessKeyedLocalTrooper batch extension methods', () async {
+    test('KeyedLocalTrooper batch methods with () parameters', () async {
       final trooper = KeyedLocalTrooper<String, int, ()>(
         namespace: 'paramless_batch_local',
         initialValue: -1,
       );
 
-      ParameterlessKeyedLocalTrooper(trooper).setAll({'x': 100, 'y': 200});
-      expect(await ParameterlessKeyedLocalTrooper(trooper).getAll(['x', 'y']), {
-        'x': 100,
-        'y': 200,
-      });
+      trooper.setAll({'x': 100, 'y': 200}, ());
+      expect(await trooper.getAll(['x', 'y'], ()), {'x': 100, 'y': 200});
 
-      ParameterlessKeyedLocalTrooper(
-        trooper,
-      ).updateAll({'x': (v) => v + 1, 'y': (v) => v + 2});
-      expect(await ParameterlessKeyedLocalTrooper(trooper).getAll(['x', 'y']), {
-        'x': 101,
-        'y': 202,
-      });
+      trooper.updateAll({'x': (v) => v + 1, 'y': (v) => v + 2}, ());
+      expect(await trooper.getAll(['x', 'y'], ()), {'x': 101, 'y': 202});
 
-      ParameterlessKeyedLocalTrooper(trooper).resetKeys(['x']);
+      trooper.resetKeys(['x'], ());
       expect(trooper.currentKeyData('x'), -1);
       expect(trooper.currentKeyData('y'), 202);
 
-      await ParameterlessKeyedLocalTrooper(trooper).setAllAsync({'x': 500});
+      await trooper.setAllAsync({'x': 500}, ());
       expect(trooper.currentKeyData('x'), 500);
 
-      await ParameterlessKeyedLocalTrooper(trooper).resetKeysAsync(['x', 'y']);
+      await trooper.resetKeysAsync(['x', 'y'], ());
       expect(trooper.currentKeyData('x'), -1);
       expect(trooper.currentKeyData('y'), -1);
 
@@ -162,23 +154,19 @@ void main() {
       await query.dispose();
     });
 
-    test('ParameterlessKeyedQueryTrooper batch extension methods', () async {
+    test('KeyedQueryTrooper batch methods with () parameters', () async {
       final query = KeyedQueryTrooper<String, int, ()>(
         namespace: 'paramless_batch_query',
         fetch: (key, param) async => key.length,
       );
 
-      final res = await ParameterlessKeyedQueryTrooper(
-        query,
-      ).getAll(['apple', 'banana']);
+      final res = await query.getAll(['apple', 'banana'], ());
       expect(res, {'apple': 5, 'banana': 6});
 
-      final refreshed = await ParameterlessKeyedQueryTrooper(
-        query,
-      ).refreshKeys(['apple']);
+      final refreshed = await query.refreshKeys(['apple'], ());
       expect(refreshed, {'apple': 5});
 
-      ParameterlessKeyedQueryTrooper(query).triggerKeys(['banana']);
+      query.triggerKeys(['banana'], ());
       await query.dispose();
     });
   });
@@ -227,27 +215,23 @@ void main() {
       },
     );
 
-    test('ParameterlessKeyedStreamTrooper batch extension methods', () async {
+    test('KeyedStreamTrooper batch methods with () parameters', () async {
       final controller = StreamController<String>.broadcast();
       final streamTrooper = KeyedStreamTrooper<String, String, ()>(
         namespace: 'paramless_batch_stream',
         streamFactory: (key, param, token) => controller.stream,
       );
 
-      await ParameterlessKeyedStreamTrooper(streamTrooper).connectKeys(['c1']);
+      await streamTrooper.connectKeys(['c1'], ());
       expect(streamTrooper.isConnectedKey('c1'), isTrue);
 
       controller.add('hello');
       await Future<void>.delayed(const Duration(milliseconds: 10));
 
-      final res = await ParameterlessKeyedStreamTrooper(
-        streamTrooper,
-      ).getAll(['c1']);
+      final res = await streamTrooper.getAll(['c1'], ());
       expect(res, {'c1': 'hello'});
 
-      await ParameterlessKeyedStreamTrooper(
-        streamTrooper,
-      ).disconnectKeys(['c1']);
+      await streamTrooper.disconnectKeys(['c1']);
       expect(streamTrooper.isConnectedKey('c1'), isFalse);
 
       await streamTrooper.dispose();
@@ -271,13 +255,11 @@ void main() {
       accessor.invalidateKeys(['k1', 'k2']);
       expect(accessor.currentStates['k1'], isA<DataInitial<int>>());
 
-      // ParameterlessKeyedAccessor
-      final extBatch = await ParameterlessKeyedAccessor(
-        accessor,
-      ).getAll(['k1']);
+      // KeyedAccessor with () parameters
+      final extBatch = await accessor.getAll(['k1'], ());
       expect(extBatch.containsKey('k1'), isTrue);
 
-      ParameterlessKeyedAccessor(accessor).invalidateKeys(['k1']);
+      accessor.invalidateKeys(['k1']);
       expect(accessor.currentStates['k1'], isA<DataInitial<int>>());
 
       await query.dispose();

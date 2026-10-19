@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:test/test.dart';
 import 'package:trooper/trooper.dart';
 
+import '../fixtures/delegating_storage_backend.dart';
+
 final failingCodec = TrooperCodec.custom<String>(
   to: (value) {
     if (value == 'THROW') {
@@ -12,7 +14,7 @@ final failingCodec = TrooperCodec.custom<String>(
   from: (serialized) => serialized,
 );
 
-class ThrowingStorageBackend extends InMemoryStorageBackend {
+class ThrowingStorageBackend extends DelegatingStorageBackend {
   ThrowingStorageBackend({this.failWrite = false, this.failDelete = false});
 
   bool failWrite;
@@ -27,7 +29,7 @@ class ThrowingStorageBackend extends InMemoryStorageBackend {
   }
 
   @override
-  Future<String?> delete(String key) async {
+  Future<void> delete(String key) async {
     if (failDelete) {
       throw StateError('Disk delete failure');
     }
@@ -99,7 +101,7 @@ void main() {
 
   group('TrooperStorageException in LocalTrooper', () {
     test(
-      'set throws TrooperStorageException when codec fails to encode value',
+      'set throws TrooperCodecException when codec fails to encode value',
       () {
         final trooper = LocalTrooper<String, ()>(
           namespace: 'failing_codec_local',
@@ -111,10 +113,10 @@ void main() {
         expect(
           () => trooper.set('THROW', const ()),
           throwsA(
-            isA<TrooperStorageException>().having(
+            isA<TrooperCodecException>().having(
               (e) => e.message,
               'message',
-              contains('Failed to serialize state'),
+              contains('Failed to encode'),
             ),
           ),
         );
@@ -145,9 +147,9 @@ void main() {
           ),
         );
 
-        // Parameterless variant
+        // With an explicit () parameter
         await expectLater(
-          ParameterlessLocalTrooper(trooper).setAsync('new_val_paramless'),
+          trooper.setAsync('new_val_paramless', ()),
           throwsA(isA<TrooperStorageException>()),
         );
 
@@ -177,9 +179,9 @@ void main() {
           ),
         );
 
-        // Parameterless variant
+        // With an explicit () parameter
         await expectLater(
-          ParameterlessLocalTrooper(trooper).resetAsync(),
+          trooper.resetAsync(()),
           throwsA(isA<TrooperStorageException>()),
         );
 
@@ -190,7 +192,7 @@ void main() {
 
   group('TrooperStorageException in KeyedLocalTrooper', () {
     test(
-      'setKey throws TrooperStorageException when codec fails to encode value',
+      'setKey throws TrooperCodecException when codec fails to encode value',
       () {
         final trooper = KeyedLocalTrooper<String, String, ()>(
           namespace: 'failing_codec_keyed',
@@ -202,10 +204,10 @@ void main() {
         expect(
           () => trooper.setKey('k1', 'THROW', const ()),
           throwsA(
-            isA<TrooperStorageException>().having(
+            isA<TrooperCodecException>().having(
               (e) => e.message,
               'message',
-              contains('Failed to serialize state'),
+              contains('Failed to encode'),
             ),
           ),
         );
@@ -236,11 +238,9 @@ void main() {
           ),
         );
 
-        // Parameterless variant
+        // With an explicit () parameter
         await expectLater(
-          ParameterlessKeyedLocalTrooper(
-            trooper,
-          ).setKeyAsync('k1', 'new_val_paramless'),
+          trooper.setKeyAsync('k1', 'new_val_paramless', ()),
           throwsA(isA<TrooperStorageException>()),
         );
 
@@ -270,9 +270,9 @@ void main() {
           ),
         );
 
-        // Parameterless variant
+        // With an explicit () parameter
         await expectLater(
-          ParameterlessKeyedLocalTrooper(trooper).resetKeyAsync('k1'),
+          trooper.resetKeyAsync('k1', ()),
           throwsA(isA<TrooperStorageException>()),
         );
 

@@ -14,7 +14,6 @@ import 'package:trooper/src/codec/trooper_codec.dart';
 import 'package:trooper/src/storage/cache_entry.dart';
 import 'package:trooper/src/storage/storage_envelope.dart';
 import 'package:trooper/src/storage/cache_store.dart';
-import 'package:trooper/src/stream/keyed_stateful_stream.dart';
 import 'package:trooper/src/stream/stateful_stream.dart';
 import 'package:trooper/src/telemetry/telemetry_hub.dart';
 import 'package:trooper/src/telemetry/trooper_event.dart';
@@ -30,7 +29,7 @@ typedef KeyedStreamFactory<K, T, P> =
 
 /// A [KeyedTrooper] managing dynamic collections of reactive, push-based data streams partitioned by key [K].
 ///
-/// Use subscript `operator []` or `.key(key)` to acquire a bound [Accessor] for a specific entity.
+/// Use subscript `operator []` to acquire a bound [Accessor] for a specific entity.
 ///
 /// Features:
 /// - **Per-Key Push Streams**: Independently subscribes to upstream streams by key.
@@ -60,7 +59,7 @@ typedef KeyedStreamFactory<K, T, P> =
 ///   print('Active rooms: ${roomStates.keys}');
 /// });
 /// ```
-class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
+final class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
     extends KeyedTrooper<K, T, P> {
   /// Creates a [KeyedStreamTrooper] with the specified [streamFactory].
   KeyedStreamTrooper({
@@ -76,7 +75,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
     super.cache,
     super.queryQueue,
     super.telemetry,
-    super.stream,
+    super.releaseUnwatchedKeys,
   });
 
   /// Factory method for parameterless keyed streams.
@@ -93,7 +92,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
     CacheStore? cache,
     TrooperQueryQueue? queryQueue,
     TelemetryHub? telemetry,
-    KeyedStatefulStream<K, T>? streamManager,
+    bool releaseUnwatchedKeys = false,
   }) => KeyedStreamTrooper<K, T, ()>(
     namespace: namespace,
     streamFactory: (key, _, _) => stream(key),
@@ -109,7 +108,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
     cache: cache,
     queryQueue: queryQueue,
     telemetry: telemetry,
-    stream: streamManager,
+    releaseUnwatchedKeys: releaseUnwatchedKeys,
   );
 
   /// Factory creating the upstream [Stream] for a given key.
@@ -153,6 +152,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
 
   /// Manually connects to the upstream stream for [key] using [parameter].
   Future<void> connectKey(K key, P parameter) async {
+    ensureNotDisposed('connectKey');
     final param = parameter;
     final currentParam = lastParamOf(key);
 
@@ -177,16 +177,16 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
       stream.emitRefreshing(key, currentKeyDataVal, metadata: entry?.metadata);
     } else if (currentKeyDataVal == null &&
         config.hasCache &&
-        config.storage != null &&
+        storageFor(qKey) != null &&
         codec != null) {
-      final storage = config.storage!;
+      final storage = storageFor(qKey)!;
       final currentCodec = codec!;
       try {
         final raw = await storage.read(qKey.storageKey);
         if (raw != null) {
           final envelope = StorageEnvelope.tryDecode(raw);
           if (envelope == null) {
-            storage.delete(qKey.storageKey).ignore();
+            discardStored(storage, qKey);
             stream.emitLoading(key);
           } else if (envelope.isExpired) {
             if (config.stalePolicy == StalePolicy.keepStaleWhileRevalidate) {
@@ -205,7 +205,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
                 metadata: restoredEntry.metadata,
               );
             } else {
-              storage.delete(qKey.storageKey).ignore();
+              deleteStored(storage, qKey);
               stream.emitLoading(key);
             }
           } else {
@@ -227,8 +227,8 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
         } else {
           stream.emitLoading(key);
         }
-      } catch (_) {
-        storage.delete(qKey.storageKey).ignore();
+      } catch (error, stackTrace) {
+        discardStored(storage, qKey, error, stackTrace);
         stream.emitLoading(key);
       }
     } else {
@@ -299,7 +299,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
         stream.emitData(key, data, metadata: entry?.metadata);
 
         // Persist to L2 storage asynchronously if configured
-        final storage = config.storage;
+        final storage = storageFor(qKey);
         final currentCodec = codec;
         if (storage != null && currentCodec != null) {
           try {
@@ -313,18 +313,9 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
                   ? config.timeToLive.inMilliseconds
                   : null,
             );
-            storage.write(qKey.storageKey, envelope.encode()).ignore();
-          } catch (error, stacktrace) {
-            if (telemetry.hasListeners) {
-              telemetry.emit(
-                PersistenceErrorEvent(
-                  qKey,
-                  error: error,
-                  duration: Duration.zero,
-                  stackTrace: stacktrace,
-                ),
-              );
-            }
+            writeStored(storage, qKey, envelope.encode());
+          } catch (error, stackTrace) {
+            reportPersistenceError(qKey, error, stackTrace);
           }
         }
 
@@ -378,6 +369,16 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
     );
   }
 
+  @override
+  bool canReleaseKey(K key) => super.canReleaseKey(key) && !isConnectedKey(key);
+
+  @override
+  void releaseKeyState(K key) {
+    _lastLoadedData.remove(key);
+    _pausedKeys.remove(key);
+    super.releaseKeyState(key);
+  }
+
   void _cleanupKey(K key) {
     _connectingKeys.remove(key);
     _cancelTokens.remove(key)?.cancel(reason: 'Stream reconnected');
@@ -403,6 +404,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
 
   /// Watches state updates for a single [key], managing automatic connection.
   StatefulStream<T> watchKey(K key, {P? initialParameter, bool eager = false}) {
+    ensureNotDisposed('watchKey');
     if (eager && initialParameter != null && !isConnectedKey(key)) {
       connectKey(key, initialParameter).ignore();
     }
@@ -441,6 +443,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
   /// Reads the value for [key], returning immediately from cache if fresh,
   /// or waiting for the next upstream stream event.
   Future<T> getKey(K key, P parameter, {bool forceRefresh = false}) async {
+    ensureNotDisposed('getKey');
     final qKey = buildQueryKey(key, parameter);
 
     if (!forceRefresh && config.hasCache) {
@@ -449,7 +452,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
         return cached;
       }
 
-      final storage = config.storage;
+      final storage = storageFor(qKey);
       final currentCodec = codec;
       if (storage != null && currentCodec != null) {
         final raw = await storage.read(qKey.storageKey);
@@ -457,7 +460,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
           try {
             final envelope = StorageEnvelope.tryDecode(raw);
             if (envelope == null) {
-              storage.delete(qKey.storageKey).ignore();
+              discardStored(storage, qKey);
             } else if (envelope.isExpired) {
               if (config.stalePolicy == StalePolicy.keepStaleWhileRevalidate) {
                 final restoredData = currentCodec.decode(envelope.payload);
@@ -475,7 +478,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
                   metadata: restoredEntry.metadata,
                 );
               } else {
-                storage.delete(qKey.storageKey).ignore();
+                deleteStored(storage, qKey);
               }
             } else {
               final restoredData = currentCodec.decode(envelope.payload);
@@ -494,8 +497,8 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
               );
               return restoredData;
             }
-          } catch (_) {
-            storage.delete(qKey.storageKey).ignore();
+          } catch (error, stackTrace) {
+            discardStored(storage, qKey, error, stackTrace);
           }
         }
       }
@@ -545,6 +548,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
 
   /// Triggers reading or hydrating data for [key] without awaiting the result.
   void triggerKey(K key, P parameter, {bool forceRefresh = false}) {
+    ensureNotDisposed('triggerKey');
     getKey(key, parameter, forceRefresh: forceRefresh).ignore();
   }
 
@@ -578,6 +582,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
 
   /// Manually sets data for [key] in cache and stream, returning the set [data].
   T setKey(K key, T data, P parameter) {
+    ensureNotDisposed('setKey');
     final qKey = buildQueryKey(key, parameter);
 
     if (config.hasCache) {
@@ -595,7 +600,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
       telemetry.emit(DataSetEvent(qKey, source: DataSource.local));
     }
 
-    final storage = config.storage;
+    final storage = storageFor(qKey);
     final currentCodec = codec;
     if (storage != null && currentCodec != null) {
       try {
@@ -609,9 +614,9 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
               ? config.timeToLive.inMilliseconds
               : null,
         );
-        storage.write(qKey.storageKey, envelope.encode()).ignore();
-      } catch (_) {
-        // Non-critical persistence failure
+        writeStored(storage, qKey, envelope.encode());
+      } catch (error, stackTrace) {
+        reportPersistenceError(qKey, error, stackTrace);
       }
     }
 
@@ -621,12 +626,14 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
 
   @override
   void invalidateKey(K key) {
+    if (isDisposed) return;
     disconnectKey(key).ignore();
     super.invalidateKey(key);
   }
 
   @override
   void invalidate() {
+    if (isDisposed) return;
     for (final key in stream.activeKeys) {
       disconnectKey(key).ignore();
     }
@@ -635,6 +642,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
 
   @override
   Future<void> removeKey(K key) async {
+    if (isDisposed) return;
     await disconnectKey(key);
     _lastLoadedData.remove(key);
     _activeWatchers.remove(key);
@@ -645,6 +653,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
 
   @override
   Future<void> clearAll() async {
+    if (isDisposed) return;
     for (final key in List<K>.of(_subscriptions.keys)) {
       await disconnectKey(key);
     }
@@ -657,6 +666,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
 
   @override
   void pause() {
+    if (isDisposed) return;
     super.pause();
     _pausedKeys.addAll(_subscriptions.keys);
     for (final key in List<K>.of(_subscriptions.keys)) {
@@ -666,6 +676,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
 
   @override
   FutureOr<void> resume() {
+    if (isDisposed) return null;
     super.resume();
     final keysToResume = Set<K>.of(_pausedKeys);
     _pausedKeys.clear();
@@ -681,6 +692,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
 
   @override
   FutureOr<void> recover() {
+    if (isDisposed) return null;
     for (final key in stream.activeKeys) {
       final hasWatchers = (_activeWatchers[key] ?? 0) > 0 || keepAlive;
       final isErrored = stream.stateOf(key).isError;
@@ -695,6 +707,7 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
 
   @override
   FutureOr<void> didChangeDependencies() {
+    if (isDisposed) return null;
     final keysToReconnect = {
       for (final key in stream.activeKeys)
         if (isConnectedKey(key) || (_activeWatchers[key] ?? 0) > 0 || keepAlive)
@@ -712,14 +725,17 @@ class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
 
   @override
   Future<void> dispose() async {
-    for (final token in _cancelTokens.values) {
-      token.cancel(reason: 'KeyedStreamTrooper disposed');
-    }
-    for (final sub in _subscriptions.values) {
-      await sub.cancel();
-    }
+    // Snapshot and clear first: callbacks may touch the maps while we await.
+    final tokens = List.of(_cancelTokens.values);
+    final subs = List.of(_subscriptions.values);
     _cancelTokens.clear();
     _subscriptions.clear();
+    for (final token in tokens) {
+      token.cancel(reason: 'KeyedStreamTrooper disposed');
+    }
+    for (final sub in subs) {
+      await sub.cancel();
+    }
     _lastLoadedData.clear();
     _activeWatchers.clear();
     _pausedKeys.clear();
@@ -760,48 +776,4 @@ class _KeyedStreamBoundAccessor<K extends Object, T, P extends Parameter>
 
   @override
   void invalidate() => _parent.invalidateKey(_key);
-}
-
-/// Convenience extension for parameterless [KeyedStreamTrooper] instances where `P` is `()`.
-extension ParameterlessKeyedStreamTrooper<K extends Object, T>
-    on KeyedStreamTrooper<K, T, ()> {
-  /// Connects to the upstream stream for [key] without requiring an explicit `()` parameter.
-  Future<void> connectKey(K key) => this.connectKey(key, const ());
-
-  /// Reads the value for [key] without requiring an explicit `()` parameter.
-  Future<T> getKey(K key, {bool forceRefresh = false}) =>
-      this.getKey(key, const (), forceRefresh: forceRefresh);
-
-  /// Refreshes the value for [key] without requiring an explicit `()` parameter.
-  Future<T> refreshKey(K key) => this.refreshKey(key, const ());
-
-  /// Triggers a fetch of [key] without requiring an explicit `()` parameter.
-  void triggerKey(K key, {bool forceRefresh = false}) =>
-      this.triggerKey(key, const (), forceRefresh: forceRefresh);
-
-  /// Connects to upstream streams for multiple [keys] without requiring an explicit `()` parameter.
-  Future<void> connectKeys(Iterable<K> keys) =>
-      this.connectKeys(keys, const ());
-
-  /// Disconnects upstream streams for multiple [keys] without requiring an explicit `()` parameter.
-  Future<void> disconnectKeys(Iterable<K> keys) => this.disconnectKeys(keys);
-
-  /// Reads values for multiple [keys] concurrently without requiring an explicit `()` parameter.
-  Future<Map<K, T>> getAll(Iterable<K> keys, {bool forceRefresh = false}) =>
-      this.getAll(keys, const (), forceRefresh: forceRefresh);
-
-  /// Refreshes values for multiple [keys] concurrently without requiring an explicit `()` parameter.
-  Future<Map<K, T>> refreshKeys(Iterable<K> keys) =>
-      this.refreshKeys(keys, const ());
-
-  /// Triggers fetches for multiple [keys] without requiring an explicit `()` parameter.
-  void triggerKeys(Iterable<K> keys, {bool forceRefresh = false}) =>
-      this.triggerKeys(keys, const (), forceRefresh: forceRefresh);
-
-  /// Watches state updates for a single [key] without requiring an explicit `()` parameter.
-  StatefulStream<T> watchKey(K key, {bool eager = false}) =>
-      this.watchKey(key, initialParameter: const (), eager: eager);
-
-  /// Manually sets data for [key] without requiring an explicit `()` parameter.
-  T setKey(K key, T data) => this.setKey(key, data, const ());
 }

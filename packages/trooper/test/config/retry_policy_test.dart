@@ -32,6 +32,7 @@ void main() {
           maxRetries: 5,
           delay: Duration(milliseconds: 100),
           maxDelay: Duration(milliseconds: 220),
+          jitter: 0,
         );
 
         expect(policy.delayForAttempt(1), const Duration(milliseconds: 100));
@@ -48,6 +49,7 @@ void main() {
           initialDelay: Duration(milliseconds: 100),
           backoffMultiplier: 2,
           maxDelay: Duration(milliseconds: 350),
+          jitter: 0,
         );
 
         expect(policy.delayForAttempt(1), const Duration(milliseconds: 100));
@@ -153,6 +155,46 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 100));
       expect(attempts, finalAttempts);
       token.cancel();
+    });
+  });
+
+  group('RetryPolicy jitter', () {
+    test('spreads delays below the backoff value by default', () {
+      const policy = RetryPolicy.exponential(
+        initialDelay: Duration(milliseconds: 1000),
+      );
+      final delays = {
+        for (var i = 0; i < 50; i++) policy.delayForAttempt(2).inMilliseconds,
+      };
+      expect(delays.length, greaterThan(1));
+      for (final d in delays) {
+        expect(d, inInclusiveRange(1000, 2000));
+      }
+    });
+
+    test('maxDelay stays the upper bound', () {
+      const policy = RetryPolicy.exponential(
+        initialDelay: Duration(milliseconds: 100),
+        maxDelay: Duration(milliseconds: 250),
+        jitter: 0.2,
+      );
+      for (var i = 0; i < 50; i++) {
+        expect(
+          policy.delayForAttempt(5).inMilliseconds,
+          inInclusiveRange(200, 250),
+        );
+      }
+    });
+
+    test('jitter 0 is deterministic', () {
+      const policy = RetryPolicy.linear(
+        delay: Duration(milliseconds: 300),
+        jitter: 0,
+      );
+      expect(
+        {for (var i = 0; i < 20; i++) policy.delayForAttempt(1)},
+        {const Duration(milliseconds: 300)},
+      );
     });
   });
 

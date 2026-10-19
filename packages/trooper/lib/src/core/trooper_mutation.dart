@@ -33,7 +33,7 @@ import 'package:trooper/types/parameter.dart';
 ///
 /// final lecture = await createLecture((title: 'Algorithms'));
 /// ```
-class TrooperMutation<T, P extends Parameter>
+final class TrooperMutation<T, P extends Parameter>
     with LifecycleAware
     implements Invalidatable {
   /// Creates a [TrooperMutation] with a standard action function.
@@ -44,7 +44,6 @@ class TrooperMutation<T, P extends Parameter>
     TrooperMutationSideEffects<T, P>? sideEffects,
     TrooperMutationQueue? queue,
     TelemetryHub? telemetry,
-    StatefulStreamController<T>? streamController,
   }) => TrooperMutation.cancellable(
     namespace: namespace,
     action: (param, _) => action(param),
@@ -52,7 +51,6 @@ class TrooperMutation<T, P extends Parameter>
     sideEffects: sideEffects,
     queue: queue,
     telemetry: telemetry,
-    streamController: streamController,
   );
 
   /// Creates a [TrooperMutation] with cooperative cancellation support via [TrooperCancelToken].
@@ -63,11 +61,10 @@ class TrooperMutation<T, P extends Parameter>
     this.sideEffects,
     TrooperMutationQueue? queue,
     TelemetryHub? telemetry,
-    StatefulStreamController<T>? streamController,
   }) : _ownsQueue = (queue == null),
        queue = queue ?? TrooperMutationQueue(),
        telemetry = telemetry ?? TelemetryHub.global,
-       _streamController = streamController ?? StatefulStreamController<T>();
+       _streamController = StatefulStreamController<T>();
 
   final bool _ownsQueue;
 
@@ -108,8 +105,10 @@ class TrooperMutation<T, P extends Parameter>
   /// Executes this mutation with [parameter].
   Future<T> execute(P parameter, {TrooperCancelToken? cancelToken}) {
     if (_isDisposed) {
-      throw StateError(
-        'Cannot execute mutation on disposed TrooperMutation "$namespace"',
+      return Future.error(
+        StateError(
+          'Cannot call execute() on disposed TrooperMutation "$namespace".',
+        ),
       );
     }
 
@@ -122,13 +121,18 @@ class TrooperMutation<T, P extends Parameter>
       }
       try {
         await sideEffects?.onStarted?.call(parameter);
-      } catch (_) {}
+      } catch (error, stackTrace) {
+        Zone.current.handleUncaughtError(error, stackTrace);
+      }
 
       final stopwatch = Stopwatch()..start();
       final effectiveCancelToken = cancelToken ?? TrooperCancelToken();
 
       try {
         final result = await action(parameter, effectiveCancelToken);
+        // An action may ignore its token; a cancelled mutation must not
+        // apply its result, invalidate targets or report success.
+        effectiveCancelToken.throwIfCancelled();
         stopwatch.stop();
 
         _streamController.emitData(result);
@@ -152,7 +156,9 @@ class TrooperMutation<T, P extends Parameter>
 
         try {
           await sideEffects?.onSuccess?.call(result, parameter);
-        } catch (_) {}
+        } catch (error, stackTrace) {
+          Zone.current.handleUncaughtError(error, stackTrace);
+        }
 
         return result;
       } catch (error, stackTrace) {
@@ -172,7 +178,9 @@ class TrooperMutation<T, P extends Parameter>
 
         try {
           await sideEffects?.onError?.call(error, stackTrace, parameter);
-        } catch (_) {}
+        } catch (callbackError, callbackStackTrace) {
+          Zone.current.handleUncaughtError(callbackError, callbackStackTrace);
+        }
 
         rethrow;
       }
@@ -181,6 +189,7 @@ class TrooperMutation<T, P extends Parameter>
 
   /// Resets the mutation state back to [DataInitial].
   void reset() {
+    if (_isDisposed) return;
     _streamController.emitInitial();
   }
 
@@ -204,15 +213,4 @@ class TrooperMutation<T, P extends Parameter>
       await queue.dispose();
     }
   }
-}
-
-/// Convenience extension for parameterless [TrooperMutation] instances where `P` is `()`.
-extension ParameterlessTrooperMutation<T> on TrooperMutation<T, ()> {
-  /// Callable invocation shortcut without requiring an explicit `()` parameter.
-  Future<T> call({TrooperCancelToken? cancelToken}) =>
-      this.execute(const (), cancelToken: cancelToken);
-
-  /// Executes this mutation without requiring an explicit `()` parameter.
-  Future<T> execute({TrooperCancelToken? cancelToken}) =>
-      this.execute(const (), cancelToken: cancelToken);
 }

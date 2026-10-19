@@ -22,11 +22,33 @@ Combines the architectural power of `flutter_bloc` with Trooper reactive caching
 ## Architecture Overview
 
 ```
-Accessors (Trooper) ──> WatchedHandle ──> TrooperSources Mixin ──> Tloc / Tubit ──> Flutter UI
-  (Data Layer)             (Snapshots)        (Derivation Cycle)      (BLoC / Cubit)   (BlocBuilder)
+Accessors (Trooper) ──> Watched<T> ──> TrooperSources Mixin ──> Tloc / Tubit ──> Flutter UI
+  (Data Layer)           (Snapshots)       (Derivation Cycle)      (BLoC / Cubit)   (BlocBuilder)
 ```
 
 In `trooper_bloc`, a `Tloc` or `Tubit` watches one or more Trooper `Accessor` instances. When source data updates, `matchSources` is triggered.
+
+---
+
+## Installation & Versioning
+
+```yaml
+dependencies:
+  trooper_bloc: ^1.0.0
+```
+
+`trooper_bloc` re-exports all of `package:trooper/trooper.dart`, so one import gives you both
+APIs. Both packages always share the same major version: a breaking release of `trooper`
+is a breaking release of `trooper_bloc`, while minor and patch releases of `trooper` only
+add to the re-exported API.
+
+Public symbols are removed only in a major release, after being marked `@Deprecated` for at
+least one minor release with the replacement named in the message. The CHANGELOG lists every
+deprecation. See the [deprecation policy](https://github.com/ParceApp/trooper/blob/main/docs/DEPRECATION.md).
+
+`trooper_bloc` does not re-export `flutter_bloc` or `dart:async`. Import
+`package:flutter_bloc/flutter_bloc.dart` for `BlocProvider`, `BlocBuilder` or `Emitter`, and
+`dart:async` for `FutureOr` in `matchSources` signatures.
 
 ---
 
@@ -66,6 +88,10 @@ final class ProfileErrorState extends ProfileState {
 ### 2. Implement `Tloc`
 
 ```dart
+import 'dart:async';
+
+import 'package:trooper_bloc/trooper_bloc.dart';
+
 class ProfileTloc extends Tloc<ProfileEvent, ProfileState> {
   ProfileTloc({
     required this.userAccessor,
@@ -106,8 +132,8 @@ class ProfileTloc extends Tloc<ProfileEvent, ProfileState> {
   @override
   void handlers() {
     on<RefreshProfileEvent>((event, emit) async {
-      await userAccessor.refresh();
-      await settingsAccessor.refresh();
+      await userAccessor.refresh(());
+      await settingsAccessor.refresh(());
     });
   }
 }
@@ -122,9 +148,9 @@ class ProfileTloc extends Tloc<ProfileEvent, ProfileState> {
 In asynchronous architectures, awaiting an HTTP request or database write inside a state derivation can result in race conditions if background streams update while suspended.
 
 `trooper_bloc` solves this with snapshot-locking:
-- When `matchSources` begins, every watched source snapshot is frozen (`WatchedHandle.lockSnapshot()`).
+- When `matchSources` begins, every watched source snapshot is frozen.
 - Reading `source.state` after an `await` is guaranteed to return the exact snapshot captured when `matchSources` began.
-- When `matchSources` finishes, the snapshot lock is released (`WatchedHandle.unlockSnapshot()`).
+- When `matchSources` finishes, the snapshot lock is released.
 - If newer data arrived while `matchSources` was awaiting, generational tracking aborts the stale run and re-executes `matchSources` with fresh snapshots.
 
 ### Fallback Cascade
@@ -269,6 +295,14 @@ void main() {
   });
 }
 ```
+
+---
+
+## Extending `Tloc`, `Tubit` and `TlocEvent`
+
+Extend these classes; do not `implements` them. Implementing them is not supported, and
+new members can be added in minor releases. The internal event `Tloc` uses to emit derived
+states is not exported, but it still reaches `BlocObserver.onEvent` and `onTransition`.
 
 ---
 

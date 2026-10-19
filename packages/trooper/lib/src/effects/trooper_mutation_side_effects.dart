@@ -14,7 +14,12 @@ import 'package:trooper/types/parameter.dart';
 ///   ),
 /// );
 /// ```
-class TrooperMutationSideEffects<T, P extends Parameter> {
+///
+/// A callback that throws (or returns a failing [Future]) does not affect the
+/// request, its result or the other callbacks. The error is reported to the
+/// current [Zone] as an uncaught error, so it reaches `runZonedGuarded`,
+/// `PlatformDispatcher.onError` or your crash reporter.
+final class TrooperMutationSideEffects<T, P extends Parameter> {
   /// Creates a [TrooperMutationSideEffects] bundle.
   const TrooperMutationSideEffects({
     this.onSuccess,

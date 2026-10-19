@@ -25,7 +25,7 @@ import 'package:trooper/src/stream/stateful_stream.dart';
 ///
 /// controller.emitLoading();
 /// ```
-class StatefulStreamController<T> with LifecycleAware {
+final class StatefulStreamController<T> with LifecycleAware {
   /// Creates a [StatefulStreamController] with an optional [initialState] (defaults to [DataInitial]).
   ///
   /// If `distinct` is `true` (default), duplicate consecutive identical states

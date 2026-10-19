@@ -1,10 +1,11 @@
 import 'package:trooper/src/config/query_conflict_policy.dart';
 import 'package:trooper/src/config/retry_policy.dart';
 import 'package:trooper/src/config/stale_policy.dart';
+import 'package:trooper/src/key/query_key.dart';
 import 'package:trooper/src/storage/storage_backend.dart';
 
 /// Configuration specifying caching, staleness, deduplication, conflict, timeout, and retry policies for a Trooper query.
-class TrooperConfig {
+final class TrooperConfig {
   /// Creates a [TrooperConfig] with customizable TTL, stale policy, conflict policy, deduplication, timeout, and optional storage.
   ///
   /// Defaults to standard Stale-While-Revalidate caching with 1 minute TTL, [QueryConflictPolicy.forward], and `deduplicate: true`.
@@ -48,6 +49,10 @@ class TrooperConfig {
   final bool deduplicate;
 
   /// Optional persistent storage backend for L2 persistence.
+  ///
+  /// Entries are stored under [QueryKey.storageKey], which is built from the
+  /// `toString()` of the parameter (and entity key). Parameters without a
+  /// stable `toString()` are not persisted (see [QueryKey.hasStableStorageKey]).
   final StorageBackend? storage;
 
   /// Whether `didChangeDependencies()` should trigger a refresh directly after invalidating.
@@ -59,9 +64,6 @@ class TrooperConfig {
   /// Optional automated retry strategy executed when operations fail.
   final RetryPolicy? retryPolicy;
 
-  /// Shorthand alias for [conflictPolicy].
-  QueryConflictPolicy get queryConflictPolicy => conflictPolicy;
-
   /// Whether caching is enabled (TTL > zero).
   ///
   /// When `false` (e.g. [TrooperConfig.noCache]):
@@ -69,15 +71,6 @@ class TrooperConfig {
   /// - Streams ([StreamTrooper], [KeyedStreamTrooper]): incoming frames update the stream controller directly without writing to L1 cache.
   /// - Local state ([LocalTrooper], [KeyedLocalTrooper]): in-memory state is maintained in memory as the primary source of truth.
   bool get hasCache => timeToLive > Duration.zero;
-
-  /// Global default configuration used when no custom config is specified.
-  static TrooperConfig defaultConfig = const TrooperConfig();
-
-  /// Sets the default configuration for all troopers.
-  /// This config can be overridden by individual troopers via their constructor.
-  static void setDefaultConfig(TrooperConfig config) {
-    defaultConfig = config;
-  }
 
   /// Creates a copy of this config with updated properties.
   TrooperConfig copyWith({

@@ -14,7 +14,7 @@ import 'package:trooper/src/state/data_metadata.dart';
 ///   print('Cache is stale, triggering background revalidation');
 /// }
 /// ```
-class CacheEntry<T> {
+final class CacheEntry<T> {
   /// Creates a [CacheEntry] with the given [data] and optional [timeToLive].
   CacheEntry(
     this.data, {

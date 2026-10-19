@@ -132,14 +132,6 @@ List<Disposable> disposables() {
   ];
 }
 
-const _useAfterDisposeFindings = {
-  'LocalTrooper',
-  'KeyedLocalTrooper',
-  'StreamTrooper',
-  'KeyedStreamTrooper',
-  'CacheStore',
-};
-
 void main() {
   for (final d in disposables()) {
     test('LIFE-01 ${d.name} dispose is idempotent', () async {
@@ -153,7 +145,7 @@ void main() {
       final x = d.create();
       await d.dispose(x);
       await expectLater(Future.sync(() => d.use(x)), throwsStateError);
-    }, skip: _useAfterDisposeFindings.contains(d.name) ? 'F-016' : null);
+    });
 
     test('LIFE-02 ${d.name} leaves no timers after dispose', () {
       fakeAsync((async) {
@@ -168,7 +160,7 @@ void main() {
           reason: async.pendingTimersDebugString.join("\n"),
         );
       });
-    }, skip: d.name == 'KeyedStreamTrooper' ? 'F-017' : null);
+    });
   }
 
   test(
@@ -222,7 +214,6 @@ void main() {
         reason: 'dispose must complete without error',
       );
     },
-    skip: 'F-017',
   );
 
   test('LIFE-02 stream subscribers receive done after dispose', () async {
@@ -276,12 +267,9 @@ void main() {
       await pumpEventQueue();
       expect(c.q.isDisposed, isTrue);
       expect(states.length, before, reason: 'no state after dispose');
-      expect(
-        c.q.cache.get<String>(const QueryKey('lc_q', ())),
-        isNull,
-        reason: 'late result must not populate the cache',
-      );
+      expect(c.q.cache.isDisposed, isTrue);
     }, (e, _) => errors.add(e));
-    expect(errors, isEmpty);
+    // A late result written to the disposed cache would throw a StateError.
+    expect(errors, isEmpty, reason: 'late result must not touch the cache');
   });
 }

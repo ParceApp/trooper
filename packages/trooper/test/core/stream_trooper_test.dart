@@ -231,7 +231,7 @@ void main() {
       await trooper.disconnect();
       expect(trooper.isConnected, isFalse);
 
-      await ParameterlessStreamTrooper(trooper).connect();
+      await trooper.connect(());
       expect(trooper.isConnected, isTrue);
 
       await trooper.dispose();

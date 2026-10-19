@@ -14,7 +14,6 @@ import 'package:trooper/src/key/query_key.dart';
 import 'package:trooper/src/state/data_metadata.dart';
 import 'package:trooper/src/state/stateful_data.dart';
 import 'package:trooper/src/stream/stateful_stream.dart';
-import 'package:trooper/src/stream/stateful_stream_controller.dart';
 import 'package:trooper/src/telemetry/telemetry_hub.dart';
 import 'package:trooper/src/telemetry/trooper_event.dart';
 import 'package:trooper/types/parameter.dart';
@@ -53,7 +52,7 @@ typedef StreamFactory<T, P extends Parameter> =
 ///   print('Live BTC price: $price');
 /// });
 /// ```
-class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
+final class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
   /// Creates a [StreamTrooper] with the provided [streamFactory].
   StreamTrooper({
     required super.namespace,
@@ -69,12 +68,8 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
     super.telemetry,
     this.keepAlive = false,
     bool autoConnect = false,
-    StatefulData<T> initialState = const DataInitial(),
-  }) : super(
-         streamController: StatefulStreamController<T>(
-           initialState: initialState,
-         ),
-       ) {
+    super.initialState,
+  }) {
     // If autoConnect is requested and P is the empty record (), connect immediately
     if (autoConnect && const () is P) {
       connect(const () as P).ignore();
@@ -156,6 +151,7 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
 
   /// Manually connects to the upstream stream using [parameter].
   Future<void> connect(P parameter) async {
+    ensureNotDisposed('connect');
     recordParam(parameter);
 
     // If already connected or connecting with the same parameter, keep existing connection
@@ -184,16 +180,16 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
       streamController.emitRefreshing(current);
     } else if (current == null &&
         config.hasCache &&
-        config.storage != null &&
+        storageFor(qKey) != null &&
         codec != null) {
-      final storage = config.storage!;
+      final storage = storageFor(qKey)!;
       final currentCodec = codec!;
       try {
         final raw = await storage.read(qKey.storageKey);
         if (raw != null) {
           final envelope = StorageEnvelope.tryDecode(raw);
           if (envelope == null) {
-            storage.delete(qKey.storageKey).ignore();
+            discardStored(storage, qKey);
             streamController.emitLoading();
           } else if (envelope.isExpired) {
             if (config.stalePolicy == StalePolicy.keepStaleWhileRevalidate) {
@@ -211,7 +207,7 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
                 metadata: restoredEntry.metadata,
               );
             } else {
-              storage.delete(qKey.storageKey).ignore();
+              deleteStored(storage, qKey);
               streamController.emitLoading();
             }
           } else {
@@ -232,8 +228,8 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
         } else {
           streamController.emitLoading();
         }
-      } catch (_) {
-        storage.delete(qKey.storageKey).ignore();
+      } catch (error, stackTrace) {
+        discardStored(storage, qKey, error, stackTrace);
         streamController.emitLoading();
       }
     } else {
@@ -307,7 +303,7 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
         streamController.emitData(data, metadata: entry?.metadata);
 
         // Persist to L2 storage asynchronously if configured
-        final storage = config.storage;
+        final storage = storageFor(qKey);
         final currentCodec = codec;
         if (storage != null && currentCodec != null) {
           try {
@@ -321,18 +317,9 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
                   ? config.timeToLive.inMilliseconds
                   : null,
             );
-            storage.write(qKey.storageKey, envelope.encode()).ignore();
-          } catch (error, stacktrace) {
-            if (telemetry.hasListeners) {
-              telemetry.emit(
-                PersistenceErrorEvent(
-                  qKey,
-                  error: error,
-                  duration: Duration.zero,
-                  stackTrace: stacktrace,
-                ),
-              );
-            }
+            writeStored(storage, qKey, envelope.encode());
+          } catch (error, stackTrace) {
+            reportPersistenceError(qKey, error, stackTrace);
           }
         }
 
@@ -396,6 +383,7 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
 
   @override
   StatefulStream<T> watch({P? initialParameter, bool eager = false}) {
+    ensureNotDisposed('watch');
     if (eager && initialParameter != null && !isConnected) {
       connect(initialParameter).ignore();
     }
@@ -429,6 +417,7 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
 
   @override
   Future<T> get(P parameter, {bool forceRefresh = false}) async {
+    ensureNotDisposed('get');
     recordParam(parameter);
     final qKey = buildQueryKey(parameter);
 
@@ -438,7 +427,7 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
         return cached;
       }
 
-      final storage = config.storage;
+      final storage = storageFor(qKey);
       final currentCodec = codec;
       if (storage != null && currentCodec != null) {
         final raw = await storage.read(qKey.storageKey);
@@ -446,7 +435,7 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
           try {
             final envelope = StorageEnvelope.tryDecode(raw);
             if (envelope == null) {
-              storage.delete(qKey.storageKey).ignore();
+              discardStored(storage, qKey);
             } else if (envelope.isExpired) {
               if (config.stalePolicy == StalePolicy.keepStaleWhileRevalidate) {
                 final restoredData = currentCodec.decode(envelope.payload);
@@ -463,7 +452,7 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
                   metadata: restoredEntry.metadata,
                 );
               } else {
-                storage.delete(qKey.storageKey).ignore();
+                deleteStored(storage, qKey);
               }
             } else {
               final restoredData = currentCodec.decode(envelope.payload);
@@ -481,8 +470,8 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
               );
               return restoredData;
             }
-          } catch (_) {
-            storage.delete(qKey.storageKey).ignore();
+          } catch (error, stackTrace) {
+            discardStored(storage, qKey, error, stackTrace);
           }
         }
       }
@@ -535,12 +524,13 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
 
   @override
   T set(T data, P parameter) {
+    ensureNotDisposed('set');
     super.set(data, parameter);
-    final storage = config.storage;
+    final qKey = buildQueryKey(parameter);
+    final storage = storageFor(qKey);
     final currentCodec = codec;
     if (storage != null && currentCodec != null) {
       try {
-        final qKey = buildQueryKey(parameter);
         final serialized = currentCodec.encode(data);
         final now = DateTime.now();
         final envelope = StorageEnvelope(
@@ -551,9 +541,9 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
               ? config.timeToLive.inMilliseconds
               : null,
         );
-        storage.write(qKey.storageKey, envelope.encode()).ignore();
-      } catch (_) {
-        // Non-critical persistence failure
+        writeStored(storage, qKey, envelope.encode());
+      } catch (error, stackTrace) {
+        reportPersistenceError(qKey, error, stackTrace);
       }
     }
     return data;
@@ -562,6 +552,7 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
   /// Invalidates cache, disconnects upstream, clears persistent storage, and resets state to [DataInitial].
   @override
   void invalidate() {
+    if (isDisposed) return;
     _lastLoadedData = null;
     disconnect().ignore();
     super.invalidate();
@@ -570,6 +561,7 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
   /// Temporarily disconnects the upstream stream (e.g. app sent to background).
   @override
   Future<void> pause() async {
+    if (isDisposed) return;
     cache.pause();
     if (isConnected) {
       _isPaused = true;
@@ -580,6 +572,7 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
   /// Resumes the upstream connection if previously paused and watchers exist.
   @override
   FutureOr<void> resume() {
+    if (isDisposed) return null;
     cache.resume();
     if (_isPaused) {
       _isPaused = false;
@@ -595,6 +588,7 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
   /// Reconnects the upstream stream if disconnected or in an error state.
   @override
   FutureOr<void> recover() {
+    if (isDisposed) return null;
     if ((!isConnected && (_activeWatchers > 0 || keepAlive)) ||
         streamController.isError) {
       final param = lastParam;
@@ -607,6 +601,7 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
   /// Purges cache and re-establishes upstream connection with updated dependencies.
   @override
   FutureOr<void> didChangeDependencies() {
+    if (isDisposed) return null;
     final shouldReconnect = isConnected || _activeWatchers > 0 || keepAlive;
     invalidate();
     if (config.refreshAfterChangeDependencies && shouldReconnect) {
@@ -623,10 +618,4 @@ class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
     await disconnect();
     await super.dispose();
   }
-}
-
-/// Convenience extension for parameterless [StreamTrooper] instances where `P` is `()`.
-extension ParameterlessStreamTrooper<T> on StreamTrooper<T, ()> {
-  /// Manually connects to the upstream stream without requiring an explicit `()` parameter.
-  Future<void> connect() => this.connect(const ());
 }

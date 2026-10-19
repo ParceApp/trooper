@@ -1,0 +1,43 @@
+name: API baseline
+
+# Fails when the public API of trooper or trooper_bloc differs from the committed
+# baseline in docs/api/. See docs/api/README.md.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  api-baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      # trooper_bloc is a Flutter package, so the extraction needs the Flutter SDK.
+      # The version is pinned so the baseline stays reproducible.
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.6
+          cache: true
+
+      - name: Resolve workspace dependencies
+        run: flutter pub get
+
+      - name: Activate dart_apitool
+        run: dart pub global activate dart_apitool 0.23.2
+
+      - name: Extract public API
+        run: tool/api/extract.sh
+
+      - name: Compare with baseline
+        run: |
+          if ! git diff --exit-code docs/api/; then
+            echo "::error::The public API differs from docs/api/. Run tool/api/extract.sh and commit the result (see docs/api/README.md)."
+            exit 1
+          fi

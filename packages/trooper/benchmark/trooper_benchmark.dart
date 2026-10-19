@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:trooper/trooper.dart';
+import 'package:trooper/src/stream/stateful_stream_controller.dart';
 
 void main() async {
   stdout.writeln(

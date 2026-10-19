@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:trooper_bloc/testing.dart';
+import 'package:trooper_bloc/src/events.dart';
 import 'package:trooper_bloc/trooper_bloc.dart';
 
 // Test Event hierarchy

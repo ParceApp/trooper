@@ -63,11 +63,11 @@ dimensions:
         findings: [F-012]
       - id: ASYNC-02
         priority: M
-        status: not_met
+        status: met
         automated_in_ci: false
-        evidence: "packages/trooper/test/audit/async_audit_test.dart (ASYNC-02 group: 2 green, 3 red)"
+        evidence: "packages/trooper/test/audit/async_audit_test.dart (ASYNC-02 group: 7 green); test/concurrency/query_queue_test.dart forward group (late result, honored token, retry pause, error, chains)"
         findings: [F-013, F-014]
-        note: "cancellation of in-flight callers by invalidate is undocumented (see DOC-04)"
+        note: "invalidate cancels in-flight callers (documented with F-014); forward completes superseded callers only via the newer request (QueryConflictPolicy dartdoc)"
       - id: ASYNC-03
         priority: M
         status: met
@@ -83,10 +83,11 @@ dimensions:
         findings: []
       - id: ASYNC-05
         priority: M
-        status: not_met
+        status: met
         automated_in_ci: false
-        evidence: "async_audit_test.dart ASYNC-05 (QueryTrooper green, TrooperMutation red)"
+        evidence: "async_audit_test.dart ASYNC-05 (QueryTrooper and TrooperMutation green); trooper_mutation_test.dart: token-ignoring action after cancel skips DataLoaded, invalidateOnSuccess and onSuccess"
         findings: [F-015]
+        note: "a cancelled mutation ends in DataError(TrooperCancelledException), the documented terminal state; no result is applied"
       - id: ASYNC-06
         priority: M
         status: met
@@ -107,9 +108,9 @@ dimensions:
     criteria:
       - id: LIFE-01
         priority: M
-        status: not_met
+        status: met
         automated_in_ci: false
-        evidence: "packages/trooper/test/audit/lifecycle_audit_test.dart (dispose idempotent for 11 types; use-after-dispose: 6 types StateError, 5 types deviate); packages/trooper_bloc/test/audit/bloc_audit_test.dart (Tubit close idempotent)"
+        evidence: "LifecycleAware.dispose dartdoc defines the use-after-dispose contract; test/audit/lifecycle_audit_test.dart (all 11 types throw StateError after dispose, F-016 skips removed); test/lifecycle/use_after_dispose_test.dart (no-op rows, trigger, shared queue, LoadMore, controller)"
         findings: [F-016]
       - id: LIFE-02
         priority: M
@@ -120,10 +121,11 @@ dimensions:
         note: "leak_tracker only instruments Flutter disposables"
       - id: LIFE-03
         priority: M
-        status: not_met
+        status: met
         automated_in_ci: false
-        evidence: "review: cache_store.dart:48 unbounded map, evictionInterval default null; keyed_trooper.dart:75, keyed_stateful_stream.dart:42, keyed_stream_trooper.dart:138-143 per-key maps without removal; no documentation"
+        evidence: "cache_store.dart: optional maxEntries LRU (cache_store_test.dart maxEntries group); keyed troopers: opt-in releaseUnwatchedKeys drops per-key state (test/core/release_unwatched_keys_test.dart); defaults (unbounded) documented in CacheStore and KeyedTrooper dartdoc and README 'Memory bounds'"
         findings: [F-019]
+        note: "both bounds are opt-in (additive API); defaults stay unbounded and are documented"
       - id: LIFE-04
         priority: M
         status: met
@@ -143,28 +145,31 @@ dimensions:
     criteria:
       - id: ERR-01
         priority: M
-        status: partial
+        status: met
         automated_in_ci: false
-        evidence: "review error/trooper_exception.dart: sealed TrooperException with Cancelled/Timeout/Storage; fetch errors propagate unwrapped; no codec type"
+        evidence: "error/trooper_exception.dart: abstract final TrooperException (closed, non-exhaustive) with Cancelled/Timeout/Storage/Codec; TrooperCodec.encode/decode wrap failures in TrooperCodecException (test/codec/trooper_codec_test.dart, test/storage/persistence_error_test.dart); README 'Errors'"
         findings: [F-022]
       - id: ERR-02
         priority: M
-        status: not_met
+        status: met
         automated_in_ci: false
-        evidence: "docs/audit/raw/catch_sites.md (138 sites; silent losses in side-effect callbacks, L2 read/decode, stream storage writes/deletes); error_audit_test.dart ERR-02 (2 red)"
+        evidence: "docs/audit/raw/catch_sites.md (100 sites, 2 classified swallowed and both reported elsewhere: purge chain reports via the failing purge, tryDecode null is reported by discardStored); error_audit_test.dart ERR-02 (2 green); test/error/callback_error_test.dart; test/storage/persistence_error_test.dart"
         findings: [F-020, F-021]
+        note: "callback errors (side effects, cancel listeners, invalidate targets) go to Zone.current.handleUncaughtError; persistence errors to PersistenceErrorEvent"
       - id: ERR-03
         priority: M
-        status: partial
+        status: met
         automated_in_ci: false
-        evidence: "error_audit_test.dart ERR-03 (exact exponential timing, maxDelay clamp, retryWhen: green; jitter: red)"
+        evidence: "error_audit_test.dart ERR-03 (exact exponential timing and maxDelay clamp with jitter: 0, retryWhen, jitter spreads schedules: 4 green); retry_policy_test.dart jitter group (bounds, maxDelay cap, jitter 0 deterministic)"
         findings: [F-023]
+        note: "RetryPolicy.jitter (additive, default 0.5): delay drawn from [d*(1-jitter), d] after the maxDelay cap"
       - id: ERR-04
         priority: M
-        status: not_met
+        status: met
         automated_in_ci: false
-        evidence: "error_audit_test.dart ERR-04/SEC-03 (not json + wrong payload fall back to fetch; missing and future version used as current: red)"
+        evidence: "error_audit_test.dart ERR-04/SEC-03 (missing version, future version, not json, wrong payload type: all fall back to fetch and rewrite a current envelope); storage_envelope_test.dart version check"
         findings: [F-024]
+        note: "unknown and missing versions are discarded, not migrated; a migration hook is left to the API freeze package; format v1 documented as stable in StorageEnvelope dartdoc"
       - id: ERR-05
         priority: S
         status: partial
@@ -177,21 +182,22 @@ dimensions:
     criteria:
       - id: API-01
         priority: M
-        status: not_met
+        status: met
         automated_in_ci: false
-        evidence: "docs/audit/api-inventory.md (88 symbols: 75 keep, 6 internal, 4 rework, 1 remove, 1 rename, 1 open)"
+        evidence: "docs/audit/api-freeze-decisions.md (F-028); StatefulStreamController, KeyedStatefulStream, KeyedTrooperAccessor, WatchedHandle, WatchedUpdateCallback, TlocSourceUpdateEvent no longer exported, injection parameters removed, ConflictPolicy alias and FutureOr/Emitter re-exports removed; baseline docs/api/"
         findings: [F-028]
       - id: API-02
         priority: M
-        status: not_met
+        status: met
         automated_in_ci: false
-        evidence: "docs/audit/raw/class_modifiers.txt (38 public classes without final/base/interface/sealed); proposals in api-inventory.md"
+        evidence: "docs/audit/api-freeze-decisions.md (F-029): concrete troopers, configuration and infrastructure classes final; Trooper/KeyedTrooper abstract base with @internal helpers; TrooperCodec, TrooperException, TrooperEvent abstract final; TrooperController, Tloc, Tubit, TlocEvent, TlocEffectListener deliberately open with documented extend-only policy"
         findings: [F-029]
+        note: "classes left without modifier are user extension points; base would force every user subclass to be base/final/sealed"
       - id: API-03
         priority: M
-        status: not_met
+        status: met
         automated_in_ci: false
-        evidence: "api-inventory.md 'Weitere Punkte'; pair comparison of api_trooper.json"
+        evidence: "docs/audit/api-freeze-decisions.md (F-030, F-044): Parameterless* extensions, executeOrder66, queryConflictPolicy, key(), Trooper.call(), global defaults removed; controller factories split into query/cancellableQuery etc.; lifecycle drivers @nonVirtual with on* hooks"
         findings: [F-030, F-044]
       - id: API-04
         priority: M
@@ -207,15 +213,15 @@ dimensions:
         findings: [F-032]
       - id: API-06
         priority: M
-        status: not_met
+        status: met
         automated_in_ci: false
-        evidence: "packages/trooper_bloc/lib/trooper_bloc.dart (re-exports trooper, Emitter, FutureOr); no versioning rule documented"
+        evidence: "packages/trooper_bloc/lib/trooper_bloc.dart re-exports trooper only; versioning rule (same major version) in packages/trooper_bloc/README.md 'Installation & Versioning', packages/trooper/README.md 'API Stability' and CHANGELOGs"
         findings: [F-033]
       - id: API-07
         priority: S
-        status: partial
+        status: met
         automated_in_ci: false
-        evidence: "api-inventory.md (dynamic only in JSON helpers and WatchedHandle.new; StatefulData subclasses implement ==/hashCode; DataLoaded is base)"
+        evidence: "DataLoaded is final (DataRefreshing in the same library); WatchedHandle internal; dynamic only in JSON helpers (TrooperCodec.json, StorageEnvelope)"
         findings: [F-034]
   - id: ARCH
     weight: 1
@@ -249,10 +255,11 @@ dimensions:
         findings: [F-037]
       - id: ARCH-05
         priority: M
-        status: not_met
+        status: partial
         automated_in_ci: false
-        evidence: "review storage_backend.dart (one-line docs, no error/concurrency contract; getAllKeys/containsKey/clear unused by the library); no exported contract test kit"
+        evidence: "storage/storage_backend.dart: four methods (read, write, delete -> Future<void>, getAllKeys), error, concurrency and shared-backend contract documented (dartdoc and README 'The StorageBackend contract'); TrooperCodec closed (abstract final, factories only); TrooperLogger single-method interface; no exported contract test kit"
         findings: [F-038]
+        note: "contract test kit deferred by decision (additive, would make package:test a regular dependency); planned as a separate package"
       - id: ARCH-06
         priority: C
         status: not_met
@@ -347,16 +354,18 @@ dimensions:
     criteria:
       - id: SEC-01
         priority: M
-        status: partial
+        status: met
         automated_in_ci: false
-        evidence: "review: StorageBackend/TrooperCodec allow an encrypting wrapper; README, dartdoc and skills never mention plaintext persistence"
+        evidence: "README 'Persistence & Sensitive Data' (plain-text envelope and keys, EncryptedStorageBackend decorator and flutter_secure_storage backend examples); StorageBackend and TrooperCodec dartdoc; skills/trooper-reactive-data-flow/SKILL.md; test/storage/encrypted_backend_example_test.dart runs the README decorator"
         findings: [F-026]
+        note: "the hook is the StorageBackend interface (decorator); storage keys stay plain text by design and are documented as such"
       - id: SEC-02
         priority: M
-        status: partial
+        status: met
         automated_in_ci: false
-        evidence: "error_audit_test.dart SEC-02 (payload not logged: green; query parameters logged: red); logger is opt-in via attach()"
+        evidence: "error_audit_test.dart SEC-02 (payload and query parameters not logged: green); trooper_telemetry_test.dart parameter masking group"
         findings: [F-027]
+        note: "ConsoleTrooperLogger masks parameters and entity keys as FNV-1a hash by default, logParameters: true opts in (additive); event objects still carry the raw QueryKey for custom listeners (documented)"
       - id: SEC-03
         priority: M
         status: partial
@@ -502,10 +511,11 @@ dimensions:
     criteria:
       - id: OBS-01
         priority: S
-        status: not_met
+        status: partial
         automated_in_ci: false
-        evidence: "telemetry/trooper_event.dart (8 events, 23 undocumented members, sealed root)"
+        evidence: "telemetry/trooper_event.dart: abstract final TrooperEvent, catalogue documented as closed but growable in minor releases (README 'Observability & Logging'); member docs still missing (F-002)"
         findings: [F-035, F-002]
+        note: "F-035 closed; remaining gap is F-002 (undocumented members)"
       - id: OBS-02
         priority: S
         status: partial
@@ -590,32 +600,32 @@ findings:
     severity: P0
     criterion: ASYNC-01
     freeze_relevant: false
-    status: open
+    status: closed
   - id: F-013
     severity: P1
     criterion: ASYNC-02
     freeze_relevant: false
-    status: open
+    status: closed
   - id: F-014
     severity: P0
     criterion: ASYNC-02
     freeze_relevant: false
-    status: open
+    status: closed
   - id: F-015
     severity: P1
     criterion: ASYNC-05
     freeze_relevant: false
-    status: open
+    status: closed
   - id: F-016
     severity: P1
     criterion: LIFE-01
     freeze_relevant: true
-    status: open
+    status: closed
   - id: F-017
     severity: P0
     criterion: LIFE-02
     freeze_relevant: false
-    status: open
+    status: closed
   - id: F-018
     severity: P2
     criterion: LIFE-02
@@ -625,32 +635,32 @@ findings:
     severity: P1
     criterion: LIFE-03
     freeze_relevant: false
-    status: open
+    status: closed
   - id: F-020
     severity: P1
     criterion: ERR-02
     freeze_relevant: false
-    status: open
+    status: closed
   - id: F-021
     severity: P1
     criterion: ERR-02
     freeze_relevant: false
-    status: open
+    status: closed
   - id: F-022
     severity: P1
     criterion: ERR-01
     freeze_relevant: true
-    status: open
+    status: closed
   - id: F-023
     severity: P1
     criterion: ERR-03
     freeze_relevant: false
-    status: open
+    status: closed
   - id: F-024
     severity: P1
     criterion: ERR-04
     freeze_relevant: false
-    status: open
+    status: closed
   - id: F-025
     severity: P3
     criterion: ERR-05
@@ -660,27 +670,27 @@ findings:
     severity: P1
     criterion: SEC-01
     freeze_relevant: false
-    status: open
+    status: closed
   - id: F-027
     severity: P1
     criterion: SEC-02
     freeze_relevant: false
-    status: open
+    status: closed
   - id: F-028
     severity: P1
     criterion: API-01
     freeze_relevant: true
-    status: open
+    status: closed
   - id: F-029
     severity: P1
     criterion: API-02
     freeze_relevant: true
-    status: open
+    status: closed
   - id: F-030
     severity: P1
     criterion: API-03
     freeze_relevant: true
-    status: open
+    status: closed
   - id: F-031
     severity: P1
     criterion: API-04
@@ -695,17 +705,17 @@ findings:
     severity: P1
     criterion: API-06
     freeze_relevant: true
-    status: open
+    status: closed
   - id: F-034
     severity: P1
     criterion: API-07
     freeze_relevant: true
-    status: open
+    status: closed
   - id: F-035
     severity: P1
     criterion: OBS-01
     freeze_relevant: true
-    status: open
+    status: closed
   - id: F-036
     severity: P3
     criterion: OBS-02
@@ -720,7 +730,8 @@ findings:
     severity: P1
     criterion: ARCH-05
     freeze_relevant: true
-    status: open
+    status: closed
+    note: "freeze-relevant part done (interface shape and contract); contract test kit deferred, see ARCH-05"
   - id: F-039
     severity: P1
     criterion: TEST-04
@@ -750,7 +761,7 @@ findings:
     severity: P1
     criterion: API-03
     freeze_relevant: true
-    status: open
+    status: closed
   - id: F-045
     severity: P1
     criterion: DOC-02
@@ -830,4 +841,4 @@ findings:
     severity: P0
     criterion: FEAT-05
     freeze_relevant: true
-    status: open
+    status: closed

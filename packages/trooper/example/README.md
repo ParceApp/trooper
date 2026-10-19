@@ -115,7 +115,7 @@ void main() async {
   await controller.initialize();
 
   // Watch state changes
-  controller.count.watch(const ()).listen((state) {
+  controller.count.watch(initialParameter: ()).listen((state) {
     if (state case DataLoaded(:final data)) {
       print('Current count: $data');
     }

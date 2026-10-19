@@ -1,6 +1,14 @@
 import 'package:test/test.dart';
 import 'package:trooper/trooper.dart';
 
+final _throwsCodecException = throwsA(
+  isA<TrooperCodecException>().having(
+    (e) => e.error,
+    'error',
+    isA<FormatException>(),
+  ),
+);
+
 void main() {
   group('TrooperCodec', () {
     test('string codec passes through unchanged', () {
@@ -13,14 +21,14 @@ void main() {
       const codec = TrooperCodec.integer;
       expect(codec.encode(42), '42');
       expect(codec.decode('42'), 42);
-      expect(() => codec.decode('abc'), throwsFormatException);
+      expect(() => codec.decode('abc'), _throwsCodecException);
     });
 
     test('doublePrecision codec encodes and decodes doubles', () {
       const codec = TrooperCodec.doublePrecision;
       expect(codec.encode(3.1415), '3.1415');
       expect(codec.decode('3.1415'), closeTo(3.1415, 0.0001));
-      expect(() => codec.decode('invalid'), throwsFormatException);
+      expect(() => codec.decode('invalid'), _throwsCodecException);
     });
 
     test('boolean codec encodes and decodes booleans', () {

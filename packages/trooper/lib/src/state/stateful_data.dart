@@ -187,7 +187,7 @@ final class DataLoading<T> extends StatefulData<T> {
 }
 
 /// Represents successfully loaded data ready for presentation.
-base class DataLoaded<T> extends StatefulData<T> {
+final class DataLoaded<T> extends StatefulData<T> {
   /// Creates a [DataLoaded] state with the given [data] and optional [metadata].
   const DataLoaded(this.data, {this.metadata});
 

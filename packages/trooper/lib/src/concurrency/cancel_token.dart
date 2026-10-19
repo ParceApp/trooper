@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:trooper/src/error/trooper_exception.dart';
 
 /// A cooperative cancellation token to abort ongoing asynchronous tasks.
@@ -18,7 +20,7 @@ import 'package:trooper/src/error/trooper_exception.dart';
 /// // Cancel when no longer needed:
 /// token.cancel(reason: 'User navigated away');
 /// ```
-class TrooperCancelToken {
+final class TrooperCancelToken {
   /// Creates a new uncancelled [TrooperCancelToken].
   TrooperCancelToken();
 
@@ -45,8 +47,9 @@ class TrooperCancelToken {
     for (final callback in callbacks) {
       try {
         callback();
-      } catch (_) {
-        // Prevent one failing listener callback from aborting other callbacks
+      } catch (error, stackTrace) {
+        // Report, but let the remaining listeners run.
+        Zone.current.handleUncaughtError(error, stackTrace);
       }
     }
   }
@@ -68,7 +71,9 @@ class TrooperCancelToken {
     if (_isCancelled) {
       try {
         callback();
-      } catch (_) {}
+      } catch (error, stackTrace) {
+        Zone.current.handleUncaughtError(error, stackTrace);
+      }
       return () {};
     }
     _listeners.add(callback);

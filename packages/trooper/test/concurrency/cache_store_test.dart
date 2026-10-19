@@ -146,10 +146,66 @@ void main() {
       expect(cache.containsKey(k1), isFalse);
 
       await cache.dispose();
-      // Operations after dispose are no-ops or return null/empty
-      cache.put(k1, 'data');
-      expect(cache.get(k1), isNull);
+      // Reads and writes after dispose throw; cleanup is a no-op.
+      expect(() => cache.put(k1, 'data'), throwsStateError);
+      expect(() => cache.get<String>(k1), throwsStateError);
       cache.clear();
+    });
+
+    group('maxEntries (LRU)', () {
+      QueryKey k(int i) => QueryKey('lru', (id: i));
+
+      test('evicts the least recently used entry beyond the limit', () {
+        final cache = CacheStore(maxEntries: 2);
+        cache.put(k(1), 'a');
+        cache.put(k(2), 'b');
+        cache.put(k(3), 'c');
+
+        expect(cache.size, 2);
+        expect(cache.containsKey(k(1)), isFalse);
+        expect(cache.keys, {k(2), k(3)});
+      });
+
+      test('a read marks the entry as recently used', () {
+        final cache = CacheStore(maxEntries: 2);
+        cache.put(k(1), 'a');
+        cache.put(k(2), 'b');
+        expect(cache.get<String>(k(1)), 'a');
+        cache.putEntry(k(3), CacheEntry<String>('c'));
+
+        expect(cache.keys, {k(1), k(3)});
+      });
+
+      test('overwriting a key does not evict another entry', () {
+        final cache = CacheStore(maxEntries: 2);
+        cache.put(k(1), 'a');
+        cache.put(k(2), 'b');
+        cache.put(k(1), 'a2');
+
+        expect(cache.keys, {k(1), k(2)});
+        expect(cache.get<String>(k(1)), 'a2');
+      });
+
+      test('eviction does not notify invalidation listeners', () async {
+        final cache = CacheStore(maxEntries: 1);
+        final invalidated = <QueryKey>[];
+        cache.invalidationStream.listen(invalidated.add);
+        cache.put(k(1), 'a');
+        cache.put(k(2), 'b');
+        await pumpEventQueue();
+
+        expect(invalidated, isEmpty);
+        await cache.dispose();
+      });
+
+      test('is unbounded by default', () {
+        final cache = CacheStore();
+        for (var i = 0; i < 1000; i++) {
+          cache.put(k(i), i);
+        }
+        expect(cache.maxEntries, isNull);
+        expect(cache.size, 1000);
+      });
     });
   });
 }

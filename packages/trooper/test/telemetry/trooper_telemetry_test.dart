@@ -71,6 +71,73 @@ void main() {
       hub.dispose();
     });
 
+    group('ConsoleTrooperLogger parameter masking', () {
+      const key = QueryKey.keyed(
+        'users',
+        parameter: (email: 'jane@example.com'),
+        key: 'jane@example.com',
+      );
+
+      String logLine(TrooperEvent event, {bool logParameters = false}) {
+        final lines = <String>[];
+        ConsoleTrooperLogger(
+          printFunction: (o) => lines.add('$o'),
+          includeTimestamps: false,
+          logParameters: logParameters,
+        ).log(event);
+        return lines.single;
+      }
+
+      test('masks parameter and entity key with a stable hash', () {
+        final line = logLine(RequestStartedEvent(key));
+        expect(line, isNot(contains('jane@example.com')));
+        expect(line, contains('users'));
+        expect(line, matches(RegExp(r'parameter: #[0-9a-f]{8}')));
+        expect(line, logLine(RequestStartedEvent(key)));
+        expect(
+          line,
+          isNot(
+            logLine(
+              RequestStartedEvent(
+                const QueryKey.keyed(
+                  'users',
+                  parameter: (email: 'joe@example.com'),
+                  key: 'jane@example.com',
+                ),
+              ),
+            ),
+          ),
+        );
+      });
+
+      test('masks the key inside trooper error messages', () {
+        final line = logLine(
+          RequestErrorEvent(
+            key,
+            error: TrooperCancelledException(
+              message: 'Superseded by newer request for ${key.describe()}',
+            ),
+            duration: Duration.zero,
+          ),
+        );
+        expect(line, isNot(contains('jane@example.com')));
+      });
+
+      test('logParameters: true prints them in plain text', () {
+        expect(
+          logLine(RequestStartedEvent(key), logParameters: true),
+          contains('jane@example.com'),
+        );
+      });
+
+      test('a unit parameter is printed unchanged', () {
+        expect(
+          logLine(RequestStartedEvent(const QueryKey('feed', ()))),
+          contains('QueryKey(feed)'),
+        );
+      });
+    });
+
     test(
       'TelemetryHub emitLazy, registerLogger, reentrancy and disposal',
       () async {

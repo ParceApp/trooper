@@ -1,10 +1,16 @@
 import 'dart:convert';
 
+import 'package:trooper/src/error/trooper_exception.dart';
+
 /// A specialized [Codec] for serializing and deserializing domain data of type [T]
 /// to and from [String] representations for persistent storage or caching.
 ///
 /// Extends Dart's standard [Codec] from `dart:convert`, enabling seamless composition
 /// and full compatibility with the Dart SDK converter ecosystem.
+///
+/// The encoded string is persisted as is (plain text) by the configured
+/// `StorageBackend`. Do not rely on a codec for confidentiality; encrypt in the
+/// backend instead (see `StorageBackend`).
 ///
 /// ### Pre-built Presets:
 /// ```dart
@@ -33,9 +39,54 @@ import 'dart:convert';
 ///   from: (s) => Color(int.parse(s, radix: 16)),
 /// );
 /// ```
-abstract class TrooperCodec<T> extends Codec<T, String> {
+///
+/// [encode] and [decode] report every failure as a [TrooperCodecException]
+/// that carries the original error.
+abstract final class TrooperCodec<T> extends Codec<T, String> {
   /// Private const constructor.
   const TrooperCodec._();
+
+  /// Encodes [input] to a string.
+  ///
+  /// Throws a [TrooperCodecException] if encoding fails.
+  @override
+  String encode(T input) {
+    try {
+      return encoder.convert(input);
+    } on TrooperCodecException {
+      rethrow;
+    } catch (error, stackTrace) {
+      Error.throwWithStackTrace(
+        TrooperCodecException(
+          'Failed to encode a value of type ${input.runtimeType}.',
+          error: error,
+          stackTrace: stackTrace,
+        ),
+        stackTrace,
+      );
+    }
+  }
+
+  /// Decodes [encoded] to a value of type [T].
+  ///
+  /// Throws a [TrooperCodecException] if decoding fails.
+  @override
+  T decode(String encoded) {
+    try {
+      return decoder.convert(encoded);
+    } on TrooperCodecException {
+      rethrow;
+    } catch (error, stackTrace) {
+      Error.throwWithStackTrace(
+        TrooperCodecException(
+          'Failed to decode a value of type $T.',
+          error: error,
+          stackTrace: stackTrace,
+        ),
+        stackTrace,
+      );
+    }
+  }
 
   /// Creates a custom [TrooperCodec] from inline [to] and [from] converter functions.
   static TrooperCodec<T> custom<T>({
@@ -75,7 +126,7 @@ abstract class TrooperCodec<T> extends Codec<T, String> {
   }) => _MapCodec<K, V>(keyCodec: keyCodec, valueCodec: valueCodec);
 }
 
-class _FunctionalConverter<S, T> extends Converter<S, T> {
+final class _FunctionalConverter<S, T> extends Converter<S, T> {
   const _FunctionalConverter(this._convert);
   final T Function(S input) _convert;
 
@@ -83,7 +134,7 @@ class _FunctionalConverter<S, T> extends Converter<S, T> {
   T convert(S input) => _convert(input);
 }
 
-class _FunctionalCodec<T> extends TrooperCodec<T> {
+final class _FunctionalCodec<T> extends TrooperCodec<T> {
   const _FunctionalCodec({required this.to, required this.from}) : super._();
   final String Function(T input) to;
   final T Function(String input) from;
@@ -95,7 +146,7 @@ class _FunctionalCodec<T> extends TrooperCodec<T> {
   Converter<String, T> get decoder => _FunctionalConverter(from);
 }
 
-class _StringCodec extends TrooperCodec<String> {
+final class _StringCodec extends TrooperCodec<String> {
   const _StringCodec() : super._();
 
   @override
@@ -109,7 +160,7 @@ class _StringCodec extends TrooperCodec<String> {
   static String _identity(String s) => s;
 }
 
-class _IntCodec extends TrooperCodec<int> {
+final class _IntCodec extends TrooperCodec<int> {
   const _IntCodec() : super._();
 
   @override
@@ -122,7 +173,7 @@ class _IntCodec extends TrooperCodec<int> {
   static String _intToString(int n) => n.toString();
 }
 
-class _DoubleCodec extends TrooperCodec<double> {
+final class _DoubleCodec extends TrooperCodec<double> {
   const _DoubleCodec() : super._();
 
   @override
@@ -136,7 +187,7 @@ class _DoubleCodec extends TrooperCodec<double> {
   static String _doubleToString(double d) => d.toString();
 }
 
-class _BoolCodec extends TrooperCodec<bool> {
+final class _BoolCodec extends TrooperCodec<bool> {
   const _BoolCodec() : super._();
 
   @override
@@ -151,7 +202,7 @@ class _BoolCodec extends TrooperCodec<bool> {
   static bool _stringToBool(String s) => s == 'true';
 }
 
-class _DateTimeCodec extends TrooperCodec<DateTime> {
+final class _DateTimeCodec extends TrooperCodec<DateTime> {
   const _DateTimeCodec() : super._();
 
   @override
@@ -165,7 +216,7 @@ class _DateTimeCodec extends TrooperCodec<DateTime> {
   static String _dtToString(DateTime dt) => dt.toIso8601String();
 }
 
-class _JsonCodec<T> extends TrooperCodec<T> {
+final class _JsonCodec<T> extends TrooperCodec<T> {
   const _JsonCodec({required this.fromJson, required this.toJson}) : super._();
   final T Function(dynamic json) fromJson;
   final Object? Function(T value) toJson;
@@ -179,7 +230,7 @@ class _JsonCodec<T> extends TrooperCodec<T> {
       _FunctionalConverter((s) => fromJson(jsonDecode(s)));
 }
 
-class _ListCodec<T> extends TrooperCodec<List<T>> {
+final class _ListCodec<T> extends TrooperCodec<List<T>> {
   const _ListCodec(this.itemCodec) : super._();
   final Codec<T, String> itemCodec;
 
@@ -196,7 +247,7 @@ class _ListCodec<T> extends TrooperCodec<List<T>> {
   );
 }
 
-class _MapCodec<K, V> extends TrooperCodec<Map<K, V>> {
+final class _MapCodec<K, V> extends TrooperCodec<Map<K, V>> {
   const _MapCodec({required this.keyCodec, required this.valueCodec})
     : super._();
   final Codec<K, String> keyCodec;

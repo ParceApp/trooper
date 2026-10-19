@@ -60,6 +60,10 @@ import 'package:trooper_bloc/src/sources/trooper_sources.dart';
 ///   }
 /// }
 /// ```
+///
+/// ### Extending
+/// Extend this class; do not `implements` it. Implementing it is not
+/// supported, and new members can be added in minor releases.
 abstract class Tloc<Event extends TlocEvent, State>
     extends Bloc<TlocEvent, State>
     with TrooperSources<State> {

@@ -41,7 +41,7 @@ import 'package:trooper/types/parameter.dart';
 ///   print('Active drafts: ${map.length}');
 /// });
 /// ```
-class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
+final class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
     extends KeyedTrooper<K, T, P> {
   /// Creates a [KeyedLocalTrooper] with a static [initialValue] for all keys.
   KeyedLocalTrooper({
@@ -53,7 +53,6 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
     this.codec,
     super.queryQueue,
     super.telemetry,
-    super.stream,
   }) : initialValueFactory = ((_) => initialValue);
 
   /// Creates a [KeyedLocalTrooper] using a dynamic [initialValueFactory] per key.
@@ -66,7 +65,6 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
     this.codec,
     super.queryQueue,
     super.telemetry,
-    super.stream,
   });
 
   /// Function generating baseline initial value for any given key.
@@ -93,6 +91,7 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
   /// Emits [DataLoaded] on [stream], updates L1 cache, and asynchronously persists
   /// to L2 storage if configured.
   T setKey(K key, T value, P parameter) {
+    ensureNotDisposed('setKey');
     final qKey = buildQueryKey(key, parameter);
 
     cache.put(
@@ -111,7 +110,7 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
 
     runSideEffect(() => sideEffects?.onData?.call(key, value, parameter));
 
-    final storage = config.storage;
+    final storage = storageFor(qKey);
     final currentCodec = codec;
     if (storage != null && currentCodec != null) {
       try {
@@ -125,28 +124,10 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
               ? config.timeToLive.inMilliseconds
               : null,
         );
-        storage.write(qKey.storageKey, envelope.encode()).catchError((
-          Object error,
-          StackTrace stackTrace,
-        ) {
-          telemetry.emit(
-            PersistenceErrorEvent(
-              qKey,
-              error: error,
-              duration: Duration.zero,
-              stackTrace: stackTrace,
-            ),
-          );
-        });
+        writeStored(storage, qKey, envelope.encode());
       } catch (error, stackTrace) {
-        telemetry.emit(
-          PersistenceErrorEvent(
-            qKey,
-            error: error,
-            duration: Duration.zero,
-            stackTrace: stackTrace,
-          ),
-        );
+        reportPersistenceError(qKey, error, stackTrace);
+        if (error is TrooperCodecException) rethrow;
         throw TrooperStorageException(
           'Failed to serialize state for ${qKey.name}',
           error: error,
@@ -157,13 +138,14 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
   }
 
   /// Sets [value] for [key] in memory and awaits asynchronous persistence to [StorageBackend],
-  /// throwing a [TrooperStorageException] if writing to persistent storage fails.
+  /// throwing a [TrooperStorageException] if writing to persistent storage fails
+  /// or a [TrooperCodecException] if the codec cannot encode [value].
   Future<T> setKeyAsync(K key, T value, P parameter) async {
     setKey(key, value, parameter);
-    final storage = config.storage;
+    final qKey = buildQueryKey(key, parameter);
+    final storage = storageFor(qKey);
     final currentCodec = codec;
     if (storage != null && currentCodec != null) {
-      final qKey = buildQueryKey(key, parameter);
       try {
         final serialized = currentCodec.encode(value);
         final now = DateTime.now();
@@ -177,14 +159,8 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
         );
         await storage.write(qKey.storageKey, envelope.encode());
       } catch (error, stackTrace) {
-        telemetry.emit(
-          PersistenceErrorEvent(
-            qKey,
-            error: error,
-            duration: Duration.zero,
-            stackTrace: stackTrace,
-          ),
-        );
+        reportPersistenceError(qKey, error, stackTrace);
+        if (error is TrooperCodecException) rethrow;
         throw TrooperStorageException(
           'Failed to persist state for ${qKey.name} to storage backend',
           error: error,
@@ -206,13 +182,14 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
   /// Resets the state for [key] back to its initial value, deletes persistent storage,
   /// and returns the initial value.
   T resetKey(K key, P parameter) {
+    ensureNotDisposed('resetKey');
     final initial = initialValueFactory(key);
     setKey(key, initial, parameter);
 
-    final storage = config.storage;
+    final qKey = buildQueryKey(key, parameter);
+    final storage = storageFor(qKey);
     if (storage != null) {
-      final qKey = buildQueryKey(key, parameter);
-      storage.delete(qKey.storageKey).ignore();
+      deleteStored(storage, qKey);
     }
     return initial;
   }
@@ -221,20 +198,13 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
   /// throwing a [TrooperStorageException] if storage deletion fails.
   Future<T> resetKeyAsync(K key, P parameter) async {
     resetKey(key, parameter);
-    final storage = config.storage;
+    final qKey = buildQueryKey(key, parameter);
+    final storage = storageFor(qKey);
     if (storage != null) {
-      final qKey = buildQueryKey(key, parameter);
       try {
         await storage.delete(qKey.storageKey);
       } catch (error, stackTrace) {
-        telemetry.emit(
-          PersistenceErrorEvent(
-            qKey,
-            error: error,
-            duration: Duration.zero,
-            stackTrace: stackTrace,
-          ),
-        );
+        reportPersistenceError(qKey, error, stackTrace);
         throw TrooperStorageException(
           'Failed to delete persisted state for ${qKey.name} from storage backend',
           error: error,
@@ -246,6 +216,7 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
 
   /// Resets all currently tracked keys back to their initial values.
   void resetAll() {
+    ensureNotDisposed('resetAll');
     for (final key in activeKeys) {
       final param = lastParamOf(key);
       if (param != null) {
@@ -318,6 +289,7 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
   /// Reads the value for [key], returning cached data if fresh, hydrating from L2
   /// storage if configured, or falling back to [initialValueFactory].
   Future<T> getKey(K key, P parameter, {bool forceRefresh = false}) async {
+    ensureNotDisposed('getKey');
     recordParam(key, parameter);
     final qKey = buildQueryKey(key, parameter);
 
@@ -337,9 +309,9 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
 
     // 2. Hydrate from L2 Storage if configured and not yet hydrated
     if (!_hydratedKeys.contains(key) &&
-        config.storage != null &&
+        storageFor(qKey) != null &&
         codec != null) {
-      final storage = config.storage!;
+      final storage = storageFor(qKey)!;
       final currentCodec = codec!;
 
       try {
@@ -347,9 +319,9 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
         if (serialized != null) {
           final envelope = StorageEnvelope.tryDecode(serialized);
           if (envelope == null) {
-            storage.delete(qKey.storageKey).ignore();
+            discardStored(storage, qKey);
           } else if (envelope.isExpired) {
-            storage.delete(qKey.storageKey).ignore();
+            deleteStored(storage, qKey);
           } else {
             final decoded = currentCodec.decode(envelope.payload);
             final entry = CacheEntry<T>(
@@ -373,8 +345,8 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
             return decoded;
           }
         }
-      } catch (_) {
-        storage.delete(qKey.storageKey).ignore();
+      } catch (error, stackTrace) {
+        discardStored(storage, qKey, error, stackTrace);
       }
 
       _hydratedKeys.add(key);
@@ -403,11 +375,13 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
 
   /// Triggers reading or hydrating data for [key] without awaiting the result.
   void triggerKey(K key, P parameter, {bool forceRefresh = false}) {
+    ensureNotDisposed('triggerKey');
     getKey(key, parameter, forceRefresh: forceRefresh).ignore();
   }
 
   /// Watches state updates for a single [key].
   StatefulStream<T> watchKey(K key, {P? initialParameter, bool eager = false}) {
+    ensureNotDisposed('watchKey');
     if (!stream.containsKey(key)) {
       final initial = initialValueFactory(key);
       if (initialParameter != null) {
@@ -441,7 +415,10 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
   }
 
   /// Returns the current state for [key] synchronously.
-  StatefulData<T> currentKeyState(K key) {
+  ///
+  /// A key that was never set reports [initialValueOf] as [DataLoaded].
+  @override
+  StatefulData<T> currentKey(K key) {
     if (stream.containsKey(key)) {
       return stream.stateOf(key);
     }
@@ -458,24 +435,28 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
 
   @override
   void invalidateKey(K key) {
+    if (isDisposed) return;
     super.invalidateKey(key);
     _hydratedKeys.remove(key);
   }
 
   @override
   void invalidate() {
+    if (isDisposed) return;
     super.invalidate();
     _hydratedKeys.clear();
   }
 
   @override
   Future<void> removeKey(K key) async {
+    if (isDisposed) return;
     _hydratedKeys.remove(key);
     await super.removeKey(key);
   }
 
   @override
   Future<void> clearAll() async {
+    if (isDisposed) return;
     _hydratedKeys.clear();
     await super.clearAll();
   }
@@ -483,6 +464,7 @@ class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
   /// Purges cache and resets all active keys back to baseline via [initialValueFactory].
   @override
   FutureOr<void> didChangeDependencies() {
+    if (isDisposed) return null;
     invalidate();
     if (config.refreshAfterChangeDependencies) {
       resetAll();
@@ -521,69 +503,11 @@ class _KeyedLocalBoundAccessor<K extends Object, T, P extends Parameter>
   Future<T> refresh(P parameter) => _parent.refreshKey(_key, parameter);
 
   @override
-  StatefulData<T> current() => _parent.currentKeyState(_key);
+  StatefulData<T> current() => _parent.currentKey(_key);
 
   @override
   T? currentData() => _parent.currentKeyData(_key);
 
   @override
   void invalidate() => _parent.invalidateKey(_key);
-}
-
-/// Convenience extension for parameterless [KeyedLocalTrooper] instances where `P` is `()`.
-extension ParameterlessKeyedLocalTrooper<K extends Object, T>
-    on KeyedLocalTrooper<K, T, ()> {
-  /// Reads or hydrates data for [key] without requiring an explicit `()` parameter.
-  Future<T> getKey(K key, {bool forceRefresh = false}) =>
-      this.getKey(key, const (), forceRefresh: forceRefresh);
-
-  /// Sets data for [key] without requiring an explicit `()` parameter.
-  T setKey(K key, T value) => this.setKey(key, value, const ());
-
-  /// Sets data for [key] and awaits persistent storage without requiring an explicit `()` parameter.
-  Future<T> setKeyAsync(K key, T value) =>
-      this.setKeyAsync(key, value, const ());
-
-  /// Updates state for [key] without requiring an explicit `()` parameter.
-  T updateKey(K key, T Function(T current) transform) =>
-      this.updateKey(key, transform, const ());
-
-  /// Resets state for [key] without requiring an explicit `()` parameter.
-  T resetKey(K key) => this.resetKey(key, const ());
-
-  /// Resets state for [key] and awaits deletion from persistent storage without requiring an explicit `()` parameter.
-  Future<T> resetKeyAsync(K key) => this.resetKeyAsync(key, const ());
-
-  /// Refreshes state for [key] without requiring an explicit `()` parameter.
-  Future<T> refreshKey(K key) => this.refreshKey(key, const ());
-
-  /// Triggers reading or hydrating data for [key] without requiring an explicit `()` parameter.
-  void triggerKey(K key, {bool forceRefresh = false}) =>
-      this.triggerKey(key, const (), forceRefresh: forceRefresh);
-
-  /// Sets multiple key-value pairs without requiring an explicit `()` parameter.
-  Map<K, T> setAll(Map<K, T> entries) => this.setAll(entries, const ());
-
-  /// Sets multiple key-value pairs and awaits persistence without requiring an explicit `()` parameter.
-  Future<Map<K, T>> setAllAsync(Map<K, T> entries) =>
-      this.setAllAsync(entries, const ());
-
-  /// Updates multiple keys without requiring an explicit `()` parameter.
-  Map<K, T> updateAll(Map<K, T Function(T current)> transforms) =>
-      this.updateAll(transforms, const ());
-
-  /// Resets multiple keys without requiring an explicit `()` parameter.
-  Map<K, T> resetKeys(Iterable<K> keys) => this.resetKeys(keys, const ());
-
-  /// Resets multiple keys and awaits storage deletion without requiring an explicit `()` parameter.
-  Future<Map<K, T>> resetKeysAsync(Iterable<K> keys) =>
-      this.resetKeysAsync(keys, const ());
-
-  /// Reads or hydrates multiple keys without requiring an explicit `()` parameter.
-  Future<Map<K, T>> getAll(Iterable<K> keys, {bool forceRefresh = false}) =>
-      this.getAll(keys, const (), forceRefresh: forceRefresh);
-
-  /// Watches state updates for a single [key] without requiring an explicit `()` parameter.
-  StatefulStream<T> watchKey(K key, {bool eager = false}) =>
-      this.watchKey(key, initialParameter: const (), eager: eager);
 }

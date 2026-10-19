@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:trooper/src/codec/trooper_codec.dart';
 import 'package:trooper/src/concurrency/cancel_token.dart';
 import 'package:trooper/src/concurrency/query_queue.dart';
+import 'package:trooper/src/concurrency/request_sequencer.dart';
 import 'package:trooper/src/config/stale_policy.dart';
 import 'package:trooper/src/config/trooper_config.dart';
 import 'package:trooper/src/core/accessor.dart';
@@ -14,7 +15,6 @@ import 'package:trooper/src/state/stateful_data.dart';
 import 'package:trooper/src/storage/cache_entry.dart';
 import 'package:trooper/src/storage/cache_store.dart';
 import 'package:trooper/src/storage/storage_envelope.dart';
-import 'package:trooper/src/stream/keyed_stateful_stream.dart';
 import 'package:trooper/src/stream/stateful_stream.dart';
 import 'package:trooper/src/telemetry/telemetry_hub.dart';
 import 'package:trooper/src/telemetry/trooper_event.dart';
@@ -27,7 +27,7 @@ import 'package:trooper/types/parameter.dart';
 /// - Request coalescing and concurrency control via [TrooperQueryQueue].
 /// - Diagnostic telemetry via [TelemetryHub].
 ///
-/// Use `operator []` or `.key(key)` to acquire a bound [Accessor] for a specific entity key.
+/// Use `operator []` to acquire a bound [Accessor] for a specific entity key.
 ///
 /// ### Example:
 /// ```dart
@@ -45,7 +45,7 @@ import 'package:trooper/types/parameter.dart';
 ///   print('Loaded ${map.length} lectures');
 /// });
 /// ```
-class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
+final class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
     extends KeyedTrooper<K, T, P> {
   /// Creates a [KeyedQueryTrooper] with a standard fetch function.
   factory KeyedQueryTrooper({
@@ -57,7 +57,7 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
     CacheStore? cache,
     TrooperQueryQueue? queryQueue,
     TelemetryHub? telemetry,
-    KeyedStatefulStream<K, T>? stream,
+    bool releaseUnwatchedKeys = false,
   }) => KeyedQueryTrooper.cancellable(
     namespace: namespace,
     fetch: (key, param, _) => fetch(key, param),
@@ -67,7 +67,7 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
     cache: cache,
     queryQueue: queryQueue,
     telemetry: telemetry,
-    stream: stream,
+    releaseUnwatchedKeys: releaseUnwatchedKeys,
   );
 
   /// Creates a [KeyedQueryTrooper] with cooperative cancellation support via [TrooperCancelToken].
@@ -80,7 +80,7 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
     super.cache,
     super.queryQueue,
     super.telemetry,
-    super.stream,
+    super.releaseUnwatchedKeys,
   });
 
   /// The underlying fetch function executed to retrieve data for a key.
@@ -89,12 +89,15 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
   /// Optional codec for L2 storage serialization.
   final TrooperCodec<T>? codec;
 
+  final RequestSequencer _sequencer = RequestSequencer();
+
   /// Subscript operator to acquire a bound [Accessor] targeting [key].
   @override
   Accessor<T, P> operator [](K key) => _KeyedBoundAccessor<K, T, P>(this, key);
 
   /// Reads the value for [key], returning cached data if fresh or fetching from source.
   Future<T> getKey(K key, P parameter, {bool forceRefresh = false}) async {
+    ensureNotDisposed('getKey');
     final paramChanged = isParamChanged(key, parameter);
     final qKey = buildQueryKey(key, parameter);
 
@@ -140,7 +143,7 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
 
       // 2. Check L2 Storage only if L1 missed (entry == null)
       if (entry == null) {
-        final storage = config.storage;
+        final storage = storageFor(qKey);
         final currentCodec = codec;
         if (storage != null && currentCodec != null) {
           try {
@@ -148,7 +151,7 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
             if (serialized != null) {
               final envelope = StorageEnvelope.tryDecode(serialized);
               if (envelope == null) {
-                storage.delete(qKey.storageKey).ignore();
+                discardStored(storage, qKey);
               } else if (envelope.isExpired) {
                 if (config.stalePolicy ==
                     StalePolicy.keepStaleWhileRevalidate) {
@@ -189,7 +192,7 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
 
                   return restoredData;
                 } else {
-                  storage.delete(qKey.storageKey).ignore();
+                  deleteStored(storage, qKey);
                 }
               } else {
                 final restoredData = currentCodec.decode(envelope.payload);
@@ -220,8 +223,8 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
                 return restoredData;
               }
             }
-          } catch (_) {
-            storage.delete(qKey.storageKey).ignore();
+          } catch (error, stackTrace) {
+            discardStored(storage, qKey, error, stackTrace);
           }
         }
       }
@@ -252,6 +255,7 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
 
   /// Triggers a fetch of [key] in the background without awaiting the result.
   void triggerKey(K key, P parameter, {bool forceRefresh = false}) {
+    ensureNotDisposed('triggerKey');
     getKey(key, parameter, forceRefresh: forceRefresh).ignore();
   }
 
@@ -300,6 +304,7 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
 
   /// Watches state updates for a single [key].
   StatefulStream<T> watchKey(K key, {P? initialParameter, bool eager = false}) {
+    ensureNotDisposed('watchKey');
     if (eager && initialParameter != null) {
       final state = currentKey(key);
       if (state is DataInitial ||
@@ -314,6 +319,7 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
 
   /// Manually sets data for [key] in cache and stream, returning the set [data].
   T setKey(K key, T data, P parameter) {
+    ensureNotDisposed('setKey');
     final qKey = buildQueryKey(key, parameter);
 
     if (config.hasCache) {
@@ -331,7 +337,7 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
       telemetry.emit(DataSetEvent(qKey, source: DataSource.local));
     }
 
-    final storage = config.storage;
+    final storage = storageFor(qKey);
     final currentCodec = codec;
     if (storage != null && currentCodec != null) {
       try {
@@ -345,28 +351,9 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
               ? config.timeToLive.inMilliseconds
               : null,
         );
-        storage.write(qKey.storageKey, envelope.encode()).catchError((
-          Object error,
-          StackTrace stacktrace,
-        ) {
-          telemetry.emit(
-            PersistenceErrorEvent(
-              qKey,
-              error: error,
-              duration: Duration.zero,
-              stackTrace: stacktrace,
-            ),
-          );
-        });
-      } catch (error, stacktrace) {
-        telemetry.emit(
-          PersistenceErrorEvent(
-            qKey,
-            error: error,
-            duration: Duration.zero,
-            stackTrace: stacktrace,
-          ),
-        );
+        writeStored(storage, qKey, envelope.encode());
+      } catch (error, stackTrace) {
+        reportPersistenceError(qKey, error, stackTrace);
       }
     }
 
@@ -377,6 +364,7 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
   /// Recovers all keys that are currently in an error state by triggering [refreshKey].
   @override
   FutureOr<void> recover() {
+    if (isDisposed) return null;
     for (final key in stream.activeKeys) {
       if (stream.stateOf(key).isError) {
         final param = lastParamOf(key);
@@ -390,6 +378,7 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
   /// Purges cache, cancels in-flight requests, and refreshes keys that have active listeners.
   @override
   FutureOr<void> didChangeDependencies() {
+    if (isDisposed) return null;
     final params = Map<K, P>.of(lastParams);
     invalidate();
     queryQueue.cancelNamespace(namespace);
@@ -418,6 +407,11 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
     }
     runSideEffect(() => sideEffects?.onRequestStarted?.call(key, param));
 
+    final sequence = _sequencer.begin(qKey);
+    bool? isLatest;
+    // Settles exactly once; false if a newer request was applied already.
+    bool claim() => isLatest ??= _sequencer.settle(qKey, sequence);
+
     try {
       var result = await queryQueue.execute<T>(
         key: qKey,
@@ -430,7 +424,7 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
       );
       stopwatch.stop();
 
-      if (!isParamChanged(key, param)) {
+      if (claim() && !isParamChanged(key, param)) {
         if (config.hasCache) {
           cache.put(
             qKey,
@@ -443,7 +437,7 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
         final entry = config.hasCache ? cache.getEntry<T>(qKey) : null;
 
         // Persist to L2 storage asynchronously if configured
-        final storage = config.storage;
+        final storage = storageFor(qKey);
         final currentCodec = codec;
         if (storage != null && currentCodec != null) {
           try {
@@ -457,29 +451,9 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
                   ? config.timeToLive.inMilliseconds
                   : null,
             );
-            storage.write(qKey.storageKey, envelope.encode()).catchError((
-              Object error,
-              StackTrace stacktrace,
-            ) {
-              telemetry.emit(
-                PersistenceErrorEvent(
-                  qKey,
-                  error: error,
-                  duration: stopwatch.elapsed,
-                  stackTrace: stacktrace,
-                ),
-              );
-            });
-          } catch (error, stacktrace) {
-            telemetry.emit(
-              PersistenceErrorEvent(
-                qKey,
-                error: error,
-                duration: stopwatch.elapsed,
-                stackTrace: stacktrace,
-              ),
-            );
-            // Non-critical persistence failure
+            writeStored(storage, qKey, envelope.encode(), stopwatch: stopwatch);
+          } catch (error, stackTrace) {
+            reportPersistenceError(qKey, error, stackTrace, stopwatch.elapsed);
           }
         }
 
@@ -517,7 +491,9 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
         () => sideEffects?.onError?.call(key, error, stackTrace, param),
       );
 
-      if (error is! TrooperCancelledException && !isParamChanged(key, param)) {
+      if (error is! TrooperCancelledException &&
+          claim() &&
+          !isParamChanged(key, param)) {
         stream.emitError(
           key,
           error,
@@ -527,6 +503,8 @@ class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
       }
 
       rethrow;
+    } finally {
+      claim();
     }
   }
 }
@@ -563,44 +541,4 @@ class _KeyedBoundAccessor<K extends Object, T, P extends Parameter>
 
   @override
   void invalidate() => _parent.invalidateKey(_key);
-}
-
-/// Convenience extension for parameterless [KeyedQueryTrooper] instances where `P` is `()`.
-extension ParameterlessKeyedQueryTrooper<K extends Object, T>
-    on KeyedQueryTrooper<K, T, ()> {
-  /// Reads the value for [key] without requiring an explicit `()` parameter.
-  Future<T> getKey(K key, {bool forceRefresh = false}) =>
-      this.getKey(key, const (), forceRefresh: forceRefresh);
-
-  /// Forces a fresh get of [key] without requiring an explicit `()` parameter.
-  Future<T> refreshKey(K key) => this.refreshKey(key, const ());
-
-  /// Triggers a fetch of [key] in the background without requiring an explicit `()` parameter.
-  void triggerKey(K key, {bool forceRefresh = false}) =>
-      this.triggerKey(key, const (), forceRefresh: forceRefresh);
-
-  /// Watches state updates for a single [key] without requiring an explicit `()` parameter.
-  StatefulStream<T> watchKey(K key, {bool eager = false}) =>
-      this.watchKey(key, initialParameter: const (), eager: eager);
-
-  /// Reads multiple keys concurrently without requiring an explicit `()` parameter.
-  Future<Map<K, StatefulData<T>>> getMany(
-    List<K> keys, {
-    bool forceRefresh = false,
-  }) => this.getMany(keys, const (), forceRefresh: forceRefresh);
-
-  /// Reads values for multiple [keys] concurrently without requiring an explicit `()` parameter.
-  Future<Map<K, T>> getAll(Iterable<K> keys, {bool forceRefresh = false}) =>
-      this.getAll(keys, const (), forceRefresh: forceRefresh);
-
-  /// Refreshes values for multiple [keys] concurrently without requiring an explicit `()` parameter.
-  Future<Map<K, T>> refreshKeys(Iterable<K> keys) =>
-      this.refreshKeys(keys, const ());
-
-  /// Triggers background fetches for multiple [keys] without requiring an explicit `()` parameter.
-  void triggerKeys(Iterable<K> keys, {bool forceRefresh = false}) =>
-      this.triggerKeys(keys, const (), forceRefresh: forceRefresh);
-
-  /// Manually sets data for [key] in cache and stream without requiring an explicit `()` parameter.
-  T setKey(K key, T data) => this.setKey(key, data, const ());
 }

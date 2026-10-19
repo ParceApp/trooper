@@ -44,7 +44,7 @@ Note: `package:trooper_bloc/trooper_bloc.dart` re-exports 100% of `package:troop
 1. **Separation of Concerns**: Troopers handle HTTP calls, L1/L2 caches, TTL expiry, SWR revalidation, and WebSocket streams. BLoCs and Cubits never touch storage or raw network clients directly.
 2. **Accessors over Raw Troopers**: `Tloc` and `Tubit` consume data sources through `Accessor<T, P>` or `KeyedAccessor<K, T, P>`.
 3. **Reactive Derivation**: Instead of manually wiring stream subscriptions and combining states, developers declare `sources` and define `matchSources`. The framework automatically evaluates dependencies and emits updates.
-4. **BLoC-Conformant Transitions**: All state changes triggered by source updates in `Tloc` flow through internal BLoC events (`TlocSourceUpdateEvent`), ensuring full auditability in `BlocObserver` (`onTransition`, `onChange`).
+4. **BLoC-Conformant Transitions**: All state changes triggered by source updates in `Tloc` flow through an internal BLoC event (not exported, visible by its `toString()`), ensuring full auditability in `BlocObserver` (`onTransition`, `onChange`).
 5. **Zero-Flicker SWR**: Because `DataRefreshing<T>` extends `DataLoaded<T>`, matching on `case DataLoaded(:final data)` keeps cached data on screen while background revalidation executes seamlessly.
 
 ---
@@ -56,7 +56,7 @@ Note: `package:trooper_bloc/trooper_bloc.dart` re-exports 100% of `package:troop
 | [`Tloc<Event, State>`](file:///Users/hannes/Developer/trooper/packages/trooper_bloc/lib/src/tloc.dart) | Reactive BLoC | Complex screens requiring domain events, event queues, or concurrent user actions |
 | [`Tubit<State>`](file:///Users/hannes/Developer/trooper/packages/trooper_bloc/lib/src/tubit.dart) | Reactive Cubit | State-driven views where state derives directly from sources without custom event queues |
 | [`TrooperSources<State>`](file:///Users/hannes/Developer/trooper/packages/trooper_bloc/lib/src/sources/trooper_sources.dart) | Core Reactive Mixin | Implements `watch()`, `matchSources()`, snapshot-locking, and loading/error fallbacks |
-| [`Watched<T>`](file:///Users/hannes/Developer/trooper/packages/trooper_bloc/lib/src/sources/watched.dart) | Watched Source Handle | Handle to an observed accessor; provides `.state`, `.dataOrNull`, `.refresh()`, `.get()` |
+| [`Watched<T>`](file:///Users/hannes/Developer/trooper/packages/trooper_bloc/lib/src/sources/watched.dart) | Watched Source Handle | Read-only snapshot of an observed accessor: `.state`, `.hasData`, `.isLoading`, `.isError`, `.dataOrNull` |
 | [`Effects<F>`](file:///Users/hannes/Developer/trooper/packages/trooper_bloc/lib/src/effects/effects.dart) | Presentation Effect Mixin | Emits one-off UI events (toasts, snackbars, navigation) without polluting state |
 | [`TlocEffectListener<B, F>`](file:///Users/hannes/Developer/trooper/packages/trooper_bloc/lib/src/widgets/tloc_effect_listener.dart) | Flutter Effect Widget | Listens to one-off effects from `Effects<F>` without causing widget rebuilds |
 | [`FakeAccessor<T, P>`](file:///Users/hannes/Developer/trooper/packages/trooper_bloc/lib/testing.dart) | Testing Utility | High-level test double for simulating accessor states in fast, deterministic unit tests |
@@ -139,7 +139,7 @@ class FeedTloc extends Tloc<FeedEvent, FeedState> {
   @override
   void handlers() {
     on<FeedRefreshRequested>((event, emit) async {
-      await _controller.articles.refresh();
+      await _controller.articles.refresh(());
     });
   }
 }
@@ -201,8 +201,8 @@ class UserProfileTubit extends Tubit<UserProfileState> {
 
   Future<void> refresh() async {
     await Future.wait([
-      _controller.users.refreshKey(userId),
-      _controller.settings.refresh(),
+      _controller.users[userId].refresh(()),
+      _controller.settings.refresh(()),
     ]);
   }
 }
@@ -353,6 +353,9 @@ Widget build(BuildContext context) {
 5. **Always return `.handled` or `.unhandled` from `matchSources`**: Never return arbitrary values or omit the return statement.
 6. **Use `DataLoaded` pattern matching for SWR**: `DataRefreshing` extends `DataLoaded`. Matching `case DataLoaded(:final data)` seamlessly maintains loaded UI while background refreshing occurs.
 7. **Use `Effects<F>` for one-shot UI actions**: Never use state flags like `isSuccess: true` that require immediate reset events.
+8. **Import what is not re-exported**: `trooper_bloc` re-exports `package:trooper/trooper.dart` only. Import `dart:async` for `FutureOr` (needed for `matchSources`) and `package:flutter_bloc/flutter_bloc.dart` for `Emitter`, `BlocProvider` and `BlocBuilder`.
+9. **Pass `()` explicitly**: Accessors with `P == ()` take the empty record: `accessor.refresh(())`, `keyed[id].get(())`. Inside `watch(accessor)` the `()` is filled in automatically.
+10. **Extend, never implement** `Tloc`, `Tubit` and `TlocEvent`. Concrete troopers are `final`: in tests, depend on `Accessor` and use `FakeAccessor` instead of mocking troopers.
 
 ### Anti-Patterns to Avoid
 - **Anti-Pattern**: Calling `emit()` inside an asynchronous callback in `handlers()` without using the `emit` parameter.
@@ -527,23 +530,21 @@ class AirQualityReport {
 
 // --- Data Controller (Trooper) ---
 class WeatherDataController extends TrooperController {
-  WeatherDataController() : super('WeatherDataController');
-
-  late final weather = QueryTrooper<WeatherReport, ({String city})>(
-    'weather',
-    fetcher: (params, _) async {
+  late final weather = query<WeatherReport, ({String city})>(
+    namespace: 'weather',
+    fetch: (params) async {
       // Simulated network fetch
       return WeatherReport(city: params.city, tempC: 22.5);
     },
-    config: const TrooperConfig(cacheDuration: Duration(minutes: 10)),
+    config: const TrooperConfig(timeToLive: Duration(minutes: 10)),
   );
 
-  late final airQuality = QueryTrooper<AirQualityReport, ({String city})>(
-    'airQuality',
-    fetcher: (params, _) async {
+  late final airQuality = query<AirQualityReport, ({String city})>(
+    namespace: 'airQuality',
+    fetch: (params) async {
       return const AirQualityReport(aqiIndex: 42);
     },
-    config: const TrooperConfig(cacheDuration: Duration(minutes: 10)),
+    config: const TrooperConfig(timeToLive: Duration(minutes: 10)),
   );
 }
 

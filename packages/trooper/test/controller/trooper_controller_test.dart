@@ -238,6 +238,22 @@ void main() {
       },
     );
   });
+
+  group('split factories', () {
+    test('keyedLocalBuilder seeds every key from the factory', () async {
+      final controller = _SplitFactoryController();
+      expect(controller.quantities.currentKeyData('a'), 1);
+      expect(controller.quantities.currentKey('b'), isA<DataLoaded<int>>());
+      await controller.dispose();
+    });
+
+    test('cancellableMutation passes a cancel token to the action', () async {
+      final controller = _SplitFactoryController();
+      expect(await controller.save.execute((value: 'x')), 'saved x');
+      expect(controller.lastToken, isNotNull);
+      await controller.dispose();
+    });
+  });
 }
 
 class _TestLifecycleService with LifecycleAware {
@@ -267,14 +283,14 @@ class _FullFeaturedController extends TrooperController {
 
   final _TestLifecycleService externalLifecycle;
 
-  late final cancellableQ = query<String, ()>(
+  late final cancellableQ = cancellableQuery<String, ()>(
     namespace: 'cancellable_q',
-    cancellableFetch: (_, token) async => 'Cancellable OK',
+    fetch: (_, token) async => 'Cancellable OK',
   );
 
-  late final cancellableKQ = keyedQuery<int, String, ()>(
+  late final cancellableKQ = cancellableKeyedQuery<int, String, ()>(
     namespace: 'cancellable_kq',
-    cancellableFetch: (id, _, token) async => 'Keyed $id OK',
+    fetch: (id, _, token) async => 'Keyed $id OK',
   );
 
   @override
@@ -353,4 +369,21 @@ class _FullFactoryController extends TrooperController {
 
   @override
   void onDispose() => disposeCalled = true;
+}
+
+class _SplitFactoryController extends TrooperController {
+  TrooperCancelToken? lastToken;
+
+  late final quantities = keyedLocalBuilder<String, int, ()>(
+    namespace: 'split_quantities',
+    initialValueFactory: (_) => 1,
+  );
+
+  late final save = cancellableMutation<String, ({String value})>(
+    namespace: 'split_save',
+    action: (param, token) async {
+      lastToken = token;
+      return 'saved ${param.value}';
+    },
+  );
 }

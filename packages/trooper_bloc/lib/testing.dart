@@ -3,7 +3,7 @@ import 'package:trooper/trooper.dart';
 
 /// Test utility creating an in-memory [Accessor] whose states can be synchronously
 /// and reactively manipulated during unit tests.
-class FakeAccessor<T, P extends Parameter> implements Accessor<T, P> {
+final class FakeAccessor<T, P extends Parameter> implements Accessor<T, P> {
   /// Creates a [FakeAccessor] with optional [initialData] or [initialState].
   FakeAccessor({T? initialData, StatefulData<T>? initialState})
     : _state =

@@ -35,6 +35,7 @@ void main() {
           const RetryPolicy.exponential(
             maxRetries: 3,
             initialDelay: Duration(milliseconds: 100),
+            jitter: 0,
           ),
         ),
         [0, 100, 300, 700],
@@ -48,6 +49,7 @@ void main() {
             maxRetries: 3,
             initialDelay: Duration(milliseconds: 100),
             maxDelay: Duration(milliseconds: 250),
+            jitter: 0,
           ),
         ),
         [0, 100, 300, 550],
@@ -76,7 +78,7 @@ void main() {
           ).join(','),
       };
       expect(schedules.length, greaterThan(1));
-    }, skip: 'F-023');
+    });
   });
 
   group('ERR-04/SEC-03 corrupt L2 entry falls back to fetch', () {
@@ -138,7 +140,7 @@ void main() {
           StorageEnvelope.currentVersion,
         );
         await q.dispose();
-      }, skip: label.contains('version') ? 'F-024' : null);
+      });
     }
   });
 
@@ -167,7 +169,7 @@ void main() {
     await pumpEventQueue();
     expect(events.whereType<PersistenceErrorEvent>(), isNotEmpty);
     await q.dispose();
-  }, skip: 'F-021');
+  });
 
   test('ERR-02 failing side effect is not swallowed silently', () async {
     final hub = TelemetryHub.isolated();
@@ -197,7 +199,7 @@ void main() {
         errors.isNotEmpty ||
         events.any((e) => '$e'.contains('side effect bug'));
     expect(surfaced, isTrue, reason: 'error must reach the zone or telemetry');
-  }, skip: 'F-020');
+  });
 
   group('SEC-02 logging', () {
     Future<List<String>> logged(
@@ -238,6 +240,6 @@ void main() {
         await q.dispose();
       });
       expect(out.join('\n'), isNot(contains('jane@example.com')));
-    }, skip: 'F-027');
+    });
   });
 }

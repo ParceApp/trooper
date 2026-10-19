@@ -5,6 +5,7 @@ import 'package:trooper/src/storage/cache_store.dart';
 import 'package:trooper/src/config/trooper_config.dart';
 import 'package:trooper/src/core/accessor.dart';
 import 'package:trooper/src/effects/trooper_side_effects.dart';
+import 'package:trooper/src/storage/storage_access.dart';
 import 'package:trooper/src/key/query_key.dart';
 import 'package:trooper/src/lifecycle/lifecycle_aware.dart';
 import 'package:trooper/src/state/data_metadata.dart';
@@ -18,18 +19,19 @@ import 'package:trooper/types/parameter.dart';
 /// Abstract base class for all single-resource troopers.
 ///
 /// Implements [Accessor] and [LifecycleAware], managing:
-/// - Reactive state broadcast through [streamController].
+/// - Reactive state broadcast through [stream].
 /// - In-memory L1 cache through [cache].
 /// - Concurrency, deduplication, and cancellation through [queryQueue].
 /// - Diagnostic telemetry through [telemetry].
 /// - Configuration parameters through [config].
-abstract class Trooper<T, P extends Parameter>
-    with LifecycleAware
+abstract base class Trooper<T, P extends Parameter>
+    with LifecycleAware, StorageAccess
     implements Accessor<T, P> {
   /// Creates a [Trooper] with the specified [namespace] and dependencies.
   ///
-  /// [config] can be set if a custom [TrooperConfig] is desired; otherwise, the static [defaultConfig] is used.
+  /// [config] can be set if a custom [TrooperConfig] is desired; otherwise, `const TrooperConfig()` is used.
   /// In most of the use cases [cache], [queryQueue], and [telemetry] are provided by the framework, but they can be overridden for testing or advanced use cases.
+  @internal
   Trooper({
     required this.namespace,
     this.sideEffects,
@@ -37,31 +39,26 @@ abstract class Trooper<T, P extends Parameter>
     CacheStore? cache,
     TrooperQueryQueue? queryQueue,
     TelemetryHub? telemetry,
-    StatefulStreamController<T>? streamController,
-  }) : config = config ?? defaultConfig,
+    StatefulData<T> initialState = const DataInitial(),
+  }) : config = config ?? const TrooperConfig(),
        _ownsCache = (cache == null),
        _ownsQueryQueue = (queryQueue == null),
        cache = cache ?? CacheStore(),
        queryQueue = queryQueue ?? TrooperQueryQueue(),
        telemetry = telemetry ?? TelemetryHub.global,
-       streamController = streamController ?? StatefulStreamController<T>();
-
-  // Static configuration for defaults
-  static TrooperConfig get defaultConfig => TrooperConfig.defaultConfig;
-
-  /// Sets the default configuration for all troopers.
-  /// This config can be overridden by individual troopers via their constructor.
-  static void setDefaultConfig(TrooperConfig config) {
-    TrooperConfig.setDefaultConfig(config);
-  }
+       streamController = StatefulStreamController<T>(
+         initialState: initialState,
+       );
 
   final bool _ownsCache;
   final bool _ownsQueryQueue;
 
   /// Logical name of this query or resource family.
+  @override
   final String namespace;
 
   /// Configuration defining TTL, stale policy, and persistence.
+  @override
   final TrooperConfig config;
 
   /// Optional side-effect callbacks for lifecycle hooks.
@@ -74,9 +71,11 @@ abstract class Trooper<T, P extends Parameter>
   final TrooperQueryQueue queryQueue;
 
   /// Telemetry hub for diagnostic events.
+  @override
   final TelemetryHub telemetry;
 
   /// Replay-enabled stateful stream controller.
+  @internal
   final StatefulStreamController<T> streamController;
 
   /// The underlying [StatefulStream] emitting [StatefulData] transitions.
@@ -92,39 +91,56 @@ abstract class Trooper<T, P extends Parameter>
   /// The parameter used for the most recent operation, or `null` if none has been provided yet.
   P? get lastParam => _lastParam;
 
+  /// Throws a [StateError] naming [operation] if this trooper has been
+  /// disposed (see [LifecycleAware.dispose]).
+  @internal
+  void ensureNotDisposed(String operation) {
+    if (_isDisposed) {
+      throw StateError(
+        'Cannot call $operation() on disposed $runtimeType "$namespace".',
+      );
+    }
+  }
+
   /// Records the last executed parameter.
-  @protected
+  @internal
   void recordParam(P parameter) {
     _lastParam = parameter;
   }
 
   /// Builds the unique [QueryKey] for this trooper.
-  @protected
+  @internal
   QueryKey buildQueryKey(P parameter) => QueryKey(namespace, parameter);
 
   /// Returns `true` if [parameter] differs from the last used parameter.
-  @protected
+  @internal
   bool isParamChanged(P parameter) {
     if (_lastParam == null) return false;
     return parameter != _lastParam;
   }
 
-  /// Safely executes an asynchronous side-effect callback without letting exceptions escape.
-  @protected
+  /// Executes a side-effect callback without letting its failure break the
+  /// request.
+  ///
+  /// A synchronous or asynchronous failure is reported to the current [Zone]
+  /// as an uncaught error (like a failing stream listener), so it reaches
+  /// `runZonedGuarded`, `PlatformDispatcher.onError` or a crash reporter.
+  @internal
   void runSideEffect(FutureOr<void> Function()? callback) {
     if (callback == null) return;
     try {
       final result = callback();
       if (result is Future) {
-        result.ignore();
+        unawaited(result);
       }
-    } catch (_) {
-      // Non-critical side-effect failure
+    } catch (error, stackTrace) {
+      Zone.current.handleUncaughtError(error, stackTrace);
     }
   }
 
   @override
   StatefulStream<T> watch({P? initialParameter, bool eager = false}) {
+    ensureNotDisposed('watch');
     if (eager && initialParameter != null) {
       final state = current();
       if (state is DataInitial ||
@@ -146,6 +162,7 @@ abstract class Trooper<T, P extends Parameter>
   ///
   /// Useful internally for optimistic updates, cache seeding, or tests.
   T set(T data, P parameter) {
+    ensureNotDisposed('set');
     recordParam(parameter);
     final key = buildQueryKey(parameter);
 
@@ -170,8 +187,10 @@ abstract class Trooper<T, P extends Parameter>
 
   @override
   void invalidate() {
+    if (isDisposed) return;
     queryQueue.cancelNamespace(namespace);
     cache.removeName(namespace);
+    purgeStorage();
     _lastParam = null;
     streamController.emitInitial();
     if (telemetry.hasListeners) {
@@ -184,22 +203,26 @@ abstract class Trooper<T, P extends Parameter>
 
   @override
   void trigger(P parameter, {bool forceRefresh = false}) {
+    ensureNotDisposed('trigger');
     get(parameter, forceRefresh: forceRefresh).ignore();
   }
 
   @override
   void pause() {
+    if (isDisposed) return;
     cache.pause();
   }
 
   @override
   FutureOr<void> resume() {
+    if (isDisposed) return null;
     cache.resume();
   }
 
   /// Recovers the trooper state by re-fetching if currently in an error state.
   @override
   FutureOr<void> recover() {
+    if (isDisposed) return null;
     final param = _lastParam;
     if (streamController.isError && param != null) {
       refresh(param).ignore();
@@ -210,6 +233,7 @@ abstract class Trooper<T, P extends Parameter>
   /// cancelling in-flight requests, and re-fetching if active listeners exist.
   @override
   FutureOr<void> didChangeDependencies() {
+    if (isDisposed) return null;
     final param = _lastParam;
     queryQueue.cancelNamespace(namespace);
     invalidate();
@@ -224,9 +248,6 @@ abstract class Trooper<T, P extends Parameter>
   ///
   /// Prevents consumers from calling mutating methods or accessing internal state directly.
   late final Accessor<T, P> accessor = _BoundTrooperAccessor<T, P>(this);
-
-  /// Callable shorthand returning the read-only [accessor].
-  Accessor<T, P> call() => accessor;
 
   /// Closes stream controllers, timers, and any resources owned by this trooper.
   @override
@@ -275,10 +296,4 @@ class _BoundTrooperAccessor<T, P extends Parameter> implements Accessor<T, P> {
 
   @override
   void invalidate() => _trooper.invalidate();
-}
-
-/// Convenience extension for parameterless [Trooper] instances where `P` is `()`.
-extension ParameterlessTrooper<T> on Trooper<T, ()> {
-  /// Manually sets data in cache and emits [DataLoaded] without requiring an explicit `()` parameter.
-  T set(T data) => this.set(data, const ());
 }

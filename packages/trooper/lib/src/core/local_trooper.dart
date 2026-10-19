@@ -7,7 +7,6 @@ import 'package:trooper/src/error/trooper_exception.dart';
 import 'package:trooper/src/state/data_metadata.dart';
 import 'package:trooper/src/state/stateful_data.dart';
 import 'package:trooper/src/stream/stateful_stream.dart';
-import 'package:trooper/src/stream/stateful_stream_controller.dart';
 import 'package:trooper/src/storage/cache_entry.dart';
 import 'package:trooper/src/storage/storage_envelope.dart';
 import 'package:trooper/src/telemetry/trooper_event.dart';
@@ -42,7 +41,7 @@ import 'package:trooper/types/parameter.dart';
 /// // Reset back to initial value:
 /// themeTrooper.reset(());
 /// ```
-class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
+final class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
   /// Creates a [LocalTrooper] with the specified [initialValue].
   LocalTrooper({
     required super.namespace,
@@ -53,16 +52,11 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
     super.cache,
     super.queryQueue,
     super.telemetry,
-    StatefulStreamController<T>? streamController,
   }) : super(
-         streamController:
-             streamController ??
-             StatefulStreamController<T>(
-               initialState: DataLoaded(
-                 initialValue,
-                 metadata: DataMetadata.now(source: DataSource.local),
-               ),
-             ),
+         initialState: DataLoaded(
+           initialValue,
+           metadata: DataMetadata.now(source: DataSource.local),
+         ),
        ) {
     if (const () is P) {
       final key = buildQueryKey(const () as P);
@@ -90,6 +84,7 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
   /// and returns the newly set [value].
   @override
   T set(T value, P parameter) {
+    ensureNotDisposed('set');
     recordParam(parameter);
     final key = buildQueryKey(parameter);
 
@@ -116,7 +111,7 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
     runSideEffect(() => sideEffects?.onData?.call(value, parameter));
 
     // Persist to L2 storage asynchronously if configured
-    final storage = config.storage;
+    final storage = storageFor(key);
     final currentCodec = codec;
     if (storage != null && currentCodec != null) {
       try {
@@ -130,28 +125,10 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
               ? config.timeToLive.inMilliseconds
               : null,
         );
-        storage.write(key.storageKey, envelope.encode()).catchError((
-          Object error,
-          StackTrace stackTrace,
-        ) {
-          telemetry.emit(
-            PersistenceErrorEvent(
-              key,
-              error: error,
-              duration: Duration.zero,
-              stackTrace: stackTrace,
-            ),
-          );
-        });
+        writeStored(storage, key, envelope.encode());
       } catch (error, stackTrace) {
-        telemetry.emit(
-          PersistenceErrorEvent(
-            key,
-            error: error,
-            duration: Duration.zero,
-            stackTrace: stackTrace,
-          ),
-        );
+        reportPersistenceError(key, error, stackTrace);
+        if (error is TrooperCodecException) rethrow;
         throw TrooperStorageException(
           'Failed to serialize state for ${key.name}',
           error: error,
@@ -163,13 +140,14 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
   }
 
   /// Sets [value] in memory and awaits asynchronous persistence to [StorageBackend],
-  /// throwing a [TrooperStorageException] if writing to persistent storage fails.
+  /// throwing a [TrooperStorageException] if writing to persistent storage fails
+  /// or a [TrooperCodecException] if the codec cannot encode [value].
   Future<T> setAsync(T value, P parameter) async {
     set(value, parameter);
-    final storage = config.storage;
+    final key = buildQueryKey(parameter);
+    final storage = storageFor(key);
     final currentCodec = codec;
     if (storage != null && currentCodec != null) {
-      final key = buildQueryKey(parameter);
       try {
         final serialized = currentCodec.encode(value);
         final now = DateTime.now();
@@ -183,14 +161,8 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
         );
         await storage.write(key.storageKey, envelope.encode());
       } catch (error, stackTrace) {
-        telemetry.emit(
-          PersistenceErrorEvent(
-            key,
-            error: error,
-            duration: Duration.zero,
-            stackTrace: stackTrace,
-          ),
-        );
+        reportPersistenceError(key, error, stackTrace);
+        if (error is TrooperCodecException) rethrow;
         throw TrooperStorageException(
           'Failed to persist state for ${key.name} to storage backend',
           error: error,
@@ -212,14 +184,15 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
   /// Resets the state back to [initialValue], deletes persisted storage,
   /// and returns [initialValue].
   T reset(P parameter) {
+    ensureNotDisposed('reset');
     recordParam(parameter);
     final key = buildQueryKey(parameter);
 
     set(initialValue, parameter);
 
-    final storage = config.storage;
+    final storage = storageFor(key);
     if (storage != null) {
-      storage.delete(key.storageKey).ignore();
+      deleteStored(storage, key);
     }
 
     return initialValue;
@@ -229,20 +202,13 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
   /// throwing a [TrooperStorageException] if storage deletion fails.
   Future<T> resetAsync(P parameter) async {
     reset(parameter);
-    final storage = config.storage;
+    final key = buildQueryKey(parameter);
+    final storage = storageFor(key);
     if (storage != null) {
-      final key = buildQueryKey(parameter);
       try {
         await storage.delete(key.storageKey);
       } catch (error, stackTrace) {
-        telemetry.emit(
-          PersistenceErrorEvent(
-            key,
-            error: error,
-            duration: Duration.zero,
-            stackTrace: stackTrace,
-          ),
-        );
+        reportPersistenceError(key, error, stackTrace);
         throw TrooperStorageException(
           'Failed to delete persisted state for ${key.name} from storage backend',
           error: error,
@@ -258,12 +224,13 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
   /// [forceRefresh] is ignored for local troopers, as they are authoritative in-memory state.
   @override
   Future<T> get(P parameter, {bool forceRefresh = false}) async {
+    ensureNotDisposed('get');
     recordParam(parameter);
     final key = buildQueryKey(parameter);
 
     // Hydrate from L2 storage if configured and not yet hydrated
-    if (!_isHydrated && config.storage != null && codec != null) {
-      final storage = config.storage!;
+    if (!_isHydrated && storageFor(key) != null && codec != null) {
+      final storage = storageFor(key)!;
       final currentCodec = codec!;
 
       try {
@@ -271,9 +238,9 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
         if (serialized != null) {
           final envelope = StorageEnvelope.tryDecode(serialized);
           if (envelope == null) {
-            storage.delete(key.storageKey).ignore();
+            discardStored(storage, key);
           } else if (envelope.isExpired) {
-            storage.delete(key.storageKey).ignore();
+            deleteStored(storage, key);
           } else {
             final decoded = currentCodec.decode(envelope.payload);
             final entry = CacheEntry<T>(
@@ -290,9 +257,8 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
             return decoded;
           }
         }
-      } catch (_) {
-        // Corrupted storage entry
-        storage.delete(key.storageKey).ignore();
+      } catch (error, stackTrace) {
+        discardStored(storage, key, error, stackTrace);
       }
 
       _isHydrated = true;
@@ -303,6 +269,7 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
 
   @override
   StatefulStream<T> watch({P? initialParameter, bool eager = false}) {
+    ensureNotDisposed('watch');
     if (eager &&
         initialParameter != null &&
         !_isHydrated &&
@@ -316,6 +283,7 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
   /// Hydrates the local state from persistent L2 storage if configured and not yet hydrated.
   @override
   Future<void> initialize() async {
+    if (isDisposed) return;
     if (!_isHydrated && config.storage != null && codec != null) {
       final param = lastParam;
       if (param != null) {
@@ -331,6 +299,7 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
   /// Invalidates cache, clears persistent storage, and resets state to [DataInitial].
   @override
   void invalidate() {
+    if (isDisposed) return;
     _isHydrated = false;
     super.invalidate();
   }
@@ -338,6 +307,7 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
   /// Invalidates cache and optionally resets the state back to [initialValue].
   @override
   FutureOr<void> didChangeDependencies() {
+    if (isDisposed) return null;
     invalidate();
     if (config.refreshAfterChangeDependencies) {
       final param = lastParam;
@@ -346,19 +316,4 @@ class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
       }
     }
   }
-}
-
-/// Convenience extension for parameterless [LocalTrooper] instances where `P` is `()`.
-extension ParameterlessLocalTrooper<T> on LocalTrooper<T, ()> {
-  /// Sets [value] and awaits persistent storage without requiring an explicit `()` parameter.
-  Future<T> setAsync(T value) => this.setAsync(value, const ());
-
-  /// Updates the local state by applying [transform] without requiring an explicit `()` parameter.
-  T update(T Function(T current) transform) => this.update(transform, const ());
-
-  /// Resets the state back to [initialValue] without requiring an explicit `()` parameter.
-  T reset() => this.reset(const ());
-
-  /// Resets the state back to [initialValue] and awaits deletion from persistent storage without requiring an explicit `()` parameter.
-  Future<T> resetAsync() => this.resetAsync(const ());
 }

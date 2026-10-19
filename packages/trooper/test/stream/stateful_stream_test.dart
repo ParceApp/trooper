@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:test/test.dart';
 import 'package:trooper/trooper.dart';
+import 'package:trooper/src/stream/stateful_stream_controller.dart';
 
 void main() {
   group('StatefulStream', () {

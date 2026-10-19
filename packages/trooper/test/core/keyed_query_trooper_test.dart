@@ -259,37 +259,31 @@ void main() {
       query.dispose();
     });
 
-    test('ParameterlessKeyedQueryTrooper extension methods', () async {
+    test('KeyedQueryTrooper methods with () parameters', () async {
       var count = 0;
       final query = KeyedQueryTrooper<int, String, ()>(
         namespace: 'paramless_kq',
         fetch: (id, _) async => 'Result $id (${++count})',
       );
 
-      final val = await ParameterlessKeyedQueryTrooper(query).getKey(10);
+      final val = await query.getKey(10, ());
       expect(val, 'Result 10 (1)');
 
-      final refreshed = await ParameterlessKeyedQueryTrooper(
-        query,
-      ).refreshKey(10);
+      final refreshed = await query.refreshKey(10, ());
       expect(refreshed, 'Result 10 (2)');
 
-      ParameterlessKeyedQueryTrooper(query).triggerKey(10, forceRefresh: true);
+      query.triggerKey(10, (), forceRefresh: true);
       await Future<void>.delayed(const Duration(milliseconds: 10));
       expect(query.currentKeyData(10), 'Result 10 (3)');
 
-      ParameterlessKeyedQueryTrooper(query).setKey(10, 'Manual 10');
+      query.setKey(10, 'Manual 10', ());
       expect(query.currentKeyData(10), 'Manual 10');
 
-      final many = await ParameterlessKeyedQueryTrooper(
-        query,
-      ).getMany([10, 20]);
+      final many = await query.getMany([10, 20], ());
       expect(many[10]?.dataOrNull, 'Manual 10');
       expect(many[20]?.dataOrNull, 'Result 20 (4)');
 
-      final watchStream = ParameterlessKeyedQueryTrooper(
-        query,
-      ).watchKey(10, eager: false);
+      final watchStream = query.watchKey(10, initialParameter: ());
       expect(watchStream.currentData, 'Manual 10');
 
       query.dispose();

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:trooper/src/error/trooper_exception.dart';
 import 'package:trooper/src/state/stateful_data.dart';
 import 'package:trooper/src/storage/invalidatable.dart';
 import 'package:trooper/src/stream/stateful_stream.dart';
@@ -56,24 +57,10 @@ abstract interface class Accessor<T, P extends Parameter>
   T? currentData();
 
   /// Marks cached data as stale across all parameters, removes storage, and resets state to [DataInitial].
+  ///
+  /// Removes every persisted L2 entry of the namespace, including entries
+  /// written in earlier sessions. Requests still in flight are cancelled:
+  /// their callers receive a [TrooperCancelledException].
   @override
   void invalidate();
-}
-
-/// Convenience extension for parameterless [Accessor] instances where `P` is `()`.
-extension ParameterlessAccessor<T> on Accessor<T, ()> {
-  /// Watches reactive state updates without requiring an explicit `()` parameter.
-  StatefulStream<T> watch({bool eager = false}) =>
-      this.watch(initialParameter: const (), eager: eager);
-
-  /// Reads the value without requiring an explicit `()` parameter.
-  Future<T> get({bool forceRefresh = false}) =>
-      this.get(const (), forceRefresh: forceRefresh);
-
-  /// Forces a fresh get without requiring an explicit `()` parameter.
-  Future<T> refresh() => this.refresh(const ());
-
-  /// Triggers a fetch in the background without requiring an explicit `()` parameter.
-  void trigger({bool forceRefresh = false}) =>
-      this.trigger(const (), forceRefresh: forceRefresh);
 }

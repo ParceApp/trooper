@@ -148,7 +148,7 @@ extension LoadMoreItems<E, PP extends Object> on LoadMoreData<List<E>, PP> {
 /// When the wrapped source is invalidated (for example by a mutation's
 /// `invalidateOnSuccess`), the feed reloads its first page if it has listeners,
 /// or resets to [DataInitial] otherwise.
-class LoadMore<TPage, F extends Parameter, PP extends Object>
+final class LoadMore<TPage, F extends Parameter, PP extends Object>
     with LifecycleAware
     implements Accessor<LoadMoreData<TPage, PP>, F> {
   /// Creates a [LoadMore] feed over [source].
@@ -183,11 +183,19 @@ class LoadMore<TPage, F extends Parameter, PP extends Object>
   int _generation = 0;
   Future<LoadMoreData<TPage, PP>>? _firstPageFuture;
   Future<void>? _nextPageFuture;
+  Completer<void>? _nextPageDone;
   bool _sourceHadState = false;
   bool _isDisposed = false;
 
   /// Whether this feed has been disposed.
   bool get isDisposed => _isDisposed;
+
+  StateError _disposedError(String operation) =>
+      StateError('Cannot call $operation() on a disposed LoadMore.');
+
+  void _ensureNotDisposed(String operation) {
+    if (_isDisposed) throw _disposedError(operation);
+  }
 
   /// Whether another page can be loaded.
   bool get hasNextPage => _controller.currentData?.hasNextPage ?? false;
@@ -200,6 +208,7 @@ class LoadMore<TPage, F extends Parameter, PP extends Object>
     F? initialParameter,
     bool eager = false,
   }) {
+    _ensureNotDisposed('watch');
     if (eager && initialParameter != null) {
       if (current() is DataInitial || _filter != initialParameter) {
         get(initialParameter).ignore();
@@ -217,6 +226,7 @@ class LoadMore<TPage, F extends Parameter, PP extends Object>
     F parameter, {
     bool forceRefresh = false,
   }) {
+    if (_isDisposed) return Future.error(_disposedError('get'));
     if (!forceRefresh && _filter == parameter) {
       final pending = _firstPageFuture;
       if (pending != null) return pending;
@@ -234,6 +244,7 @@ class LoadMore<TPage, F extends Parameter, PP extends Object>
 
   @override
   void trigger(F parameter, {bool forceRefresh = false}) {
+    _ensureNotDisposed('trigger');
     get(parameter, forceRefresh: forceRefresh).ignore();
   }
 
@@ -241,9 +252,12 @@ class LoadMore<TPage, F extends Parameter, PP extends Object>
   ///
   /// Does nothing if no pages are loaded, the end was reached, the first page is
   /// reloading, or the last next-page request failed (use [retryNextPage]).
-  /// Concurrent calls share the in-flight request. Never throws: failures are
-  /// reported through [LoadMoreData.nextPageError].
+  /// Concurrent calls share the in-flight request. Failures are reported
+  /// through [LoadMoreData.nextPageError]; the only error thrown is a
+  /// [StateError] after [dispose]. Completes early, without
+  /// appending, when the feed is reset (filter change, refresh or invalidate).
   Future<void> fetchNextPage() {
+    if (_isDisposed) return Future.error(_disposedError('fetchNextPage'));
     final pending = _nextPageFuture;
     if (pending != null) return pending;
 
@@ -263,11 +277,18 @@ class LoadMore<TPage, F extends Parameter, PP extends Object>
     _controller.emitData(
       data.copyWith(isFetchingNextPage: true, clearNextPageError: true),
     );
-    return _nextPageFuture = _fetchNextPage(filter, pageParam, generation);
+    // Completes when the page is applied or dropped, or when the feed resets,
+    // whichever comes first, independent of the source's conflict policy.
+    final done = _nextPageDone = Completer<void>();
+    _fetchNextPage(filter, pageParam, generation).whenComplete(() {
+      if (!done.isCompleted) done.complete();
+    });
+    return _nextPageFuture = done.future;
   }
 
   /// Clears a failed next-page request and loads the next page again.
   Future<void> retryNextPage() {
+    if (_isDisposed) return Future.error(_disposedError('retryNextPage'));
     final data = _controller.currentData;
     if (data != null && data.hasNextPageError && _nextPageFuture == null) {
       _controller.emitData(data.copyWith(clearNextPageError: true));
@@ -286,6 +307,7 @@ class LoadMore<TPage, F extends Parameter, PP extends Object>
   /// The wrapped source is not invalidated.
   @override
   void invalidate() {
+    if (_isDisposed) return;
     _resetRequests();
     _filter = null;
     _controller.emitInitial();
@@ -294,6 +316,7 @@ class LoadMore<TPage, F extends Parameter, PP extends Object>
   /// Retries the first page if it failed, or the next page if that failed.
   @override
   FutureOr<void> recover() {
+    if (_isDisposed) return null;
     final filter = _filter;
     if (filter == null) return null;
     if (_controller.isError) {
@@ -403,6 +426,9 @@ class LoadMore<TPage, F extends Parameter, PP extends Object>
     _generation++;
     _firstPageFuture = null;
     _nextPageFuture = null;
+    final done = _nextPageDone;
+    _nextPageDone = null;
+    if (done != null && !done.isCompleted) done.complete();
   }
 
   /// Reacts to the wrapped source being invalidated (a transition to [DataInitial]).
