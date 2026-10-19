@@ -358,10 +358,11 @@ dimensions:
         findings: [F-026]
       - id: SEC-02
         priority: M
-        status: partial
+        status: met
         automated_in_ci: false
-        evidence: "error_audit_test.dart SEC-02 (payload not logged: green; query parameters logged: red); logger is opt-in via attach()"
+        evidence: "error_audit_test.dart SEC-02 (payload and query parameters not logged: green); trooper_telemetry_test.dart parameter masking group"
         findings: [F-027]
+        note: "ConsoleTrooperLogger masks parameters and entity keys as FNV-1a hash by default, logParameters: true opts in (additive); event objects still carry the raw QueryKey for custom listeners (documented)"
       - id: SEC-03
         priority: M
         status: partial
@@ -670,7 +671,7 @@ findings:
     severity: P1
     criterion: SEC-02
     freeze_relevant: false
-    status: open
+    status: closed
   - id: F-028
     severity: P1
     criterion: API-01

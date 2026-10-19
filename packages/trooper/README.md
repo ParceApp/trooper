@@ -340,6 +340,12 @@ TelemetryHub.global.addListener((event) {
 });
 ```
 
+`ConsoleTrooperLogger` never prints response payloads. Query parameters and entity keys
+often contain personal data, so it prints them as a short stable hash
+(`QueryKey(users, parameter: #1f3a9c2e)`). Use `ConsoleTrooperLogger(logParameters: true)`
+for plain text, e.g. only in debug builds. Events themselves (`event.toString()`, a custom
+listener) still contain the parameters, so mask them in your own loggers too.
+
 Events track cache hits, cache misses, request durations, SWR triggers, persistence errors, and network failures with microsecond precision.
 
 ## Testing

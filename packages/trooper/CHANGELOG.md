@@ -9,6 +9,7 @@
 * **Docs**: `invalidate()` cancels in-flight requests; their callers receive a `TrooperCancelledException`.
 * **Fix**: `QueryConflictPolicy.parallel` no longer lets an older response overwrite a newer one in stream, cache, or storage.
 * **Fix**: `KeyedStreamTrooper.dispose()` no longer fails with `ConcurrentModificationError` when a listener changes keys or disposes during cancellation.
+* **Behavior change / new (additive API)**: `ConsoleTrooperLogger` masks query parameters and entity keys as a short stable hash by default, also inside Trooper's own error messages; `ConsoleTrooperLogger(logParameters: true)` prints them in plain text.
 * **New (additive API)**: `CacheStore(maxEntries: …)` caps the L1 store with least-recently-used eviction; the default stays unbounded. Memory bounds and defaults are documented on `CacheStore`.
 * **New (additive API)**: `RetryPolicy.jitter` (also on `RetryPolicy.linear` and `.exponential`), default `RetryPolicy.defaultJitter = 0.5`. Each retry delay is drawn from `[d * (1 - jitter), d]`, so clients that failed together no longer retry in lockstep; `maxDelay` stays the upper bound. **Behavior change**: retry delays are randomized by default; pass `jitter: 0` for exact delays. `RetryPolicy.none()` and `.immediate()` use no jitter.
 * **Docs**: README retry example used a non-existent `multiplier:` parameter; it is `backoffMultiplier:`.
