@@ -23,6 +23,7 @@ If you know TanStack Query from the web, Trooper follows a similar mental model:
 - [Concurrency & Request Deduplication](#concurrency--request-deduplication)
 - [Retry Policies & Timeouts](#retry-policies--timeouts)
 - [Cache Configuration](#cache-configuration-trooperconfig)
+- [Persistence & Sensitive Data](#persistence--sensitive-data)
 - [Observability & Logging](#observability--logging)
 - [Testing](#testing)
 - [Ecosystem](#ecosystem)
@@ -324,6 +325,106 @@ const customConfig = TrooperConfig(
 
 // Ephemeral (TTL = 0, always fetches fresh data)
 const noCache = TrooperConfig.noCache();
+```
+
+## Persistence & Sensitive Data
+
+With a `codec` and `TrooperConfig(storage: ...)`, troopers persist their data (L2) so it
+survives app restarts. Trooper itself does **not** encrypt anything:
+
+- The value is stored as **plain text**: the codec output (usually JSON) inside a JSON
+  envelope with `version`, `payload`, `createdAt` and optional expiry fields. Envelope
+  version 1 is stable; entries with a missing or unknown version are discarded and fetched
+  again.
+- Storage keys have the layout `trooper:1:<namespace>:<parameter>[:<key>]`, built from
+  `toString()` of parameter and entity key. Keys stay readable, because `invalidate()` and
+  `clearAll()` find the entries of a namespace by this prefix. Do not put secrets into the
+  parameters or entity keys of persisted queries.
+- `controller.clearAll()` (e.g. on logout) and `invalidate()` delete the persisted entries of
+  their namespaces, including entries from earlier sessions.
+
+For tokens, personal or health data, either do not persist the query (no codec / no storage)
+or wrap your backend so values are encrypted at rest. `StorageBackend` is a small interface,
+so a decorator is enough:
+
+```dart
+/// Encrypts values (not keys) before they reach [inner].
+class EncryptedStorageBackend implements StorageBackend {
+  EncryptedStorageBackend(
+    this.inner, {
+    required this.encrypt,
+    required this.decrypt,
+  });
+
+  final StorageBackend inner;
+
+  /// E.g. AES-GCM with a key from the platform keystore (package:cryptography).
+  final Future<String> Function(String plainText) encrypt;
+  final Future<String> Function(String cipherText) decrypt;
+
+  @override
+  Future<String?> read(String key) async {
+    final stored = await inner.read(key);
+    return stored == null ? null : decrypt(stored);
+  }
+
+  @override
+  Future<void> write(String key, String value) async =>
+      inner.write(key, await encrypt(value));
+
+  @override
+  Future<String?> delete(String key) => inner.delete(key);
+
+  @override
+  Future<void> clear() => inner.clear();
+
+  @override
+  Future<Set<String>> getAllKeys() => inner.getAllKeys();
+
+  @override
+  Future<bool> containsKey(String key) => inner.containsKey(key);
+}
+```
+
+If `decrypt` throws (wrong key after a reinstall, tampered data), the trooper reports a
+`PersistenceErrorEvent`, deletes the entry and fetches again.
+
+On Flutter, a backend over the platform keystore
+([`flutter_secure_storage`](https://pub.dev/packages/flutter_secure_storage)) is a ready-made
+alternative for small values:
+
+```dart
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
+class SecureStorageBackend implements StorageBackend {
+  SecureStorageBackend([this._storage = const FlutterSecureStorage()]);
+
+  final FlutterSecureStorage _storage;
+
+  @override
+  Future<String?> read(String key) => _storage.read(key: key);
+
+  @override
+  Future<void> write(String key, String value) =>
+      _storage.write(key: key, value: value);
+
+  @override
+  Future<String?> delete(String key) async {
+    final previous = await _storage.read(key: key);
+    await _storage.delete(key: key);
+    return previous;
+  }
+
+  @override
+  Future<void> clear() => _storage.deleteAll();
+
+  @override
+  Future<Set<String>> getAllKeys() async =>
+      (await _storage.readAll()).keys.toSet();
+
+  @override
+  Future<bool> containsKey(String key) => _storage.containsKey(key: key);
+}
 ```
 
 ## Observability & Logging

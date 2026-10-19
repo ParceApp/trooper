@@ -1,11 +1,20 @@
 import 'dart:async';
 
 import 'package:trooper/src/key/query_key.dart';
+import 'package:trooper/src/storage/storage_envelope.dart';
 
 /// An abstract interface for asynchronous key-value persistence backends (L2 storage).
 ///
 /// Implemented by adapters for SharedPreferences, SQLite, Hive, local files, etc.
 /// Allows queries to persist data across application restarts.
+///
+/// ### Plain text
+/// Trooper writes values as plain-text JSON (a [StorageEnvelope] around the codec
+/// output) and keys as readable [QueryKey.storageKey]s. Nothing is encrypted. For
+/// sensitive data, implement this interface over an encrypted store or wrap an
+/// existing backend in a decorator that encrypts values in [write] and decrypts
+/// them in [read]; keep keys unencrypted, as [getAllKeys] is matched by prefix.
+/// See "Persistence & Sensitive Data" in the README for a complete example.
 ///
 /// ### Example:
 /// ```dart

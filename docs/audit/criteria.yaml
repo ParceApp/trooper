@@ -352,10 +352,11 @@ dimensions:
     criteria:
       - id: SEC-01
         priority: M
-        status: partial
+        status: met
         automated_in_ci: false
-        evidence: "review: StorageBackend/TrooperCodec allow an encrypting wrapper; README, dartdoc and skills never mention plaintext persistence"
+        evidence: "README 'Persistence & Sensitive Data' (plain-text envelope and keys, EncryptedStorageBackend decorator and flutter_secure_storage backend examples); StorageBackend and TrooperCodec dartdoc; skills/trooper-reactive-data-flow/SKILL.md; test/storage/encrypted_backend_example_test.dart runs the README decorator"
         findings: [F-026]
+        note: "the hook is the StorageBackend interface (decorator); storage keys stay plain text by design and are documented as such"
       - id: SEC-02
         priority: M
         status: met
@@ -666,7 +667,7 @@ findings:
     severity: P1
     criterion: SEC-01
     freeze_relevant: false
-    status: open
+    status: closed
   - id: F-027
     severity: P1
     criterion: SEC-02

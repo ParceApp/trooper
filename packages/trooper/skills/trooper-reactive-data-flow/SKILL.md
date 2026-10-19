@@ -242,6 +242,8 @@ final themeSetting = LocalTrooper<String, ()>(
 );
 ```
 
+L2 data is stored as **plain text** (JSON envelope; keys contain `namespace` and the parameter's `toString()`). Never persist tokens or personal data unencrypted: skip `codec`/`storage` for such queries, or wrap the backend in an encrypting `StorageBackend` decorator (values only, keys stay plain for prefix purges). Call `controller.clearAll()` on logout to delete persisted entries.
+
 ---
 
 ## StreamTrooper & KeyedStreamTrooper

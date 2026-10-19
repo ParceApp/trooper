@@ -6,6 +6,10 @@ import 'dart:convert';
 /// Extends Dart's standard [Codec] from `dart:convert`, enabling seamless composition
 /// and full compatibility with the Dart SDK converter ecosystem.
 ///
+/// The encoded string is persisted as is (plain text) by the configured
+/// `StorageBackend`. Do not rely on a codec for confidentiality; encrypt in the
+/// backend instead (see `StorageBackend`).
+///
 /// ### Pre-built Presets:
 /// ```dart
 /// TrooperCodec.string;           // String <-> String
