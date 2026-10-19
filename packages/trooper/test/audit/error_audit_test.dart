@@ -138,7 +138,7 @@ void main() {
           StorageEnvelope.currentVersion,
         );
         await q.dispose();
-      }, skip: label.contains('version') ? 'F-024' : null);
+      });
     }
   });
 

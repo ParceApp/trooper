@@ -1,9 +1,23 @@
 import 'dart:convert';
 
+import 'package:trooper/src/key/query_key.dart';
+
 /// An envelope wrapping persisted cache payloads with lifecycle and expiration metadata.
 ///
 /// Stored in [StorageBackend] to allow deterministic staleness detection,
 /// instant hydration on app start, and Stale-While-Revalidate (SWR) background refreshes.
+///
+/// ### Stable format
+/// Version [currentVersion] is a JSON object with the fields `version`, `payload`
+/// (the codec output), `createdAt` and the optional `expiresAt` and
+/// `timeToLiveMillis` (ISO 8601 timestamps, milliseconds). Any change to these
+/// fields increments [currentVersion].
+///
+/// Troopers read entries via [tryDecode], which rejects entries without a version
+/// or with a version other than [currentVersion] (for example written by a newer
+/// app release). Such entries are deleted and the data is fetched again; there is
+/// no migration. The envelope version is independent of the storage key layout
+/// version in [QueryKey.storageKey] (`trooper:1:…`).
 class StorageEnvelope {
   /// Creates a [StorageEnvelope] with the provided [payload] and timestamps.
   const StorageEnvelope({
@@ -71,14 +85,20 @@ class StorageEnvelope {
   String encode() => jsonEncode(toJson());
 
   /// Decodes a [StorageEnvelope] from a raw JSON string.
+  ///
+  /// Does not check [version]; use [tryDecode] to read persisted entries.
   static StorageEnvelope decode(String raw) =>
       StorageEnvelope.fromJson(jsonDecode(raw) as Map<String, dynamic>);
 
   /// Safely attempts to decode a [StorageEnvelope] from a raw string, returning `null` on failure.
+  ///
+  /// Also returns `null` if the entry has no version or a version other than
+  /// [currentVersion].
   static StorageEnvelope? tryDecode(String raw) {
     try {
       final json = jsonDecode(raw);
       if (json is Map<String, dynamic> &&
+          json['version'] == currentVersion &&
           json.containsKey('payload') &&
           json.containsKey('createdAt')) {
         return StorageEnvelope.fromJson(json);

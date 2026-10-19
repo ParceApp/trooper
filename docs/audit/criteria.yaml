@@ -162,10 +162,11 @@ dimensions:
         findings: [F-023]
       - id: ERR-04
         priority: M
-        status: not_met
+        status: met
         automated_in_ci: false
-        evidence: "error_audit_test.dart ERR-04/SEC-03 (not json + wrong payload fall back to fetch; missing and future version used as current: red)"
+        evidence: "error_audit_test.dart ERR-04/SEC-03 (missing version, future version, not json, wrong payload type: all fall back to fetch and rewrite a current envelope); storage_envelope_test.dart version check"
         findings: [F-024]
+        note: "unknown and missing versions are discarded, not migrated; a migration hook is left to the API freeze package; format v1 documented as stable in StorageEnvelope dartdoc"
       - id: ERR-05
         priority: S
         status: partial
@@ -651,7 +652,7 @@ findings:
     severity: P1
     criterion: ERR-04
     freeze_relevant: false
-    status: open
+    status: closed
   - id: F-025
     severity: P3
     criterion: ERR-05

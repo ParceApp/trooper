@@ -67,5 +67,32 @@ void main() {
         expect(StorageEnvelope.tryDecode(''), isNull);
       },
     );
+
+    test('returns null for a missing or unknown version', () {
+      final created = DateTime(2026).toIso8601String();
+      expect(
+        StorageEnvelope.tryDecode('{"payload": "p", "createdAt": "$created"}'),
+        isNull,
+      );
+      expect(
+        StorageEnvelope.tryDecode(
+          '{"version": 999, "payload": "p", "createdAt": "$created"}',
+        ),
+        isNull,
+      );
+      expect(
+        StorageEnvelope.tryDecode(
+          '{"version": "1", "payload": "p", "createdAt": "$created"}',
+        ),
+        isNull,
+      );
+      expect(
+        StorageEnvelope.tryDecode(
+          '{"version": ${StorageEnvelope.currentVersion}, '
+          '"payload": "p", "createdAt": "$created"}',
+        )?.payload,
+        'p',
+      );
+    });
   });
 }
