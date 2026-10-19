@@ -116,3 +116,4 @@ mason-lock.json
 # Audit
 docs/audit/raw/
 .superpowers/
+docs/audit/
