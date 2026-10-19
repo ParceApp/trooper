@@ -1,5 +1,51 @@
 ## Unreleased
 
+### Breaking: API freeze for 1.0
+
+The public API is prepared for the 1.0 freeze (decisions in `docs/audit/api-freeze-decisions.md`,
+baseline in `docs/api/`). From 1.0 on, removing or changing a public symbol needs a major
+release.
+
+#### Migration from 0.1.x
+
+| 0.1.x | 1.0 |
+| :--- | :--- |
+| `query.get()`, `query.refresh()`, `query.trigger()`, `mutation()`, `keyed.getKey(k)`, `local.set(v)`, … (the `Parameterless*` extensions; they were shadowed and never callable) | pass `()` explicitly: `query.get(())`, `mutation(())`, `keyed.getKey(k, ())`, `local.set(v, ())`; `watch(initialParameter: (), eager: true)` |
+| `query(fetch: …)` / `query(cancellableFetch: …)` | `query(fetch: …)` / `cancellableQuery(fetch: (p, token) => …)` |
+| `keyedQuery(cancellableFetch: …)` | `cancellableKeyedQuery(fetch: (k, p, token) => …)` |
+| `mutation(cancellableAction: …)` | `cancellableMutation(action: (p, token) => …)` |
+| `keyedLocal(initialValueFactory: …)` | `keyedLocalBuilder(initialValueFactory: …)` |
+| `controller.executeOrder66()` | `controller.clearAll()` |
+| `TrooperConfig.setDefaultConfig(…)`, `Trooper.setDefaultConfig(…)`, `TrooperConfig.defaultConfig` | `TrooperController(defaultConfig: …)`; troopers without `config` use `const TrooperConfig()` |
+| `config.queryConflictPolicy` | `config.conflictPolicy` |
+| `ConflictPolicy` | `QueryConflictPolicy` |
+| `keyedAccessor.key(k)` | `keyedAccessor[k]` |
+| `trooper()` (returned the accessor) | `trooper.accessor` |
+| `KeyedLocalTrooper.currentKeyState(k)` | `currentKey(k)` |
+| overriding `initialize()`, `pause()`, `resume()`, `recover()`, `didChangeDependencies()`, `dispose()` in a `TrooperController` | override `onInit`, `onPause`, `onResume`, `onRecover`, `onDependenciesChanged`, `onDispose` (the drivers are `@nonVirtual`) |
+| `streamController:`, `stream:`, `streamManager:` constructor parameters; `StatefulStreamController`, `KeyedStatefulStream`, `KeyedTrooperAccessor` | removed from the public API; observe state through `watch`/`stream`, `watchAll()`, `watchKeys()` |
+| `class X extends QueryTrooper` / `implements QueryTrooper` (and the other concrete troopers, `TrooperConfig`, `RetryPolicy`, `CacheStore`, queues, side-effect classes, `InMemoryStorageBackend`, `StorageEnvelope`, `TelemetryHub`, `ConsoleTrooperLogger`) | these classes are `final`; mock through `Accessor`/`KeyedAccessor` and `FakeAccessor`, wrap `InMemoryStorageBackend` by delegation |
+| `class X extends Trooper` / `KeyedTrooper` | not supported (`abstract base`, internal helpers) |
+| `StorageBackend.delete` returning `Future<String?>`; `clear()`, `containsKey()` | `Future<void> delete(key)`; `clear` and `containsKey` removed (Trooper never called them) |
+| exhaustive `switch` over `TrooperException` or `TrooperEvent` | add a default case; both are `abstract final` and can gain subtypes in minor releases |
+| codec failures as raw `FormatException` etc. | `TrooperCodecException` (original error in `.error`), in `PersistenceErrorEvent` and from `LocalTrooper.set`/`setAsync` |
+| `class X extends DataLoaded` | not allowed (`final`) |
+
+#### Behavior changes
+
+* **Uniform behavior after `dispose()`** (documented on `LifecycleAware.dispose`): loading,
+  writing, emitting, connecting, executing and watching throw a `StateError` (methods
+  returning a `Future` complete with it). Snapshots (`current()`, `currentData()`) return the
+  last state; `invalidate()`, `pause()`, `resume()`, `recover()`, `didChangeDependencies()`
+  and cleanup calls are no-ops. Before, `LocalTrooper`, `KeyedLocalTrooper` and `CacheStore`
+  silently kept working, `StreamTrooper` threw `TrooperCancelledException`, a `QueryTrooper`
+  on a shared queue kept fetching, and `KeyedStreamTrooper.getKey` never completed.
+* `TrooperMutation.execute`, `TrooperQueryQueue.execute` and `TrooperMutationQueue.add` after
+  dispose return a failed `Future` instead of throwing synchronously.
+* `TrooperCodec.encode`/`decode` wrap every failure in `TrooperCodecException`.
+
+#### Other changes
+
 * **`LoadMore<TPage, F, PP>`**: Load-more (infinite scroll) decorator over an existing page query with `fetchNextPage()`, `retryNextPage()`, and `hasNextPage`, plus the `TrooperController.loadMore(...)` factory.
 * **`LoadMoreData<TPage, PP>`**: Accumulated pages with next-page status; `items` flattens list pages.
 * **Docs**: Pagination guide for classic pages and load more.

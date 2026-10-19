@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (breaking): API freeze for 1.0
+
+Both packages prepare their public API for the 1.0 freeze: internals hidden, class modifiers
+set, redundant APIs removed, uniform behavior after `dispose()`, slimmer `StorageBackend`,
+open-ended exception and event catalogues, no re-export of `Emitter`/`FutureOr` from
+`trooper_bloc`. Migration tables are in `packages/trooper/CHANGELOG.md` and
+`packages/trooper_bloc/CHANGELOG.md`; decisions in `docs/audit/api-freeze-decisions.md`; the
+API baseline in `docs/api/`.
+
 ### Added
 
 #### Core Framework (`packages/trooper`)

@@ -27,7 +27,7 @@ import 'package:trooper/types/parameter.dart';
 /// - Concurrency, deduplication, and cancellation through [queryQueue].
 /// - Diagnostic telemetry through [telemetry].
 /// - Configuration parameters through [config].
-/// - Per-key parameter tracking through [_lastParams].
+/// - Per-key parameter tracking through [lastParams].
 abstract base class KeyedTrooper<K extends Object, T, P extends Parameter>
     with LifecycleAware, StorageAccess
     implements Invalidatable {
@@ -95,7 +95,9 @@ abstract base class KeyedTrooper<K extends Object, T, P extends Parameter>
   /// `watchKey` again instead of re-listening to an old stream.
   final bool releaseUnwatchedKeys;
 
-  final Map<K, P> _lastParams = {};
+  /// Internal tracking map of the most recently used parameters for each key.
+  @internal
+  final Map<K, P> lastParams = {};
   bool _isDisposed = false;
 
   /// Whether this keyed trooper collection has been disposed.
@@ -112,17 +114,14 @@ abstract base class KeyedTrooper<K extends Object, T, P extends Parameter>
     }
   }
 
-  /// Internal tracking map of the most recently used parameters for each key.
-  @internal
-  Map<K, P> get lastParams => _lastParams;
 
   /// The parameter used for the most recent operation on [key], or `null` if none has been recorded yet.
-  P? lastParamOf(K key) => _lastParams[key];
+  P? lastParamOf(K key) => lastParams[key];
 
   /// Records the last executed parameter for [key].
   @internal
   void recordParam(K key, P parameter) {
-    _lastParams[key] = parameter;
+    lastParams[key] = parameter;
   }
 
   /// Builds the unique [QueryKey] for [key] and [parameter] and records the parameter.
@@ -135,7 +134,7 @@ abstract base class KeyedTrooper<K extends Object, T, P extends Parameter>
   /// Checks whether [parameter] differs from the last parameter used for [key].
   @internal
   bool isParamChanged(K key, P parameter) {
-    final last = _lastParams[key];
+    final last = lastParams[key];
     if (last == null) return false;
     return parameter != last;
   }
@@ -239,7 +238,7 @@ abstract base class KeyedTrooper<K extends Object, T, P extends Parameter>
     queryQueue.cancelWhere(
       (k) => k.matchesNameAndKey(name: namespace, entityKey: key),
     );
-    final param = _lastParams.remove(key);
+    final param = lastParams.remove(key);
     if (param != null && telemetry.hasListeners) {
       telemetry.emit(
         CacheInvalidatedEvent(
@@ -266,7 +265,7 @@ abstract base class KeyedTrooper<K extends Object, T, P extends Parameter>
     for (final key in stream.activeKeys) {
       stream.emitInitial(key);
     }
-    _lastParams.clear();
+    lastParams.clear();
     cache.removeName(namespace);
     purgeStorage();
     if (telemetry.hasListeners) {
@@ -312,7 +311,7 @@ abstract base class KeyedTrooper<K extends Object, T, P extends Parameter>
     queryQueue.cancelWhere(
       (k) => k.matchesNameAndKey(name: namespace, entityKey: key),
     );
-    _lastParams.remove(key);
+    lastParams.remove(key);
     cache.removeWhere(
       (k) => k.matchesNameAndKey(name: namespace, entityKey: key),
     );
@@ -341,7 +340,7 @@ abstract base class KeyedTrooper<K extends Object, T, P extends Parameter>
   @internal
   @mustCallSuper
   void releaseKeyState(K key) {
-    _lastParams.remove(key);
+    lastParams.remove(key);
     unawaited(stream.removeKey(key));
   }
 
@@ -373,7 +372,7 @@ abstract base class KeyedTrooper<K extends Object, T, P extends Parameter>
   /// entries of the namespace (also from earlier sessions), and the stream.
   Future<void> clearAll() async {
     if (isDisposed) return;
-    _lastParams.clear();
+    lastParams.clear();
     cache.removeName(namespace);
     purgeStorage();
     await stream.clearAll();
@@ -384,7 +383,7 @@ abstract base class KeyedTrooper<K extends Object, T, P extends Parameter>
   Future<void> dispose() async {
     if (_isDisposed) return;
     _isDisposed = true;
-    _lastParams.clear();
+    lastParams.clear();
     await stream.dispose();
     if (_ownsQueryQueue) {
       await queryQueue.dispose();
