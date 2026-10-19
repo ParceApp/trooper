@@ -580,6 +580,9 @@ From 1.0 on, `trooper` follows semantic versioning:
   come as separate interfaces.
 - `TrooperEvent` and `TrooperException` can gain subtypes in minor releases.
 - `trooper_bloc` re-exports `trooper` and always shares its major version.
+- Public symbols are removed only in a major release, after being marked `@Deprecated` for
+  at least one minor release. The deprecation message names the replacement, and the
+  CHANGELOG lists every deprecation. See the [deprecation policy](https://github.com/ParceApp/trooper/blob/main/docs/DEPRECATION.md).
 
 
 ## Architecture at a Glance (visualized by AI 🙃)

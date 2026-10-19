@@ -27,7 +27,21 @@ git diff --exit-code docs/api/
 
 A non-empty diff is an API change. Removing or changing a symbol is a breaking change and
 needs a major release; adding one needs a minor release. Commit the regenerated files
-together with the change.
+together with the change. Symbols are removed only after a deprecation period, see
+[`docs/DEPRECATION.md`](../DEPRECATION.md).
+
+## CI
+
+The `API baseline` workflow ([`.github/workflows/api-baseline.yml`](../../.github/workflows/api-baseline.yml))
+runs on every pull request and on pushes to `main`. It installs Flutter 3.47.6 (needed for
+`trooper_bloc`), activates `dart_apitool` 0.23.2, runs `tool/api/extract.sh` and fails if
+`git diff --exit-code docs/api/` finds a difference. The job fails for every API change,
+additions included; an intended change passes once the regenerated baseline is committed in
+the same pull request, so reviewers see the API change in the diff of `docs/api/`.
+
+Keep the Flutter and `dart_apitool` versions in the workflow, in `tool/api/extract.sh` and
+in this file in sync. A new extractor version can change the output format; regenerate the
+baseline in the same commit that bumps it.
 
 Once 1.0.0 is on pub.dev, `dart_apitool` can also compare against the published release and
 check the version bump:

@@ -1,4 +1,9 @@
-## Unreleased
+## 1.0.0
+
+First stable release, requires `trooper: ^1.0.0`. The public API is frozen and follows
+semantic versioning.
+From 1.0.0 on, public symbols are deprecated for at least one minor release before they are
+removed in the next major release; see `docs/DEPRECATION.md`.
 
 ### Breaking: API freeze for 1.0
 

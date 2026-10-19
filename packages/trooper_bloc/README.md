@@ -42,6 +42,10 @@ APIs. Both packages always share the same major version: a breaking release of `
 is a breaking release of `trooper_bloc`, while minor and patch releases of `trooper` only
 add to the re-exported API.
 
+Public symbols are removed only in a major release, after being marked `@Deprecated` for at
+least one minor release with the replacement named in the message. The CHANGELOG lists every
+deprecation. See the [deprecation policy](https://github.com/ParceApp/trooper/blob/main/docs/DEPRECATION.md).
+
 `trooper_bloc` does not re-export `flutter_bloc` or `dart:async`. Import
 `package:flutter_bloc/flutter_bloc.dart` for `BlocProvider`, `BlocBuilder` or `Emitter`, and
 `dart:async` for `FutureOr` in `matchSources` signatures.

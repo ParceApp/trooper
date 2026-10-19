@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-19
+
+`trooper` 1.0.0 and `trooper_bloc` 1.0.0: first stable release with a frozen public API.
+
 ### Changed (breaking): API freeze for 1.0
 
 Both packages prepare their public API for the 1.0 freeze: internals hidden, class modifiers
@@ -25,6 +29,10 @@ API baseline in `docs/api/`.
 - **`LoadMoreData<TPage, PP>`**: Accumulated pages plus next-page status (`isFetchingNextPage`, `nextPageError`) so the feed stays `DataLoaded` while loading more.
 - **`TrooperController.loadMore(...)`**: Factory that creates a managed `LoadMore` feed.
 - **Docs**: New pagination guide covering classic pages (`TrooperConfig.noCache()`) and load more.
+
+#### Release tooling
+- **Deprecation policy** (`docs/DEPRECATION.md`): public symbols are deprecated for at least one minor release before removal in the next major release.
+- **API baseline check**: CI job `API baseline` (`.github/workflows/api-baseline.yml`) fails when the public API differs from `docs/api/`.
 
 ---
 

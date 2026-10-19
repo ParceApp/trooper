@@ -93,7 +93,7 @@ Both packages bundle official AI Agent Skills compatible with the Dart Agent Ski
 #### 1. Add Dependency
 ```yaml
 dependencies:
-  trooper: ^0.1.0-beta.1
+  trooper: ^1.0.0
 ```
 
 #### 2. Define a Feature Controller
@@ -163,7 +163,7 @@ When using Flutter, depend on `trooper_bloc`. It re-exports 100% of `package:tro
 #### 1. Add Dependency
 ```yaml
 dependencies:
-  trooper_bloc: ^0.1.0-beta.1
+  trooper_bloc: ^1.0.0
 ```
 
 #### 2. Implement `Tloc`
@@ -309,6 +309,8 @@ dart run packages/trooper/benchmark/trooper_benchmark.dart
 - **BLoC Integration**: [`packages/trooper_bloc/README.md`](file:///Users/hannes/Developer/trooper/packages/trooper_bloc/README.md)
 - **Agent Skill: Core Data-Flow**: [`packages/trooper/skills/trooper-reactive-data-flow/SKILL.md`](file:///Users/hannes/Developer/trooper/packages/trooper/skills/trooper-reactive-data-flow/SKILL.md)
 - **Agent Skill: BLoC Management**: [`packages/trooper_bloc/skills/trooper-bloc-state-management/SKILL.md`](file:///Users/hannes/Developer/trooper/packages/trooper_bloc/skills/trooper-bloc-state-management/SKILL.md)
+- **Deprecation Policy**: [`docs/DEPRECATION.md`](docs/DEPRECATION.md)
+- **Public API Baseline**: [`docs/api/README.md`](docs/api/README.md)
 - **Changelogs**:
   - [`packages/trooper/CHANGELOG.md`](file:///Users/hannes/Developer/trooper/packages/trooper/CHANGELOG.md)
   - [`packages/trooper_bloc/CHANGELOG.md`](file:///Users/hannes/Developer/trooper/packages/trooper_bloc/CHANGELOG.md)
