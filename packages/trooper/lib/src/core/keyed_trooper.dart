@@ -111,17 +111,22 @@ abstract class KeyedTrooper<K extends Object, T, P extends Parameter>
     return parameter != last;
   }
 
-  /// Safely executes an asynchronous side-effect callback without letting exceptions escape.
+  /// Executes a side-effect callback without letting its failure break the
+  /// request.
+  ///
+  /// A synchronous or asynchronous failure is reported to the current [Zone]
+  /// as an uncaught error (like a failing stream listener), so it reaches
+  /// `runZonedGuarded`, `PlatformDispatcher.onError` or a crash reporter.
   @protected
   void runSideEffect(FutureOr<void> Function()? callback) {
     if (callback == null) return;
     try {
       final result = callback();
       if (result is Future) {
-        result.ignore();
+        unawaited(result);
       }
-    } catch (_) {
-      // Non-critical side-effect failure
+    } catch (error, stackTrace) {
+      Zone.current.handleUncaughtError(error, stackTrace);
     }
   }
 

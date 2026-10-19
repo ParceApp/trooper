@@ -197,7 +197,7 @@ void main() {
         errors.isNotEmpty ||
         events.any((e) => '$e'.contains('side effect bug'));
     expect(surfaced, isTrue, reason: 'error must reach the zone or telemetry');
-  }, skip: 'F-020');
+  });
 
   group('SEC-02 logging', () {
     Future<List<String>> logged(

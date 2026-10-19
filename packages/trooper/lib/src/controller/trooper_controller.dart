@@ -643,7 +643,10 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
     for (final target in _allInvalidatables()) {
       try {
         target.invalidate();
-      } catch (_) {}
+      } catch (error, stackTrace) {
+        // Report, but keep invalidating the remaining targets.
+        Zone.current.handleUncaughtError(error, stackTrace);
+      }
     }
   }
 

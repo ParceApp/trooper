@@ -150,11 +150,11 @@ dimensions:
         findings: [F-022]
       - id: ERR-02
         priority: M
-        status: partial
+        status: met
         automated_in_ci: false
-        evidence: "docs/audit/raw/catch_sites.md (102 sites; L2 read/decode/write/delete now reported via StorageAccess helpers, 0 swallowed storage futures); error_audit_test.dart ERR-02 corrupt L2 entry green; test/storage/persistence_error_test.dart"
+        evidence: "docs/audit/raw/catch_sites.md (100 sites, 2 classified swallowed and both reported elsewhere: purge chain reports via the failing purge, tryDecode null is reported by discardStored); error_audit_test.dart ERR-02 (2 green); test/error/callback_error_test.dart; test/storage/persistence_error_test.dart"
         findings: [F-020, F-021]
-        note: "side-effect, cancel-listener and invalidate-target errors still swallowed (F-020)"
+        note: "callback errors (side effects, cancel listeners, invalidate targets) go to Zone.current.handleUncaughtError; persistence errors to PersistenceErrorEvent"
       - id: ERR-03
         priority: M
         status: partial
@@ -633,7 +633,7 @@ findings:
     severity: P1
     criterion: ERR-02
     freeze_relevant: false
-    status: open
+    status: closed
   - id: F-021
     severity: P1
     criterion: ERR-02

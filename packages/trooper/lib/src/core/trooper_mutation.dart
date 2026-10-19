@@ -122,7 +122,9 @@ class TrooperMutation<T, P extends Parameter>
       }
       try {
         await sideEffects?.onStarted?.call(parameter);
-      } catch (_) {}
+      } catch (error, stackTrace) {
+        Zone.current.handleUncaughtError(error, stackTrace);
+      }
 
       final stopwatch = Stopwatch()..start();
       final effectiveCancelToken = cancelToken ?? TrooperCancelToken();
@@ -155,7 +157,9 @@ class TrooperMutation<T, P extends Parameter>
 
         try {
           await sideEffects?.onSuccess?.call(result, parameter);
-        } catch (_) {}
+        } catch (error, stackTrace) {
+          Zone.current.handleUncaughtError(error, stackTrace);
+        }
 
         return result;
       } catch (error, stackTrace) {
@@ -175,7 +179,9 @@ class TrooperMutation<T, P extends Parameter>
 
         try {
           await sideEffects?.onError?.call(error, stackTrace, parameter);
-        } catch (_) {}
+        } catch (callbackError, callbackStackTrace) {
+          Zone.current.handleUncaughtError(callbackError, callbackStackTrace);
+        }
 
         rethrow;
       }
