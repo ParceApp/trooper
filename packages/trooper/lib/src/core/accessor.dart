@@ -64,21 +64,3 @@ abstract interface class Accessor<T, P extends Parameter>
   @override
   void invalidate();
 }
-
-/// Convenience extension for parameterless [Accessor] instances where `P` is `()`.
-extension ParameterlessAccessor<T> on Accessor<T, ()> {
-  /// Watches reactive state updates without requiring an explicit `()` parameter.
-  StatefulStream<T> watch({bool eager = false}) =>
-      this.watch(initialParameter: const (), eager: eager);
-
-  /// Reads the value without requiring an explicit `()` parameter.
-  Future<T> get({bool forceRefresh = false}) =>
-      this.get(const (), forceRefresh: forceRefresh);
-
-  /// Forces a fresh get without requiring an explicit `()` parameter.
-  Future<T> refresh() => this.refresh(const ());
-
-  /// Triggers a fetch in the background without requiring an explicit `()` parameter.
-  void trigger({bool forceRefresh = false}) =>
-      this.trigger(const (), forceRefresh: forceRefresh);
-}

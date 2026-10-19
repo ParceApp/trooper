@@ -147,9 +147,9 @@ void main() {
           ),
         );
 
-        // Parameterless variant
+        // With an explicit () parameter
         await expectLater(
-          ParameterlessLocalTrooper(trooper).setAsync('new_val_paramless'),
+          trooper.setAsync('new_val_paramless', ()),
           throwsA(isA<TrooperStorageException>()),
         );
 
@@ -179,9 +179,9 @@ void main() {
           ),
         );
 
-        // Parameterless variant
+        // With an explicit () parameter
         await expectLater(
-          ParameterlessLocalTrooper(trooper).resetAsync(),
+          trooper.resetAsync(()),
           throwsA(isA<TrooperStorageException>()),
         );
 
@@ -238,11 +238,9 @@ void main() {
           ),
         );
 
-        // Parameterless variant
+        // With an explicit () parameter
         await expectLater(
-          ParameterlessKeyedLocalTrooper(
-            trooper,
-          ).setKeyAsync('k1', 'new_val_paramless'),
+          trooper.setKeyAsync('k1', 'new_val_paramless', ()),
           throwsA(isA<TrooperStorageException>()),
         );
 
@@ -272,9 +270,9 @@ void main() {
           ),
         );
 
-        // Parameterless variant
+        // With an explicit () parameter
         await expectLater(
-          ParameterlessKeyedLocalTrooper(trooper).resetKeyAsync('k1'),
+          trooper.resetKeyAsync('k1', ()),
           throwsA(isA<TrooperStorageException>()),
         );
 

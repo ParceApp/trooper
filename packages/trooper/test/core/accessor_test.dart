@@ -5,9 +5,9 @@ import 'package:trooper/src/core/keyed_trooper_accessor.dart';
 import 'package:trooper/src/stream/keyed_stateful_stream.dart';
 
 void main() {
-  group('Accessor & ParameterlessAccessor', () {
+  group('Accessor', () {
     test(
-      'trooper.accessor provides valid Accessor and ParameterlessAccessor extensions',
+      'trooper.accessor provides a valid Accessor for () parameters',
       () async {
         final query = QueryTrooper<String, ()>(
           namespace: 'app_title',
@@ -20,23 +20,23 @@ void main() {
         expect(accessor.current(), isA<DataInitial<String>>());
         expect(accessor.currentData(), isNull);
 
-        // Trigger background via extension
-        ParameterlessAccessor(accessor).trigger();
+        // Trigger background with an explicit () parameter
+        accessor.trigger(());
         await Future<void>.delayed(const Duration(milliseconds: 10));
 
         expect(accessor.currentData(), 'My Application');
         expect(accessor.current(), isA<DataLoaded<String>>());
 
-        // Get via extension
-        final data = await ParameterlessAccessor(accessor).get();
+        // Get with an explicit () parameter
+        final data = await accessor.get(());
         expect(data, 'My Application');
 
-        // Refresh via extension
-        final refreshed = await ParameterlessAccessor(accessor).refresh();
+        // Refresh with an explicit () parameter
+        final refreshed = await accessor.refresh(());
         expect(refreshed, 'My Application');
 
-        // Watch via extension
-        final watcher = ParameterlessAccessor(accessor).watch();
+        // Watch with an explicit () parameter
+        final watcher = accessor.watch(initialParameter: ());
         expect(watcher.currentData, 'My Application');
 
         // Standard Accessor methods

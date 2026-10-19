@@ -610,9 +610,3 @@ final class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
     await super.dispose();
   }
 }
-
-/// Convenience extension for parameterless [StreamTrooper] instances where `P` is `()`.
-extension ParameterlessStreamTrooper<T> on StreamTrooper<T, ()> {
-  /// Manually connects to the upstream stream without requiring an explicit `()` parameter.
-  Future<void> connect() => this.connect(const ());
-}

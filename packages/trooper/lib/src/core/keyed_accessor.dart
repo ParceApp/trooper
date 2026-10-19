@@ -73,22 +73,3 @@ abstract interface class KeyedAccessor<K extends Object, T, P extends Parameter>
   /// Returns the number of currently active keys.
   int get count;
 }
-
-/// Convenience extension for parameterless [KeyedAccessor] instances where `P` is `()`.
-extension ParameterlessKeyedAccessor<K extends Object, T>
-    on KeyedAccessor<K, T, ()> {
-  /// Reads or hydrates data for multiple [keys] without requiring an explicit `()` parameter.
-  Future<Map<K, T>> getAll(Iterable<K> keys, {bool forceRefresh = false}) =>
-      this.getAll(keys, const (), forceRefresh: forceRefresh);
-
-  /// Forces fresh data fetches for multiple [keys] without requiring an explicit `()` parameter.
-  Future<Map<K, T>> refreshKeys(Iterable<K> keys) =>
-      this.refreshKeys(keys, const ());
-
-  /// Triggers background fetches for multiple [keys] without requiring an explicit `()` parameter.
-  void triggerKeys(Iterable<K> keys, {bool forceRefresh = false}) =>
-      this.triggerKeys(keys, const (), forceRefresh: forceRefresh);
-
-  /// Invalidates cache and state for multiple [keys] without requiring an explicit `()` parameter.
-  void invalidateKeys(Iterable<K> keys) => this.invalidateKeys(keys);
-}

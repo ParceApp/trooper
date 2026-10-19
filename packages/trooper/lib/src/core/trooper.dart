@@ -278,9 +278,3 @@ class _BoundTrooperAccessor<T, P extends Parameter> implements Accessor<T, P> {
   @override
   void invalidate() => _trooper.invalidate();
 }
-
-/// Convenience extension for parameterless [Trooper] instances where `P` is `()`.
-extension ParameterlessTrooper<T> on Trooper<T, ()> {
-  /// Manually sets data in cache and emits [DataLoaded] without requiring an explicit `()` parameter.
-  T set(T data) => this.set(data, const ());
-}

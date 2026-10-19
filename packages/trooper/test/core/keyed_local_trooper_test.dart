@@ -152,42 +152,26 @@ void main() {
       },
     );
 
-    test('ParameterlessKeyedLocalTrooper extension methods', () async {
+    test('KeyedLocalTrooper methods with () parameters', () async {
       final trooper = KeyedLocalTrooper<String, String, ()>(
         namespace: 'paramless_local',
         initialValue: 'init',
       );
 
-      expect(
-        ParameterlessKeyedLocalTrooper(trooper).setKey('k1', 'new_val'),
-        'new_val',
-      );
-      expect(
-        ParameterlessKeyedLocalTrooper(
-          trooper,
-        ).updateKey('k1', (curr) => '$curr!'),
-        'new_val!',
-      );
-      expect(
-        await ParameterlessKeyedLocalTrooper(trooper).getKey('k1'),
-        'new_val!',
-      );
-      expect(
-        await ParameterlessKeyedLocalTrooper(trooper).refreshKey('k1'),
-        'new_val!',
-      );
+      expect(trooper.setKey('k1', 'new_val', ()), 'new_val');
+      expect(trooper.updateKey('k1', (curr) => '$curr!', ()), 'new_val!');
+      expect(await trooper.getKey('k1', ()), 'new_val!');
+      expect(await trooper.refreshKey('k1', ()), 'new_val!');
 
-      ParameterlessKeyedLocalTrooper(trooper).triggerKey('k1');
-      final watcher = ParameterlessKeyedLocalTrooper(
-        trooper,
-      ).watchKey('k1', eager: false);
+      trooper.triggerKey('k1', ());
+      final watcher = trooper.watchKey('k1', initialParameter: ());
       expect(watcher.currentData, 'new_val!');
 
-      expect(ParameterlessKeyedLocalTrooper(trooper).resetKey('k1'), 'init');
+      expect(trooper.resetKey('k1', ()), 'init');
       expect(trooper.currentKeyData('k1'), 'init');
 
-      ParameterlessKeyedLocalTrooper(trooper).setKey('k1', 'v1');
-      ParameterlessKeyedLocalTrooper(trooper).setKey('k2', 'v2');
+      trooper.setKey('k1', 'v1', ());
+      trooper.setKey('k2', 'v2', ());
       trooper.resetAll();
       expect(trooper.currentKeyData('k1'), 'init');
       expect(trooper.currentKeyData('k2'), 'init');

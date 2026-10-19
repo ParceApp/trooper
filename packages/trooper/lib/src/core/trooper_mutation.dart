@@ -211,14 +211,3 @@ final class TrooperMutation<T, P extends Parameter>
     }
   }
 }
-
-/// Convenience extension for parameterless [TrooperMutation] instances where `P` is `()`.
-extension ParameterlessTrooperMutation<T> on TrooperMutation<T, ()> {
-  /// Callable invocation shortcut without requiring an explicit `()` parameter.
-  Future<T> call({TrooperCancelToken? cancelToken}) =>
-      this.execute(const (), cancelToken: cancelToken);
-
-  /// Executes this mutation without requiring an explicit `()` parameter.
-  Future<T> execute({TrooperCancelToken? cancelToken}) =>
-      this.execute(const (), cancelToken: cancelToken);
-}

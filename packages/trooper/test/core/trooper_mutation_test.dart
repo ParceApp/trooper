@@ -149,7 +149,7 @@ void main() {
           },
         );
 
-        final callFuture = ParameterlessTrooperMutation(paramless)();
+        final callFuture = paramless(());
         await Future<void>.delayed(Duration.zero);
         expect(paramless.isLoading, isTrue);
 
@@ -158,9 +158,7 @@ void main() {
         expect(executed, isTrue);
         expect(paramless.isLoading, isFalse);
 
-        final execResult = await ParameterlessTrooperMutation(
-          paramless,
-        ).execute();
+        final execResult = await paramless.execute(());
         expect(execResult, 'Done');
 
         paramless.didChangeDependencies();

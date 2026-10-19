@@ -196,7 +196,7 @@ void main() {
     });
 
     test(
-      'KeyedStreamTrooper.fromStream, operator [], and parameterless extension',
+      'KeyedStreamTrooper.fromStream, operator [], and () parameters',
       () async {
         final controllers = <String, StreamController<String>>{};
         StreamController<String> getCtrl(String key) => controllers.putIfAbsent(
@@ -231,15 +231,13 @@ void main() {
         expect(refreshedVal, 'Room 1 Refreshed');
         expect(refreshHookCalled, isTrue);
 
-        // Parameterless extension
-        await ParameterlessKeyedStreamTrooper(trooper).connectKey('room2');
+        // With an explicit () parameter
+        await trooper.connectKey('room2', ());
         expect(trooper.isConnectedKey('room2'), isTrue);
-        ParameterlessKeyedStreamTrooper(trooper).setKey('room2', 'Manual 2');
+        trooper.setKey('room2', 'Manual 2', ());
         expect(trooper.currentKeyData('room2'), 'Manual 2');
 
-        final watcher = ParameterlessKeyedStreamTrooper(
-          trooper,
-        ).watchKey('room2', eager: false);
+        final watcher = trooper.watchKey('room2', initialParameter: ());
         expect(watcher.currentData, 'Manual 2');
 
         await trooper.disconnectKey('room1');

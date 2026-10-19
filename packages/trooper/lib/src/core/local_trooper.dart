@@ -310,18 +310,3 @@ final class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
     }
   }
 }
-
-/// Convenience extension for parameterless [LocalTrooper] instances where `P` is `()`.
-extension ParameterlessLocalTrooper<T> on LocalTrooper<T, ()> {
-  /// Sets [value] and awaits persistent storage without requiring an explicit `()` parameter.
-  Future<T> setAsync(T value) => this.setAsync(value, const ());
-
-  /// Updates the local state by applying [transform] without requiring an explicit `()` parameter.
-  T update(T Function(T current) transform) => this.update(transform, const ());
-
-  /// Resets the state back to [initialValue] without requiring an explicit `()` parameter.
-  T reset() => this.reset(const ());
-
-  /// Resets the state back to [initialValue] and awaits deletion from persistent storage without requiring an explicit `()` parameter.
-  Future<T> resetAsync() => this.resetAsync(const ());
-}
