@@ -1,8 +1,6 @@
 /// High-performance Flutter BLoC and Cubit integration for the Trooper reactive data-flow framework.
 library;
 
-export 'dart:async' show FutureOr;
-export 'package:flutter_bloc/flutter_bloc.dart' show Emitter;
 export 'package:trooper/trooper.dart';
 
 export 'src/effects/effects.dart';
