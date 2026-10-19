@@ -111,6 +111,20 @@ extension type const QueryKey._(
   static bool _isStable(String text) =>
       !text.contains("Instance of '") && !text.contains('Closure: ');
 
+  /// Checks whether [storageKey] belongs to an entry of [namespace] for the
+  /// entity [entityKey], whatever its parameter.
+  static bool storageKeyMatchesEntity(
+    String storageKey, {
+    required String namespace,
+    required Object entityKey,
+  }) {
+    final prefix = storagePrefix(namespace);
+    if (!storageKey.startsWith(prefix)) return false;
+    final segments = storageKey.substring(prefix.length).split(':');
+    return segments.length == 2 &&
+        segments.last == Uri.encodeComponent('$entityKey');
+  }
+
   /// Formatted representation of this query key for logging and diagnostics.
   String describe() {
     final buffer = StringBuffer('QueryKey($name');

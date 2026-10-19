@@ -5,6 +5,8 @@
 * **Docs**: Pagination guide for classic pages and load more.
 * **Breaking (L2 format)**: `QueryKey.storageKey` now uses the versioned layout `trooper:1:<namespace>:<parameter>[:<key>]` with URI-encoded segments. Entries written by 0.1.0-beta.1 are no longer read and stay in the backend until the app clears it.
 * **Fix**: L2 keys no longer collide for parameters whose `toString()` is the default `Instance of '…'`; such keys now skip L2 storage and report a `PersistenceErrorEvent` (see `QueryKey.hasStableStorageKey`).
+* **Fix**: `invalidate()`, `invalidateKey()`, `removeKey()`, `KeyedTrooper.clearAll()` and `TrooperController.clearAll()` now delete persisted L2 entries of the namespace (or key), including entries from earlier sessions. L2 reads wait for a running purge, so a `get()` right after logout never sees the previous user's data. Requires `StorageBackend.getAllKeys()` to list keys of all sessions.
+* **Docs**: `invalidate()` cancels in-flight requests; their callers receive a `TrooperCancelledException`.
 * **Fix**: `QueryConflictPolicy.parallel` no longer lets an older response overwrite a newer one in stream, cache, or storage.
 * **Fix**: `KeyedStreamTrooper.dispose()` no longer fails with `ConcurrentModificationError` when a listener changes keys or disposes during cancellation.
 

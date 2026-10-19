@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:trooper/src/key/query_key.dart';
+
 /// An abstract interface for asynchronous key-value persistence backends (L2 storage).
 ///
 /// Implemented by adapters for SharedPreferences, SQLite, Hive, local files, etc.
@@ -27,6 +29,11 @@ abstract interface class StorageBackend {
   Future<void> clear();
 
   /// Returns all currently stored keys.
+  ///
+  /// Trooper uses this to purge every entry of a namespace (keys starting
+  /// with [QueryKey.storagePrefix]) on `invalidate()` and `clearAll()`,
+  /// including entries written in earlier sessions. It must return keys
+  /// persisted by any session, not only by the current one.
   Future<Set<String>> getAllKeys();
 
   /// Returns `true` if an entry exists for [key].

@@ -5,8 +5,7 @@ import 'package:trooper/src/storage/cache_store.dart';
 import 'package:trooper/src/config/trooper_config.dart';
 import 'package:trooper/src/core/accessor.dart';
 import 'package:trooper/src/effects/trooper_side_effects.dart';
-import 'package:trooper/src/error/trooper_exception.dart';
-import 'package:trooper/src/storage/storage_backend.dart';
+import 'package:trooper/src/storage/storage_access.dart';
 import 'package:trooper/src/key/query_key.dart';
 import 'package:trooper/src/lifecycle/lifecycle_aware.dart';
 import 'package:trooper/src/state/data_metadata.dart';
@@ -26,7 +25,7 @@ import 'package:trooper/types/parameter.dart';
 /// - Diagnostic telemetry through [telemetry].
 /// - Configuration parameters through [config].
 abstract class Trooper<T, P extends Parameter>
-    with LifecycleAware
+    with LifecycleAware, StorageAccess
     implements Accessor<T, P> {
   /// Creates a [Trooper] with the specified [namespace] and dependencies.
   ///
@@ -61,9 +60,11 @@ abstract class Trooper<T, P extends Parameter>
   final bool _ownsQueryQueue;
 
   /// Logical name of this query or resource family.
+  @override
   final String namespace;
 
   /// Configuration defining TTL, stale policy, and persistence.
+  @override
   final TrooperConfig config;
 
   /// Optional side-effect callbacks for lifecycle hooks.
@@ -76,6 +77,7 @@ abstract class Trooper<T, P extends Parameter>
   final TrooperQueryQueue queryQueue;
 
   /// Telemetry hub for diagnostic events.
+  @override
   final TelemetryHub telemetry;
 
   /// Replay-enabled stateful stream controller.
@@ -103,32 +105,6 @@ abstract class Trooper<T, P extends Parameter>
   /// Builds the unique [QueryKey] for this trooper.
   @protected
   QueryKey buildQueryKey(P parameter) => QueryKey(namespace, parameter);
-
-  bool _reportedUnstableStorageKey = false;
-
-  /// The L2 backend to use for [key], or `null` if no storage is configured
-  /// or [key] has no stable storage key (see [QueryKey.hasStableStorageKey]).
-  ///
-  /// Reports the first unstable key as a [PersistenceErrorEvent].
-  @protected
-  StorageBackend? storageFor(QueryKey key) {
-    final storage = config.storage;
-    if (storage == null || key.hasStableStorageKey) return storage;
-    if (!_reportedUnstableStorageKey) {
-      _reportedUnstableStorageKey = true;
-      telemetry.emit(
-        PersistenceErrorEvent(
-          key,
-          error: TrooperStorageException(
-            'L2 storage skipped for ${key.describe()}: parameter or key has '
-            'no stable toString(), so unequal values would share a storage key.',
-          ),
-          duration: Duration.zero,
-        ),
-      );
-    }
-    return null;
-  }
 
   /// Returns `true` if [parameter] differs from the last used parameter.
   @protected
@@ -200,6 +176,7 @@ abstract class Trooper<T, P extends Parameter>
   void invalidate() {
     queryQueue.cancelNamespace(namespace);
     cache.removeName(namespace);
+    purgeStorage();
     _lastParam = null;
     streamController.emitInitial();
     if (telemetry.hasListeners) {

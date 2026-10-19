@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'package:meta/meta.dart';
+import 'package:trooper/src/error/trooper_exception.dart';
 import 'package:trooper/src/concurrency/query_queue.dart';
 import 'package:trooper/src/config/trooper_config.dart';
 import 'package:trooper/src/core/accessor.dart';
 import 'package:trooper/src/core/keyed_accessor.dart';
 import 'package:trooper/src/effects/trooper_keyed_side_effects.dart';
-import 'package:trooper/src/error/trooper_exception.dart';
-import 'package:trooper/src/storage/storage_backend.dart';
+import 'package:trooper/src/storage/storage_access.dart';
 import 'package:trooper/src/key/query_key.dart';
 import 'package:trooper/src/lifecycle/lifecycle_aware.dart';
 import 'package:trooper/src/state/stateful_data.dart';
@@ -28,7 +28,7 @@ import 'package:trooper/types/parameter.dart';
 /// - Configuration parameters through [config].
 /// - Per-key parameter tracking through [_lastParams].
 abstract class KeyedTrooper<K extends Object, T, P extends Parameter>
-    with LifecycleAware
+    with LifecycleAware, StorageAccess
     implements Invalidatable {
   /// Creates a [KeyedTrooper] with the specified [namespace] and dependencies.
   KeyedTrooper({
@@ -54,9 +54,11 @@ abstract class KeyedTrooper<K extends Object, T, P extends Parameter>
   final bool _ownsQueryQueue;
 
   /// Logical name of this query or resource collection family.
+  @override
   final String namespace;
 
   /// Configuration defining TTL, stale policy, and persistence.
+  @override
   final TrooperConfig config;
 
   /// Optional side-effect callbacks for lifecycle hooks.
@@ -69,6 +71,7 @@ abstract class KeyedTrooper<K extends Object, T, P extends Parameter>
   final TrooperQueryQueue queryQueue;
 
   /// Telemetry hub for diagnostic events.
+  @override
   final TelemetryHub telemetry;
 
   /// Keyed stateful stream emitting [StatefulData] transitions per key.
@@ -98,32 +101,6 @@ abstract class KeyedTrooper<K extends Object, T, P extends Parameter>
   QueryKey buildQueryKey(K key, P parameter) {
     recordParam(key, parameter);
     return QueryKey.keyed(namespace, key: key, parameter: parameter);
-  }
-
-  bool _reportedUnstableStorageKey = false;
-
-  /// The L2 backend to use for [key], or `null` if no storage is configured
-  /// or [key] has no stable storage key (see [QueryKey.hasStableStorageKey]).
-  ///
-  /// Reports the first unstable key as a [PersistenceErrorEvent].
-  @protected
-  StorageBackend? storageFor(QueryKey key) {
-    final storage = config.storage;
-    if (storage == null || key.hasStableStorageKey) return storage;
-    if (!_reportedUnstableStorageKey) {
-      _reportedUnstableStorageKey = true;
-      telemetry.emit(
-        PersistenceErrorEvent(
-          key,
-          error: TrooperStorageException(
-            'L2 storage skipped for ${key.describe()}: parameter or key has '
-            'no stable toString(), so unequal values would share a storage key.',
-          ),
-          duration: Duration.zero,
-        ),
-      );
-    }
-    return null;
   }
 
   /// Checks whether [parameter] differs from the last parameter used for [key].
@@ -206,45 +183,43 @@ abstract class KeyedTrooper<K extends Object, T, P extends Parameter>
   // --- Invalidation & Cleanup ---
 
   /// Invalidates the cache entry, clears persistent storage, and resets state to [DataInitial] for [key].
+  ///
+  /// Removes the persisted entries of [key] for every parameter, including
+  /// those written in earlier sessions. Requests for [key] still in flight
+  /// are cancelled with a [TrooperCancelledException].
   void invalidateKey(K key) {
     queryQueue.cancelWhere(
       (k) => k.matchesNameAndKey(name: namespace, entityKey: key),
     );
     final param = _lastParams.remove(key);
-    if (param != null) {
-      final qKey = QueryKey.keyed(namespace, key: key, parameter: param);
-      final storage = storageFor(qKey);
-      if (storage != null) {
-        storage.delete(qKey.storageKey).ignore();
-      }
-      if (telemetry.hasListeners) {
-        telemetry.emit(CacheInvalidatedEvent(qKey));
-      }
+    if (param != null && telemetry.hasListeners) {
+      telemetry.emit(
+        CacheInvalidatedEvent(
+          QueryKey.keyed(namespace, key: key, parameter: param),
+        ),
+      );
     }
     cache.removeWhere(
       (k) => k.matchesNameAndKey(name: namespace, entityKey: key),
     );
+    _purgeKeyStorage(key);
     stream.emitInitial(key);
   }
 
   /// Invalidates all keys belonging to this query family. Implements [Invalidatable].
+  ///
+  /// Removes every persisted entry of the namespace, including entries
+  /// written in earlier sessions. Requests still in flight are cancelled
+  /// with a [TrooperCancelledException].
   @override
   void invalidate() {
     queryQueue.cancelNamespace(namespace);
-    final storage = config.storage;
     for (final key in stream.activeKeys) {
-      final param = _lastParams[key];
-      if (param != null) {
-        final qKey = QueryKey.keyed(namespace, key: key, parameter: param);
-        cache.remove(qKey);
-        if (storage != null) {
-          storage.delete(qKey.storageKey).ignore();
-        }
-      }
       stream.emitInitial(key);
     }
     _lastParams.clear();
     cache.removeName(namespace);
+    purgeStorage();
     if (telemetry.hasListeners) {
       telemetry.emit(CacheInvalidatedEvent(QueryKey(namespace, const ())));
     }
@@ -280,23 +255,30 @@ abstract class KeyedTrooper<K extends Object, T, P extends Parameter>
   }
 
   /// Removes [key] from the stream, cache, and optional persistent storage.
+  ///
+  /// Persisted entries of [key] are removed for every parameter, including
+  /// those written in earlier sessions.
   Future<void> removeKey(K key) async {
     queryQueue.cancelWhere(
       (k) => k.matchesNameAndKey(name: namespace, entityKey: key),
     );
-    final param = _lastParams.remove(key);
+    _lastParams.remove(key);
     cache.removeWhere(
       (k) => k.matchesNameAndKey(name: namespace, entityKey: key),
     );
-    if (param != null) {
-      final qKey = QueryKey.keyed(namespace, key: key, parameter: param);
-      final storage = storageFor(qKey);
-      if (storage != null) {
-        storage.delete(qKey.storageKey).ignore();
-      }
-    }
+    _purgeKeyStorage(key);
     await stream.removeKey(key);
   }
+
+  /// Purges the persisted entries of [key] for every parameter, including
+  /// those written in earlier sessions.
+  void _purgeKeyStorage(K key) => purgeStorage(
+    where: (storageKey) => QueryKey.storageKeyMatchesEntity(
+      storageKey,
+      namespace: namespace,
+      entityKey: key,
+    ),
+  );
 
   /// Pauses cache expiration timers while backgrounded.
   @override
@@ -310,10 +292,12 @@ abstract class KeyedTrooper<K extends Object, T, P extends Parameter>
     cache.resume();
   }
 
-  /// Clears all keys from this query family, purging cache and resetting the stream.
+  /// Clears all keys from this query family, purging cache, persisted
+  /// entries of the namespace (also from earlier sessions), and the stream.
   Future<void> clearAll() async {
     _lastParams.clear();
     cache.removeName(namespace);
+    purgeStorage();
     await stream.clearAll();
   }
 

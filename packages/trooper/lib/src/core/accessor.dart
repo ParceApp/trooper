@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:trooper/src/error/trooper_exception.dart';
 import 'package:trooper/src/state/stateful_data.dart';
 import 'package:trooper/src/storage/invalidatable.dart';
 import 'package:trooper/src/stream/stateful_stream.dart';
@@ -56,6 +57,10 @@ abstract interface class Accessor<T, P extends Parameter>
   T? currentData();
 
   /// Marks cached data as stale across all parameters, removes storage, and resets state to [DataInitial].
+  ///
+  /// Removes every persisted L2 entry of the namespace, including entries
+  /// written in earlier sessions. Requests still in flight are cancelled:
+  /// their callers receive a [TrooperCancelledException].
   @override
   void invalidate();
 }

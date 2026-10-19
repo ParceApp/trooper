@@ -648,6 +648,10 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
   }
 
   /// Clears the default cache store, propagates clearAll to keyed troopers, and invalidates all managed troopers.
+  ///
+  /// Persisted L2 entries of every managed namespace are removed as well,
+  /// including entries written in earlier sessions, so `clearAll()` on logout
+  /// leaves no user data in storage.
   void clearAll() {
     defaultCache?.clear();
     for (final child in _allLifecycleChildren()) {

@@ -600,7 +600,7 @@ findings:
     severity: P0
     criterion: ASYNC-02
     freeze_relevant: false
-    status: open
+    status: closed
   - id: F-015
     severity: P1
     criterion: ASYNC-05
@@ -721,6 +721,7 @@ findings:
     criterion: ARCH-05
     freeze_relevant: true
     status: open
+    note: "partly addressed with F-014: getAllKeys is now used and documented as the namespace-purge contract; containsKey/clear, error and concurrency contract, contract test kit still open"
   - id: F-039
     severity: P1
     criterion: TEST-04
