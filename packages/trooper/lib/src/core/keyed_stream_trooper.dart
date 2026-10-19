@@ -152,6 +152,7 @@ final class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
 
   /// Manually connects to the upstream stream for [key] using [parameter].
   Future<void> connectKey(K key, P parameter) async {
+    ensureNotDisposed('connectKey');
     final param = parameter;
     final currentParam = lastParamOf(key);
 
@@ -403,6 +404,7 @@ final class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
 
   /// Watches state updates for a single [key], managing automatic connection.
   StatefulStream<T> watchKey(K key, {P? initialParameter, bool eager = false}) {
+    ensureNotDisposed('watchKey');
     if (eager && initialParameter != null && !isConnectedKey(key)) {
       connectKey(key, initialParameter).ignore();
     }
@@ -441,6 +443,7 @@ final class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
   /// Reads the value for [key], returning immediately from cache if fresh,
   /// or waiting for the next upstream stream event.
   Future<T> getKey(K key, P parameter, {bool forceRefresh = false}) async {
+    ensureNotDisposed('getKey');
     final qKey = buildQueryKey(key, parameter);
 
     if (!forceRefresh && config.hasCache) {
@@ -545,6 +548,7 @@ final class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
 
   /// Triggers reading or hydrating data for [key] without awaiting the result.
   void triggerKey(K key, P parameter, {bool forceRefresh = false}) {
+    ensureNotDisposed('triggerKey');
     getKey(key, parameter, forceRefresh: forceRefresh).ignore();
   }
 
@@ -578,6 +582,7 @@ final class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
 
   /// Manually sets data for [key] in cache and stream, returning the set [data].
   T setKey(K key, T data, P parameter) {
+    ensureNotDisposed('setKey');
     final qKey = buildQueryKey(key, parameter);
 
     if (config.hasCache) {
@@ -621,12 +626,14 @@ final class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
 
   @override
   void invalidateKey(K key) {
+    if (isDisposed) return;
     disconnectKey(key).ignore();
     super.invalidateKey(key);
   }
 
   @override
   void invalidate() {
+    if (isDisposed) return;
     for (final key in stream.activeKeys) {
       disconnectKey(key).ignore();
     }
@@ -635,6 +642,7 @@ final class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
 
   @override
   Future<void> removeKey(K key) async {
+    if (isDisposed) return;
     await disconnectKey(key);
     _lastLoadedData.remove(key);
     _activeWatchers.remove(key);
@@ -645,6 +653,7 @@ final class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
 
   @override
   Future<void> clearAll() async {
+    if (isDisposed) return;
     for (final key in List<K>.of(_subscriptions.keys)) {
       await disconnectKey(key);
     }
@@ -657,6 +666,7 @@ final class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
 
   @override
   void pause() {
+    if (isDisposed) return;
     super.pause();
     _pausedKeys.addAll(_subscriptions.keys);
     for (final key in List<K>.of(_subscriptions.keys)) {
@@ -666,6 +676,7 @@ final class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
 
   @override
   FutureOr<void> resume() {
+    if (isDisposed) return null;
     super.resume();
     final keysToResume = Set<K>.of(_pausedKeys);
     _pausedKeys.clear();
@@ -681,6 +692,7 @@ final class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
 
   @override
   FutureOr<void> recover() {
+    if (isDisposed) return null;
     for (final key in stream.activeKeys) {
       final hasWatchers = (_activeWatchers[key] ?? 0) > 0 || keepAlive;
       final isErrored = stream.stateOf(key).isError;
@@ -695,6 +707,7 @@ final class KeyedStreamTrooper<K extends Object, T, P extends Parameter>
 
   @override
   FutureOr<void> didChangeDependencies() {
+    if (isDisposed) return null;
     final keysToReconnect = {
       for (final key in stream.activeKeys)
         if (isConnectedKey(key) || (_activeWatchers[key] ?? 0) > 0 || keepAlive)

@@ -713,6 +713,7 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
   @override
   @nonVirtual
   FutureOr<void> initialize() async {
+    if (_isDisposed) return;
     final initResult = onInit();
     if (initResult is Future) {
       await initResult;
@@ -741,6 +742,7 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
   @override
   @nonVirtual
   FutureOr<void> pause() async {
+    if (_isDisposed) return;
     defaultCache?.pause();
     final pauseResult = onPause();
     if (pauseResult is Future) {
@@ -770,6 +772,7 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
   @override
   @nonVirtual
   FutureOr<void> resume() async {
+    if (_isDisposed) return;
     final resumeResult = onResume();
     if (resumeResult is Future) {
       await resumeResult;
@@ -799,6 +802,7 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
   @override
   @nonVirtual
   FutureOr<void> recover() async {
+    if (_isDisposed) return;
     final recoverResult = onRecover();
     if (recoverResult is Future) {
       await recoverResult;
@@ -827,6 +831,7 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
   @override
   @nonVirtual
   FutureOr<void> didChangeDependencies() async {
+    if (_isDisposed) return;
     final depResult = onDependenciesChanged();
     if (depResult is Future) {
       await depResult;

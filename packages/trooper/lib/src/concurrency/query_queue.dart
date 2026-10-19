@@ -59,8 +59,8 @@ final class TrooperQueryQueue with LifecycleAware {
     RetryPolicy? retryPolicy,
   }) {
     if (_isDisposed) {
-      throw StateError(
-        'Cannot execute request on a disposed TrooperQueryQueue',
+      return Future.error(
+        StateError('Cannot execute request on a disposed TrooperQueryQueue'),
       );
     }
 

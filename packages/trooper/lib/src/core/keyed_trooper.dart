@@ -101,6 +101,17 @@ abstract base class KeyedTrooper<K extends Object, T, P extends Parameter>
   /// Whether this keyed trooper collection has been disposed.
   bool get isDisposed => _isDisposed;
 
+  /// Throws a [StateError] naming [operation] if this trooper has been
+  /// disposed (see [LifecycleAware.dispose]).
+  @internal
+  void ensureNotDisposed(String operation) {
+    if (_isDisposed) {
+      throw StateError(
+        'Cannot call $operation() on disposed $runtimeType "$namespace".',
+      );
+    }
+  }
+
   /// Internal tracking map of the most recently used parameters for each key.
   @internal
   Map<K, P> get lastParams => _lastParams;
@@ -172,22 +183,37 @@ abstract base class KeyedTrooper<K extends Object, T, P extends Parameter>
 
   int get count => stream.count;
 
-  Stream<Map<K, StatefulData<T>>> watchAll() => stream.watchAll();
+  Stream<Map<K, StatefulData<T>>> watchAll() {
+    ensureNotDisposed('watchAll');
+    return stream.watchAll();
+  }
 
-  Stream<Set<K>> watchKeys() => stream.watchKeys();
+  Stream<Set<K>> watchKeys() {
+    ensureNotDisposed('watchKeys');
+    return stream.watchKeys();
+  }
 
   // --- Collection-level Accessor<Map<K, T>, ()> delegation ---
 
-  StatefulStream<Map<K, T>> watch({()? initialParameter, bool eager = false}) =>
-      accessor.watch(initialParameter: initialParameter, eager: eager);
+  StatefulStream<Map<K, T>> watch({()? initialParameter, bool eager = false}) {
+    ensureNotDisposed('watch');
+    return accessor.watch(initialParameter: initialParameter, eager: eager);
+  }
 
-  Future<Map<K, T>> get(() parameter, {bool forceRefresh = false}) =>
-      accessor.get(parameter, forceRefresh: forceRefresh);
+  Future<Map<K, T>> get(() parameter, {bool forceRefresh = false}) async {
+    ensureNotDisposed('get');
+    return accessor.get(parameter, forceRefresh: forceRefresh);
+  }
 
-  Future<Map<K, T>> refresh(() parameter) => accessor.refresh(parameter);
+  Future<Map<K, T>> refresh(() parameter) async {
+    ensureNotDisposed('refresh');
+    return accessor.refresh(parameter);
+  }
 
-  void trigger(() parameter, {bool forceRefresh = false}) =>
-      accessor.trigger(parameter, forceRefresh: forceRefresh);
+  void trigger(() parameter, {bool forceRefresh = false}) {
+    ensureNotDisposed('trigger');
+    accessor.trigger(parameter, forceRefresh: forceRefresh);
+  }
 
   StatefulData<Map<K, T>> current() => accessor.current();
 
@@ -209,6 +235,7 @@ abstract base class KeyedTrooper<K extends Object, T, P extends Parameter>
   /// those written in earlier sessions. Requests for [key] still in flight
   /// are cancelled with a [TrooperCancelledException].
   void invalidateKey(K key) {
+    if (isDisposed) return;
     queryQueue.cancelWhere(
       (k) => k.matchesNameAndKey(name: namespace, entityKey: key),
     );
@@ -234,6 +261,7 @@ abstract base class KeyedTrooper<K extends Object, T, P extends Parameter>
   /// with a [TrooperCancelledException].
   @override
   void invalidate() {
+    if (isDisposed) return;
     queryQueue.cancelNamespace(namespace);
     for (final key in stream.activeKeys) {
       stream.emitInitial(key);
@@ -280,6 +308,7 @@ abstract base class KeyedTrooper<K extends Object, T, P extends Parameter>
   /// Persisted entries of [key] are removed for every parameter, including
   /// those written in earlier sessions.
   Future<void> removeKey(K key) async {
+    if (isDisposed) return;
     queryQueue.cancelWhere(
       (k) => k.matchesNameAndKey(name: namespace, entityKey: key),
     );
@@ -329,18 +358,21 @@ abstract base class KeyedTrooper<K extends Object, T, P extends Parameter>
   /// Pauses cache expiration timers while backgrounded.
   @override
   void pause() {
+    if (isDisposed) return;
     cache.pause();
   }
 
   /// Resumes cache expiration timers upon foregrounding.
   @override
   FutureOr<void> resume() {
+    if (isDisposed) return null;
     cache.resume();
   }
 
   /// Clears all keys from this query family, purging cache, persisted
   /// entries of the namespace (also from earlier sessions), and the stream.
   Future<void> clearAll() async {
+    if (isDisposed) return;
     _lastParams.clear();
     cache.removeName(namespace);
     purgeStorage();

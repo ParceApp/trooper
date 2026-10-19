@@ -151,6 +151,7 @@ final class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
 
   /// Manually connects to the upstream stream using [parameter].
   Future<void> connect(P parameter) async {
+    ensureNotDisposed('connect');
     recordParam(parameter);
 
     // If already connected or connecting with the same parameter, keep existing connection
@@ -382,6 +383,7 @@ final class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
 
   @override
   StatefulStream<T> watch({P? initialParameter, bool eager = false}) {
+    ensureNotDisposed('watch');
     if (eager && initialParameter != null && !isConnected) {
       connect(initialParameter).ignore();
     }
@@ -415,6 +417,7 @@ final class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
 
   @override
   Future<T> get(P parameter, {bool forceRefresh = false}) async {
+    ensureNotDisposed('get');
     recordParam(parameter);
     final qKey = buildQueryKey(parameter);
 
@@ -521,6 +524,7 @@ final class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
 
   @override
   T set(T data, P parameter) {
+    ensureNotDisposed('set');
     super.set(data, parameter);
     final qKey = buildQueryKey(parameter);
     final storage = storageFor(qKey);
@@ -548,6 +552,7 @@ final class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
   /// Invalidates cache, disconnects upstream, clears persistent storage, and resets state to [DataInitial].
   @override
   void invalidate() {
+    if (isDisposed) return;
     _lastLoadedData = null;
     disconnect().ignore();
     super.invalidate();
@@ -556,6 +561,7 @@ final class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
   /// Temporarily disconnects the upstream stream (e.g. app sent to background).
   @override
   Future<void> pause() async {
+    if (isDisposed) return;
     cache.pause();
     if (isConnected) {
       _isPaused = true;
@@ -566,6 +572,7 @@ final class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
   /// Resumes the upstream connection if previously paused and watchers exist.
   @override
   FutureOr<void> resume() {
+    if (isDisposed) return null;
     cache.resume();
     if (_isPaused) {
       _isPaused = false;
@@ -581,6 +588,7 @@ final class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
   /// Reconnects the upstream stream if disconnected or in an error state.
   @override
   FutureOr<void> recover() {
+    if (isDisposed) return null;
     if ((!isConnected && (_activeWatchers > 0 || keepAlive)) ||
         streamController.isError) {
       final param = lastParam;
@@ -593,6 +601,7 @@ final class StreamTrooper<T, P extends Parameter> extends Trooper<T, P> {
   /// Purges cache and re-establishes upstream connection with updated dependencies.
   @override
   FutureOr<void> didChangeDependencies() {
+    if (isDisposed) return null;
     final shouldReconnect = isConnected || _activeWatchers > 0 || keepAlive;
     invalidate();
     if (config.refreshAfterChangeDependencies && shouldReconnect) {

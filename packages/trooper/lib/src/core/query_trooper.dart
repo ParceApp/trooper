@@ -86,6 +86,7 @@ final class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
 
   @override
   Future<T> get(P parameter, {bool forceRefresh = false}) async {
+    ensureNotDisposed('get');
     final paramChanged = isParamChanged(parameter);
     recordParam(parameter);
     final key = buildQueryKey(parameter);
@@ -235,6 +236,7 @@ final class QueryTrooper<T, P extends Parameter> extends Trooper<T, P> {
 
   @override
   T set(T data, P parameter) {
+    ensureNotDisposed('set');
     super.set(data, parameter);
     final key = buildQueryKey(parameter);
     final storage = storageFor(key);

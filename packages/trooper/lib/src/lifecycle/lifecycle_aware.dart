@@ -66,6 +66,20 @@ abstract mixin class LifecycleAware {
 
   /// Releases resources, cancels subscriptions, and closes streams.
   ///
-  /// Once disposed, the component should not be reused.
+  /// Once disposed, the component should not be reused. Every Trooper type
+  /// (troopers, mutations, `LoadMore`, `CacheStore`, the queues and
+  /// `TrooperController`) follows the same contract after [dispose]:
+  ///
+  /// - Calls that load, write, emit, connect, execute or start observing
+  ///   (`get`, `refresh`, `trigger`, `set…`, `update…`, `reset…`, `connect…`,
+  ///   `execute`, `watch…`, `CacheStore.put`/`get`…) throw a [StateError];
+  ///   methods returning a [Future] complete with it.
+  /// - [dispose] itself is idempotent.
+  /// - Snapshots such as `isDisposed`, `current()`, `currentData()` and
+  ///   `currentStates` return the last known state.
+  /// - `invalidate()`, [pause], [resume], [recover] and
+  ///   [didChangeDependencies] (and cleanup such as `removeKey`, `clearAll`,
+  ///   `disconnect`) do nothing, so invalidation cascades never fail because
+  ///   one target is already disposed.
   FutureOr<void> dispose() {}
 }

@@ -91,6 +91,7 @@ final class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
   /// Emits [DataLoaded] on [stream], updates L1 cache, and asynchronously persists
   /// to L2 storage if configured.
   T setKey(K key, T value, P parameter) {
+    ensureNotDisposed('setKey');
     final qKey = buildQueryKey(key, parameter);
 
     cache.put(
@@ -181,6 +182,7 @@ final class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
   /// Resets the state for [key] back to its initial value, deletes persistent storage,
   /// and returns the initial value.
   T resetKey(K key, P parameter) {
+    ensureNotDisposed('resetKey');
     final initial = initialValueFactory(key);
     setKey(key, initial, parameter);
 
@@ -214,6 +216,7 @@ final class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
 
   /// Resets all currently tracked keys back to their initial values.
   void resetAll() {
+    ensureNotDisposed('resetAll');
     for (final key in activeKeys) {
       final param = lastParamOf(key);
       if (param != null) {
@@ -286,6 +289,7 @@ final class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
   /// Reads the value for [key], returning cached data if fresh, hydrating from L2
   /// storage if configured, or falling back to [initialValueFactory].
   Future<T> getKey(K key, P parameter, {bool forceRefresh = false}) async {
+    ensureNotDisposed('getKey');
     recordParam(key, parameter);
     final qKey = buildQueryKey(key, parameter);
 
@@ -371,11 +375,13 @@ final class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
 
   /// Triggers reading or hydrating data for [key] without awaiting the result.
   void triggerKey(K key, P parameter, {bool forceRefresh = false}) {
+    ensureNotDisposed('triggerKey');
     getKey(key, parameter, forceRefresh: forceRefresh).ignore();
   }
 
   /// Watches state updates for a single [key].
   StatefulStream<T> watchKey(K key, {P? initialParameter, bool eager = false}) {
+    ensureNotDisposed('watchKey');
     if (!stream.containsKey(key)) {
       final initial = initialValueFactory(key);
       if (initialParameter != null) {
@@ -429,24 +435,28 @@ final class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
 
   @override
   void invalidateKey(K key) {
+    if (isDisposed) return;
     super.invalidateKey(key);
     _hydratedKeys.remove(key);
   }
 
   @override
   void invalidate() {
+    if (isDisposed) return;
     super.invalidate();
     _hydratedKeys.clear();
   }
 
   @override
   Future<void> removeKey(K key) async {
+    if (isDisposed) return;
     _hydratedKeys.remove(key);
     await super.removeKey(key);
   }
 
   @override
   Future<void> clearAll() async {
+    if (isDisposed) return;
     _hydratedKeys.clear();
     await super.clearAll();
   }
@@ -454,6 +464,7 @@ final class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
   /// Purges cache and resets all active keys back to baseline via [initialValueFactory].
   @override
   FutureOr<void> didChangeDependencies() {
+    if (isDisposed) return null;
     invalidate();
     if (config.refreshAfterChangeDependencies) {
       resetAll();

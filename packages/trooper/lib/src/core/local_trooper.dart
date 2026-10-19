@@ -84,6 +84,7 @@ final class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
   /// and returns the newly set [value].
   @override
   T set(T value, P parameter) {
+    ensureNotDisposed('set');
     recordParam(parameter);
     final key = buildQueryKey(parameter);
 
@@ -183,6 +184,7 @@ final class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
   /// Resets the state back to [initialValue], deletes persisted storage,
   /// and returns [initialValue].
   T reset(P parameter) {
+    ensureNotDisposed('reset');
     recordParam(parameter);
     final key = buildQueryKey(parameter);
 
@@ -222,6 +224,7 @@ final class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
   /// [forceRefresh] is ignored for local troopers, as they are authoritative in-memory state.
   @override
   Future<T> get(P parameter, {bool forceRefresh = false}) async {
+    ensureNotDisposed('get');
     recordParam(parameter);
     final key = buildQueryKey(parameter);
 
@@ -266,6 +269,7 @@ final class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
 
   @override
   StatefulStream<T> watch({P? initialParameter, bool eager = false}) {
+    ensureNotDisposed('watch');
     if (eager &&
         initialParameter != null &&
         !_isHydrated &&
@@ -279,6 +283,7 @@ final class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
   /// Hydrates the local state from persistent L2 storage if configured and not yet hydrated.
   @override
   Future<void> initialize() async {
+    if (isDisposed) return;
     if (!_isHydrated && config.storage != null && codec != null) {
       final param = lastParam;
       if (param != null) {
@@ -294,6 +299,7 @@ final class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
   /// Invalidates cache, clears persistent storage, and resets state to [DataInitial].
   @override
   void invalidate() {
+    if (isDisposed) return;
     _isHydrated = false;
     super.invalidate();
   }
@@ -301,6 +307,7 @@ final class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
   /// Invalidates cache and optionally resets the state back to [initialValue].
   @override
   FutureOr<void> didChangeDependencies() {
+    if (isDisposed) return null;
     invalidate();
     if (config.refreshAfterChangeDependencies) {
       final param = lastParam;

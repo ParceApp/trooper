@@ -146,9 +146,9 @@ void main() {
       expect(cache.containsKey(k1), isFalse);
 
       await cache.dispose();
-      // Operations after dispose are no-ops or return null/empty
-      cache.put(k1, 'data');
-      expect(cache.get(k1), isNull);
+      // Reads and writes after dispose throw; cleanup is a no-op.
+      expect(() => cache.put(k1, 'data'), throwsStateError);
+      expect(() => cache.get<String>(k1), throwsStateError);
       cache.clear();
     });
 

@@ -97,6 +97,7 @@ final class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
 
   /// Reads the value for [key], returning cached data if fresh or fetching from source.
   Future<T> getKey(K key, P parameter, {bool forceRefresh = false}) async {
+    ensureNotDisposed('getKey');
     final paramChanged = isParamChanged(key, parameter);
     final qKey = buildQueryKey(key, parameter);
 
@@ -254,6 +255,7 @@ final class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
 
   /// Triggers a fetch of [key] in the background without awaiting the result.
   void triggerKey(K key, P parameter, {bool forceRefresh = false}) {
+    ensureNotDisposed('triggerKey');
     getKey(key, parameter, forceRefresh: forceRefresh).ignore();
   }
 
@@ -302,6 +304,7 @@ final class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
 
   /// Watches state updates for a single [key].
   StatefulStream<T> watchKey(K key, {P? initialParameter, bool eager = false}) {
+    ensureNotDisposed('watchKey');
     if (eager && initialParameter != null) {
       final state = currentKey(key);
       if (state is DataInitial ||
@@ -316,6 +319,7 @@ final class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
 
   /// Manually sets data for [key] in cache and stream, returning the set [data].
   T setKey(K key, T data, P parameter) {
+    ensureNotDisposed('setKey');
     final qKey = buildQueryKey(key, parameter);
 
     if (config.hasCache) {
@@ -360,6 +364,7 @@ final class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
   /// Recovers all keys that are currently in an error state by triggering [refreshKey].
   @override
   FutureOr<void> recover() {
+    if (isDisposed) return null;
     for (final key in stream.activeKeys) {
       if (stream.stateOf(key).isError) {
         final param = lastParamOf(key);
@@ -373,6 +378,7 @@ final class KeyedQueryTrooper<K extends Object, T, P extends Parameter>
   /// Purges cache, cancels in-flight requests, and refreshes keys that have active listeners.
   @override
   FutureOr<void> didChangeDependencies() {
+    if (isDisposed) return null;
     final params = Map<K, P>.of(lastParams);
     invalidate();
     queryQueue.cancelNamespace(namespace);

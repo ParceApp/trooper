@@ -91,6 +91,17 @@ abstract base class Trooper<T, P extends Parameter>
   /// The parameter used for the most recent operation, or `null` if none has been provided yet.
   P? get lastParam => _lastParam;
 
+  /// Throws a [StateError] naming [operation] if this trooper has been
+  /// disposed (see [LifecycleAware.dispose]).
+  @internal
+  void ensureNotDisposed(String operation) {
+    if (_isDisposed) {
+      throw StateError(
+        'Cannot call $operation() on disposed $runtimeType "$namespace".',
+      );
+    }
+  }
+
   /// Records the last executed parameter.
   @internal
   void recordParam(P parameter) {
@@ -129,6 +140,7 @@ abstract base class Trooper<T, P extends Parameter>
 
   @override
   StatefulStream<T> watch({P? initialParameter, bool eager = false}) {
+    ensureNotDisposed('watch');
     if (eager && initialParameter != null) {
       final state = current();
       if (state is DataInitial ||
@@ -150,6 +162,7 @@ abstract base class Trooper<T, P extends Parameter>
   ///
   /// Useful internally for optimistic updates, cache seeding, or tests.
   T set(T data, P parameter) {
+    ensureNotDisposed('set');
     recordParam(parameter);
     final key = buildQueryKey(parameter);
 
@@ -174,6 +187,7 @@ abstract base class Trooper<T, P extends Parameter>
 
   @override
   void invalidate() {
+    if (isDisposed) return;
     queryQueue.cancelNamespace(namespace);
     cache.removeName(namespace);
     purgeStorage();
@@ -189,22 +203,26 @@ abstract base class Trooper<T, P extends Parameter>
 
   @override
   void trigger(P parameter, {bool forceRefresh = false}) {
+    ensureNotDisposed('trigger');
     get(parameter, forceRefresh: forceRefresh).ignore();
   }
 
   @override
   void pause() {
+    if (isDisposed) return;
     cache.pause();
   }
 
   @override
   FutureOr<void> resume() {
+    if (isDisposed) return null;
     cache.resume();
   }
 
   /// Recovers the trooper state by re-fetching if currently in an error state.
   @override
   FutureOr<void> recover() {
+    if (isDisposed) return null;
     final param = _lastParam;
     if (streamController.isError && param != null) {
       refresh(param).ignore();
@@ -215,6 +233,7 @@ abstract base class Trooper<T, P extends Parameter>
   /// cancelling in-flight requests, and re-fetching if active listeners exist.
   @override
   FutureOr<void> didChangeDependencies() {
+    if (isDisposed) return null;
     final param = _lastParam;
     queryQueue.cancelNamespace(namespace);
     invalidate();

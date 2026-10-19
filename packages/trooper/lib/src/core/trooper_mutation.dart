@@ -105,8 +105,10 @@ final class TrooperMutation<T, P extends Parameter>
   /// Executes this mutation with [parameter].
   Future<T> execute(P parameter, {TrooperCancelToken? cancelToken}) {
     if (_isDisposed) {
-      throw StateError(
-        'Cannot execute mutation on disposed TrooperMutation "$namespace"',
+      return Future.error(
+        StateError(
+          'Cannot call execute() on disposed TrooperMutation "$namespace".',
+        ),
       );
     }
 
@@ -187,6 +189,7 @@ final class TrooperMutation<T, P extends Parameter>
 
   /// Resets the mutation state back to [DataInitial].
   void reset() {
+    if (_isDisposed) return;
     _streamController.emitInitial();
   }
 

@@ -36,8 +36,8 @@ final class TrooperMutationQueue with LifecycleAware {
   /// in the queue still execute normally.
   Future<T> add<T>(Future<T> Function() task) {
     if (_isDisposed) {
-      throw StateError(
-        'Cannot enqueue task to a disposed TrooperMutationQueue',
+      return Future.error(
+        StateError('Cannot enqueue task to a disposed TrooperMutationQueue'),
       );
     }
 

@@ -77,6 +77,12 @@ final class CacheStore with LifecycleAware implements Invalidatable {
   /// Whether this cache store has been disposed.
   bool get isDisposed => _isDisposed;
 
+  void _ensureNotDisposed(String operation) {
+    if (_isDisposed) {
+      throw StateError('Cannot call $operation() on a disposed CacheStore.');
+    }
+  }
+
   /// Stream notifying listeners whenever a [QueryKey] is invalidated.
   Stream<QueryKey> get invalidationStream => _invalidationController.stream;
 
@@ -97,14 +103,14 @@ final class CacheStore with LifecycleAware implements Invalidatable {
     Duration? timeToLive,
     DataSource source = DataSource.cache,
   }) {
-    if (_isDisposed) return;
+    _ensureNotDisposed('put');
 
     _store(key, CacheEntry<T>(data, timeToLive: timeToLive, source: source));
   }
 
   /// Stores an existing [CacheEntry] under [key].
   void putEntry<T>(QueryKey key, CacheEntry<T> entry) {
-    if (_isDisposed) return;
+    _ensureNotDisposed('putEntry');
     _store(key, entry);
   }
 
@@ -124,7 +130,7 @@ final class CacheStore with LifecycleAware implements Invalidatable {
   /// If [allowExpired] is `false` and the entry is expired, the entry is evicted
   /// from the cache and `null` is returned.
   CacheEntry<T>? getEntry<T>(QueryKey key, {bool allowExpired = true}) {
-    if (_isDisposed) return null;
+    _ensureNotDisposed('getEntry');
     final entry = _entries[key];
     if (entry is CacheEntry<T>) {
       if (!allowExpired && entry.isExpired) {
@@ -149,7 +155,10 @@ final class CacheStore with LifecycleAware implements Invalidatable {
       getEntry<T>(key, allowExpired: allowExpired)?.data;
 
   /// Returns `true` if an entry exists for [key].
-  bool containsKey(QueryKey key) => _entries.containsKey(key);
+  bool containsKey(QueryKey key) {
+    _ensureNotDisposed('containsKey');
+    return _entries.containsKey(key);
+  }
 
   /// Returns `true` if [key] has an entry that is currently fresh (not stale).
   bool isFresh(QueryKey key) => getEntry<dynamic>(key)?.isFresh ?? false;
