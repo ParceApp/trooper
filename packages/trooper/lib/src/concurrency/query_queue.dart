@@ -101,9 +101,6 @@ final class TrooperQueryQueue with LifecycleAware {
           _ongoingList.remove(existing);
 
         case QueryConflictPolicy.forward:
-          // From now on only the new request completes the prior caller;
-          // whatever the superseded action yields (late result, cancellation,
-          // retry abort) is discarded.
           existing.isForwarded = true;
           existing.cancelToken.cancel(
             reason: 'Superseded by newer request for ${key.describe()}',

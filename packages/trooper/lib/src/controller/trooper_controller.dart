@@ -918,4 +918,9 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
       Error.throwWithStackTrace(firstError, firstStackTrace!);
     }
   }
+
+  /// Complete purge of all caches and managed state.
+  /// Fancy alias for [clearAll].
+  @pragma('vm:prefer-inline')
+  void executeOrder66() => clearAll();
 }
