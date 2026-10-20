@@ -26,7 +26,10 @@ void main() {
 
   group('TrooperConfig global default', () {
     test('without setDefault, current is const TrooperConfig()', () async {
-      expect(TrooperConfig.current.timeToLive, const Duration(minutes: 1));
+      expect(
+        TrooperConfig.defaultConfig.timeToLive,
+        const Duration(minutes: 1),
+      );
       final q = QueryTrooper<String, ()>(
         namespace: 'gd_fallback',
         fetch: (_) async => 'v',
@@ -39,7 +42,7 @@ void main() {
       'a standalone trooper without config uses the global default',
       () async {
         TrooperConfig.setDefault(_global);
-        expect(TrooperConfig.current, same(_global));
+        expect(TrooperConfig.defaultConfig, same(_global));
         final q = QueryTrooper<String, ()>(
           namespace: 'gd_standalone',
           fetch: (_) async => 'v',
@@ -95,7 +98,10 @@ void main() {
           ),
         ),
       );
-      expect(TrooperConfig.current.timeToLive, const Duration(minutes: 1));
+      expect(
+        TrooperConfig.defaultConfig.timeToLive,
+        const Duration(minutes: 1),
+      );
       await q.dispose();
     });
 
@@ -111,7 +117,7 @@ void main() {
     test('setDefault may be called repeatedly before the first trooper', () {
       TrooperConfig.setDefault(_controllerDefault);
       TrooperConfig.setDefault(_global);
-      expect(TrooperConfig.current, same(_global));
+      expect(TrooperConfig.defaultConfig, same(_global));
     });
 
     test('resetDefault restores the default and lifts the lock', () async {
@@ -123,9 +129,12 @@ void main() {
       await q.dispose();
 
       TrooperConfig.resetDefault();
-      expect(TrooperConfig.current.timeToLive, const Duration(minutes: 1));
+      expect(
+        TrooperConfig.defaultConfig.timeToLive,
+        const Duration(minutes: 1),
+      );
       TrooperConfig.setDefault(_controllerDefault);
-      expect(TrooperConfig.current, same(_controllerDefault));
+      expect(TrooperConfig.defaultConfig, same(_controllerDefault));
     });
   });
 }

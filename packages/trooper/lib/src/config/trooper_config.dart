@@ -80,11 +80,11 @@ final class TrooperConfig {
   /// [setDefault] replaced it.
   ///
   /// A trooper uses the first configuration that is set, in this order: its
-  /// own `config`, the `defaultConfig` of its `TrooperController`, [current],
+  /// own `config`, the `defaultConfig` of its `TrooperController`, [defaultConfig],
   /// `const TrooperConfig()`.
-  static TrooperConfig get current => _default;
+  static TrooperConfig get defaultConfig => _default;
 
-  /// Sets the global default configuration (see [current]).
+  /// Sets the global default configuration (see [defaultConfig]).
   ///
   /// Call it once in `main()`, before the first trooper, mutation or
   /// controller field is created. Afterwards it throws a [StateError], because

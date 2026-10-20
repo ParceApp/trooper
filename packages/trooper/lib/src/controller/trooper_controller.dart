@@ -229,7 +229,7 @@ abstract class TrooperController with LifecycleAware implements Invalidatable {
   }
 
   TrooperConfig _resolveConfig(TrooperConfig? config) {
-    var resolved = config ?? defaultConfig ?? TrooperConfig.current;
+    var resolved = config ?? defaultConfig ?? TrooperConfig.defaultConfig;
     if (resolved.storage == null && defaultStorage != null) {
       resolved = resolved.copyWith(storage: defaultStorage);
     }

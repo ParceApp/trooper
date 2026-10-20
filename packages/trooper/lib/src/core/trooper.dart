@@ -29,7 +29,7 @@ abstract base class Trooper<T, P extends Parameter>
     implements Accessor<T, P> {
   /// Creates a [Trooper] with the specified [namespace] and dependencies.
   ///
-  /// [config] can be set if a custom [TrooperConfig] is desired; otherwise, the global default ([TrooperConfig.current]) is used.
+  /// [config] can be set if a custom [TrooperConfig] is desired; otherwise, the global default ([TrooperConfig.defaultConfig]) is used.
   /// In most of the use cases [cache], [queryQueue], and [telemetry] are provided by the framework, but they can be overridden for testing or advanced use cases.
   @internal
   Trooper({

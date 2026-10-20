@@ -552,7 +552,7 @@ void main() {
 
 After the first trooper, mutation or controller field exists, `setDefault` throws a
 `StateError`, so no trooper silently keeps an older default. Read the value with
-`TrooperConfig.current`; in tests, call `TrooperConfig.resetDefault()` in `tearDown`.
+`TrooperConfig.defaultConfig`; in tests, call `TrooperConfig.resetDefault()` in `tearDown`.
 Defaults for one feature go on its controller:
 `TrooperController(defaultConfig: ..., defaultStorage: ...)`.
 

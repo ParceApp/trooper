@@ -55,7 +55,7 @@ least one minor release before they are removed in the next major release
   `storage`, `refreshAfterChangeDependencies`, `timeout` and `retryPolicy`;
   `TrooperConfig.noCache()` for uncached reads.
 * **Global default**: `TrooperConfig.setDefault(config)` sets an app-wide default once in
-  `main()`, before the first trooper is created; `TrooperConfig.current` reads it and
+  `main()`, before the first trooper is created; `TrooperConfig.defaultConfig` reads it and
   `TrooperConfig.resetDefault()` restores it in tests. A trooper uses its own `config`, then
   the controller's `defaultConfig`, then the global default, then `const TrooperConfig()`.
 * **`QueryConflictPolicy`**: `forward` (default; superseded callers receive the newer result),
