@@ -1,8 +1,7 @@
 # Public API baseline
 
 `trooper.json` and `trooper_bloc.json` are the public API of both packages as frozen for
-1.0, extracted with [`dart_apitool`](https://pub.dev/packages/dart_apitool) 0.23.2. The
-decisions behind this API are in [`docs/audit/api-freeze-decisions.md`](../audit/api-freeze-decisions.md).
+1.0, extracted with [`dart_apitool`](https://pub.dev/packages/dart_apitool) 0.23.2.
 
 ## Regenerate
 
@@ -28,7 +27,7 @@ git diff --exit-code docs/api/
 A non-empty diff is an API change. Removing or changing a symbol is a breaking change and
 needs a major release; adding one needs a minor release. Commit the regenerated files
 together with the change. Symbols are removed only after a deprecation period, see
-[`docs/DEPRECATION.md`](../DEPRECATION.md).
+[Versioning & Deprecation](../README.md#versioning--deprecation).
 
 ## CI
 

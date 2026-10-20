@@ -8,8 +8,7 @@ All notable changes to this package are documented in this file. The format is b
 
 First release of Trooper BLoC, the BLoC and Cubit integration for the Trooper reactive data-flow
 framework. Requires `trooper: ^1.0.0` and `flutter_bloc: ^9.1.1`.
-The public API is stable and follows semantic versioning (see `docs/DEPRECATION.md` in the
-repository).
+The public API is stable and follows semantic versioning (see "Versioning & Deprecation" in the repository README).
 
 ### BLoC and Cubit integration
 

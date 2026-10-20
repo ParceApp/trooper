@@ -9,7 +9,7 @@ All notable changes to this package are documented in this file. The format is b
 First release of Trooper, a reactive data-flow and caching framework for Dart.
 The public API is stable and follows semantic versioning: public symbols are deprecated for at
 least one minor release before they are removed in the next major release
-(see `docs/DEPRECATION.md` in the repository).
+(see "Versioning & Deprecation" in the repository README).
 
 ### Building blocks
 

@@ -1,6 +1,3 @@
-@Tags(['audit'])
-library;
-
 import 'dart:async';
 import 'dart:convert';
 
@@ -28,7 +25,7 @@ List<int> retryCallTimes(RetryPolicy policy) {
 }
 
 void main() {
-  group('ERR-03 retry', () {
+  group('retry', () {
     test('exponential retry timing', () {
       expect(
         retryCallTimes(
@@ -65,7 +62,7 @@ void main() {
       );
     });
 
-    test('backoff applies jitter (spec ERR-03)', () {
+    test('backoff applies jitter', () {
       // Two identical policies must not produce identical schedules when
       // jitter is applied; without jitter many clients retry in lockstep.
       final schedules = {
@@ -81,7 +78,7 @@ void main() {
     });
   });
 
-  group('ERR-04/SEC-03 corrupt L2 entry falls back to fetch', () {
+  group('corrupt L2 entry falls back to fetch', () {
     const key = QueryKey('e04', ());
     final created = DateTime.now().toIso8601String();
     final cases = <(String, String)>[
@@ -144,7 +141,7 @@ void main() {
     }
   });
 
-  test('ERR-02 corrupt L2 entry is reported via telemetry', () async {
+  test('corrupt L2 entry is reported via telemetry', () async {
     const key = QueryKey('e02', ());
     final storage = InMemoryStorageBackend();
     await storage.write(
@@ -171,7 +168,7 @@ void main() {
     await q.dispose();
   });
 
-  test('ERR-02 failing side effect is not swallowed silently', () async {
+  test('failing side effect is not swallowed silently', () async {
     final hub = TelemetryHub.isolated();
     final events = <TrooperEvent>[];
     hub.events.listen(events.add);
@@ -201,7 +198,7 @@ void main() {
     expect(surfaced, isTrue, reason: 'error must reach the zone or telemetry');
   });
 
-  group('SEC-02 logging', () {
+  group('logging', () {
     Future<List<String>> logged(
       Future<void> Function(TelemetryHub) body,
     ) async {

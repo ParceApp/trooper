@@ -44,7 +44,7 @@ add to the re-exported API.
 
 Public symbols are removed only in a major release, after being marked `@Deprecated` for at
 least one minor release with the replacement named in the message. The CHANGELOG lists every
-deprecation. See the [deprecation policy](https://github.com/ParceApp/trooper/blob/main/docs/DEPRECATION.md).
+deprecation. See the [deprecation policy](https://github.com/ParceApp/trooper#versioning--deprecation).
 
 `trooper_bloc` does not re-export `flutter_bloc` or `dart:async`. Import
 `package:flutter_bloc/flutter_bloc.dart` for `BlocProvider`, `BlocBuilder` or `Emitter`, and

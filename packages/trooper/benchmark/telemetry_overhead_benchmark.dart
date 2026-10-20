@@ -1,4 +1,4 @@
-// Audit (PERF-03): cost of telemetry on the QueryTrooper cache-hit path.
+// Cost of telemetry on the QueryTrooper cache-hit path.
 import 'dart:io';
 
 import 'package:trooper/trooper.dart';
@@ -8,7 +8,7 @@ Future<int> _run({required bool listen, int n = 300000}) async {
   final hub = TelemetryHub.isolated();
   final sub = listen ? hub.events.listen((_) {}) : null;
   final q = QueryTrooper<int, ()>(
-    namespace: 'perf03',
+    namespace: 'telemetry_overhead',
     fetch: (_) async => 1,
     telemetry: hub,
   );
@@ -38,5 +38,7 @@ Future<void> main() async {
   stdout
     ..writeln('cache-hit get without listener: median $mOff ns (runs $off)')
     ..writeln('cache-hit get with listener:    median $mOn ns (runs $on)')
-    ..writeln('overhead with listener: ${((mOn - mOff) * 100 / mOff).toStringAsFixed(1)} %');
+    ..writeln(
+      'overhead with listener: ${((mOn - mOff) * 100 / mOff).toStringAsFixed(1)} %',
+    );
 }

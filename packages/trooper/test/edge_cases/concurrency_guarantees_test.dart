@@ -1,6 +1,3 @@
-@Tags(['audit'])
-library;
-
 import 'dart:async';
 import 'dart:math';
 
@@ -57,7 +54,7 @@ class _KeyedStorageController extends TrooperController {
 }
 
 void main() {
-  group('ASYNC-01 older response never overwrites newer', () {
+  group('older response never overwrites newer', () {
     for (final policy in QueryConflictPolicy.values) {
       test('QueryTrooper, $policy', () async {
         final fetch = ManualFetch<String>();
@@ -108,7 +105,7 @@ void main() {
     }
   });
 
-  group('ASYNC-02 operations during an in-flight request', () {
+  group('operations during an in-flight request', () {
     test(
       'invalidate: caller gets TrooperCancelledException, late result is dropped',
       () async {
@@ -245,7 +242,7 @@ void main() {
     );
   });
 
-  test('ASYNC-03 failing SWR background revalidation is observable', () async {
+  test('failing SWR background revalidation is observable', () async {
     final hub = TelemetryHub.isolated();
     final events = <TrooperEvent>[];
     hub.events.listen(events.add);
@@ -276,29 +273,26 @@ void main() {
     await q.dispose();
   });
 
-  test(
-    'ASYNC-04 listener may invalidate and dispose during notification',
-    () async {
-      final q = QueryTrooper<String, ()>(
-        namespace: 'a04',
-        fetch: (_) async => 'v',
-      );
-      final errors = await collectZoneErrors(() async {
-        q.stream.listen((s) {
-          if (s is DataLoaded<String>) {
-            q.invalidate();
-            q.dispose();
-          }
-        });
-        await q.get(());
-        await pumpEventQueue();
+  test('listener may invalidate and dispose during notification', () async {
+    final q = QueryTrooper<String, ()>(
+      namespace: 'a04',
+      fetch: (_) async => 'v',
+    );
+    final errors = await collectZoneErrors(() async {
+      q.stream.listen((s) {
+        if (s is DataLoaded<String>) {
+          q.invalidate();
+          q.dispose();
+        }
       });
-      expect(errors, isEmpty);
-      expect(q.isDisposed, isTrue);
-    },
-  );
+      await q.get(());
+      await pumpEventQueue();
+    });
+    expect(errors, isEmpty);
+    expect(q.isDisposed, isTrue);
+  });
 
-  test('ASYNC-05 QueryTrooper: no state from a cancelled request', () async {
+  test('QueryTrooper: no state from a cancelled request', () async {
     final fetch = ManualFetch<String>();
     final q = QueryTrooper<String, ({String t})>.cancellable(
       namespace: 'a05',
@@ -324,7 +318,7 @@ void main() {
     await q.dispose();
   });
 
-  test('ASYNC-05 TrooperMutation: no DataLoaded after cancel', () async {
+  test('TrooperMutation: no DataLoaded after cancel', () async {
     final done = Completer<String>();
     final m = TrooperMutation<String, ()>.cancellable(
       namespace: 'a05m',
@@ -342,7 +336,7 @@ void main() {
     await m.dispose();
   });
 
-  test('ASYNC-06 mutation queue serializes in submission order', () async {
+  test('mutation queue serializes in submission order', () async {
     final queue = TrooperMutationQueue();
     final started = <int>[];
     final ended = <int>[];
@@ -369,7 +363,7 @@ void main() {
     await queue.dispose();
   });
 
-  test('ASYNC-07 randomized interleavings keep last-issued result', () {
+  test('randomized interleavings keep last-issued result', () {
     for (var seed = 0; seed < 1000; seed++) {
       fakeAsync((async) {
         final rnd = Random(seed);

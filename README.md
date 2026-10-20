@@ -309,11 +309,61 @@ dart run packages/trooper/benchmark/trooper_benchmark.dart
 - **BLoC Integration**: [`packages/trooper_bloc/README.md`](file:///Users/hannes/Developer/trooper/packages/trooper_bloc/README.md)
 - **Agent Skill: Core Data-Flow**: [`packages/trooper/skills/trooper-reactive-data-flow/SKILL.md`](file:///Users/hannes/Developer/trooper/packages/trooper/skills/trooper-reactive-data-flow/SKILL.md)
 - **Agent Skill: BLoC Management**: [`packages/trooper_bloc/skills/trooper-bloc-state-management/SKILL.md`](file:///Users/hannes/Developer/trooper/packages/trooper_bloc/skills/trooper-bloc-state-management/SKILL.md)
-- **Deprecation Policy**: [`docs/DEPRECATION.md`](docs/DEPRECATION.md)
+- **Versioning & Deprecation**: [policy](#versioning--deprecation)
 - **Public API Baseline**: [`docs/api/README.md`](docs/api/README.md)
 - **Changelogs**:
   - [`packages/trooper/CHANGELOG.md`](file:///Users/hannes/Developer/trooper/packages/trooper/CHANGELOG.md)
   - [`packages/trooper_bloc/CHANGELOG.md`](file:///Users/hannes/Developer/trooper/packages/trooper_bloc/CHANGELOG.md)
+
+
+
+## Versioning & Deprecation
+
+`trooper` and `trooper_bloc` follow [semantic versioning](https://semver.org/) from 1.0.0 on.
+The public API is everything exported from `package:trooper/trooper.dart`,
+`package:trooper_bloc/trooper_bloc.dart` and `package:trooper_bloc/testing.dart`, except
+members annotated `@internal`. Its current state is recorded in [`docs/api/`](docs/api/README.md).
+
+**Rules**
+
+1. **Deprecate before removing.** A public symbol is removed or changed incompatibly only in a
+   major release, after it was marked `@Deprecated` in at least one minor release of the
+   previous major version.
+2. **Say how to migrate.** The deprecation message names the replacement, gives a short reason
+   and the version since which the symbol is deprecated:
+
+   ```dart
+   @Deprecated(
+     'Use clearAll() instead. '
+     'resetAll() only cleared memory and left persisted data behind. '
+     'This feature was deprecated after v1.3.0.',
+   )
+   void resetAll() => clearAll();
+   ```
+
+   If there is no replacement, the message says so and explains why the symbol goes away.
+3. **Offer an automatic migration.** Where possible, a deprecation ships with a
+   [data-driven fix](https://github.com/flutter/flutter/blob/main/docs/contributing/Data-driven-Fixes.md)
+   in `lib/fix_data/`, so users can migrate with `dart fix --apply`.
+4. **Keep it working.** A deprecated symbol behaves as before until it is removed. It may
+   delegate to its replacement.
+5. **List it in the CHANGELOG.** The deprecating release lists the symbol under
+   `### Deprecated`; the major release that removes it lists it under `### Removed`.
+6. **Both packages together.** `trooper_bloc` re-exports `trooper` and shares its major
+   version. A symbol deprecated in `trooper` is deprecated for `trooper_bloc` users too and is
+   removed from both in the same major release.
+
+**No deprecation period is needed for**
+
+- members annotated `@internal` and code under `lib/src/` that is not exported,
+- new subtypes of `TrooperEvent` and `TrooperException` (switches over them need a default case),
+- new members on `final` classes and on classes meant to be extended (`TrooperController`,
+  `Tloc`, `Tubit`, `TlocEvent`),
+- fixes for behavior that contradicts the documentation (listed under `### Fixed`).
+
+The [API baseline check](docs/api/README.md) shows every API change in a pull request.
+Deprecating a symbol changes its `isDeprecated` flag in the baseline; removing one is only
+allowed in a major release whose CHANGELOG lists the removal.
 
 
 

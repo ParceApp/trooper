@@ -1907,7 +1907,7 @@
                         "relativePath": "lib/src/storage/storage_backend.dart"
                     },
                     {
-                        "returnTypeName": "Future<void>",
+                        "returnTypeName": "Future<String?>",
                         "name": "delete",
                         "isDeprecated": false,
                         "isExperimental": false,
@@ -3195,6 +3195,18 @@
                     {
                         "returnTypeName": "void",
                         "name": "clearAll",
+                        "isDeprecated": false,
+                        "isExperimental": false,
+                        "parameters": [],
+                        "typeParameterNames": [],
+                        "type": "method",
+                        "isStatic": false,
+                        "entryPoints": [],
+                        "relativePath": "lib/src/controller/trooper_controller.dart"
+                    },
+                    {
+                        "returnTypeName": "void",
+                        "name": "executeOrder66",
                         "isDeprecated": false,
                         "isExperimental": false,
                         "parameters": [],
@@ -17313,7 +17325,7 @@
                         "relativePath": "lib/src/storage/storage_backend.dart"
                     },
                     {
-                        "returnTypeName": "Future<void>",
+                        "returnTypeName": "Future<String?>",
                         "name": "delete",
                         "isDeprecated": false,
                         "isExperimental": false,

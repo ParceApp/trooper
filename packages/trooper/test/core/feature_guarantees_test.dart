@@ -1,6 +1,3 @@
-@Tags(['audit'])
-library;
-
 import 'dart:async';
 
 import 'package:test/test.dart';
@@ -38,7 +35,7 @@ class _Filter {
 }
 
 void main() {
-  group('FEAT-02 SWR without flicker', () {
+  group('SWR without flicker', () {
     test('QueryTrooper refresh keeps data visible', () async {
       var n = 0;
       final q = QueryTrooper<String, ()>(
@@ -91,7 +88,7 @@ void main() {
     });
   });
 
-  group('FEAT-03 coalescing', () {
+  group('coalescing', () {
     for (final n in [2, 50]) {
       test('$n parallel gets share one fetch', () async {
         var calls = 0;
@@ -137,7 +134,7 @@ void main() {
     );
   });
 
-  group('FEAT-05 L1/L2 interplay', () {
+  group('L1/L2 interplay', () {
     test('cold start restores fresh data from L2 without fetching', () async {
       final storage = InMemoryStorageBackend();
       final first = QueryTrooper<String, ()>(

@@ -1,6 +1,3 @@
-@Tags(['audit'])
-library;
-
 import 'dart:async';
 
 import 'package:fake_async/fake_async.dart';
@@ -134,20 +131,20 @@ List<Disposable> disposables() {
 
 void main() {
   for (final d in disposables()) {
-    test('LIFE-01 ${d.name} dispose is idempotent', () async {
+    test('${d.name} dispose is idempotent', () async {
       final x = d.create();
       await d.use(x).then((_) {}, onError: (_) {});
       await d.dispose(x);
       await d.dispose(x);
     });
 
-    test('LIFE-01 ${d.name} use after dispose fails with StateError', () async {
+    test('${d.name} use after dispose fails with StateError', () async {
       final x = d.create();
       await d.dispose(x);
       await expectLater(Future.sync(() => d.use(x)), throwsStateError);
     });
 
-    test('LIFE-02 ${d.name} leaves no timers after dispose', () {
+    test('${d.name} leaves no timers after dispose', () {
       fakeAsync((async) {
         final x = d.create();
         d.use(x).then((_) {}, onError: (_) {});
@@ -163,60 +160,53 @@ void main() {
     });
   }
 
-  test(
-    'LIFE-01 KeyedStreamTrooper dispose with active keys completes',
-    () async {
-      final sources = <String, StreamController<int>>{};
-      final t = KeyedStreamTrooper<String, int, ()>(
-        namespace: 'l01ks',
-        streamFactory: (k, _, _) =>
-            (sources[k] = StreamController<int>()).stream,
-      );
-      final subs = [
-        t['a'].watch(initialParameter: (), eager: true).listen((_) {}),
-        t['b'].watch(initialParameter: (), eager: true).listen((_) {}),
-      ];
-      await pumpEventQueue();
-      sources['a']!.add(1);
-      sources['b']!.add(2);
-      await pumpEventQueue();
-      await expectLater(t.dispose(), completes);
-      for (final s in subs) {
-        await s.cancel();
+  test('KeyedStreamTrooper dispose with active keys completes', () async {
+    final sources = <String, StreamController<int>>{};
+    final t = KeyedStreamTrooper<String, int, ()>(
+      namespace: 'l01ks',
+      streamFactory: (k, _, _) => (sources[k] = StreamController<int>()).stream,
+    );
+    final subs = [
+      t['a'].watch(initialParameter: (), eager: true).listen((_) {}),
+      t['b'].watch(initialParameter: (), eager: true).listen((_) {}),
+    ];
+    await pumpEventQueue();
+    sources['a']!.add(1);
+    sources['b']!.add(2);
+    await pumpEventQueue();
+    await expectLater(t.dispose(), completes);
+    for (final s in subs) {
+      await s.cancel();
+    }
+  });
+
+  test('KeyedStreamTrooper dispose from a listener (real time)', () async {
+    late StreamController<int> src;
+    final t = KeyedStreamTrooper<String, int, ()>(
+      namespace: 'l02rt',
+      streamFactory: (_, _, _) => (src = StreamController<int>()).stream,
+    );
+    final getF = t['k'].get(());
+    await pumpEventQueue();
+    final disposed = Completer<Object?>();
+    t['k'].stream.listen((s) {
+      if (s is DataLoaded<int> && !disposed.isCompleted) {
+        t.dispose().then(
+          (_) => disposed.complete(null),
+          onError: (Object e) => disposed.complete(e),
+        );
       }
-    },
-  );
+    });
+    src.add(1);
+    await getF;
+    expect(
+      await disposed.future.timeout(const Duration(seconds: 5)),
+      isNull,
+      reason: 'dispose must complete without error',
+    );
+  });
 
-  test(
-    'LIFE-02 KeyedStreamTrooper dispose from a listener (real time)',
-    () async {
-      late StreamController<int> src;
-      final t = KeyedStreamTrooper<String, int, ()>(
-        namespace: 'l02rt',
-        streamFactory: (_, _, _) => (src = StreamController<int>()).stream,
-      );
-      final getF = t['k'].get(());
-      await pumpEventQueue();
-      final disposed = Completer<Object?>();
-      t['k'].stream.listen((s) {
-        if (s is DataLoaded<int> && !disposed.isCompleted) {
-          t.dispose().then(
-            (_) => disposed.complete(null),
-            onError: (Object e) => disposed.complete(e),
-          );
-        }
-      });
-      src.add(1);
-      await getF;
-      expect(
-        await disposed.future.timeout(const Duration(seconds: 5)),
-        isNull,
-        reason: 'dispose must complete without error',
-      );
-    },
-  );
-
-  test('LIFE-02 stream subscribers receive done after dispose', () async {
+  test('stream subscribers receive done after dispose', () async {
     final q = QueryTrooper<String, ()>(
       namespace: 'l02',
       fetch: (_) async => 'v',
@@ -228,7 +218,7 @@ void main() {
     await done.future.timeout(const Duration(seconds: 1));
   });
 
-  test('LIFE-02 retry backoff timer does not outlive dispose', () {
+  test('retry backoff timer does not outlive dispose', () {
     fakeAsync((async) {
       final q = QueryTrooper<String, ()>(
         namespace: 'l02r',
@@ -250,9 +240,9 @@ void main() {
         reason: async.pendingTimersDebugString.join("\n"),
       );
     });
-  }, skip: 'F-018');
+  }, skip: 'Known issue: the retry backoff timer is not cancelled on dispose');
 
-  test('LIFE-04 controller dispose cascades with in-flight request', () async {
+  test('controller dispose cascades with in-flight request', () async {
     final gate = Completer<String>();
     final c = _Controller(() => gate.future);
     final states = <StatefulData<String>>[];

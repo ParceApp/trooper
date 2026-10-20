@@ -1,4 +1,4 @@
-// Audit soak test (LIFE-05): 10,000 keys, 1,000,000 mixed operations.
+// Soak test: 10,000 keys, 1,000,000 mixed operations.
 // Prints RSS after a 100,000-operation warm-up and at the end.
 import 'dart:io';
 import 'dart:math';
@@ -45,7 +45,9 @@ Future<void> main() async {
     ..writeln('rss after warm-up: ${_mb(warmupRss)} MB')
     ..writeln('rss at end:        ${_mb(endRss)} MB')
     ..writeln('ratio: ${ratio.toStringAsFixed(3)} (threshold 1.05)')
-    ..writeln('cache entries: query=${query.cache.size} local=${local.cache.size}')
+    ..writeln(
+      'cache entries: query=${query.cache.size} local=${local.cache.size}',
+    )
     ..writeln(ratio <= 1.05 ? 'RESULT: PASS' : 'RESULT: FAIL');
   await local.dispose();
   await query.dispose();

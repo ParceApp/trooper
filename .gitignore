@@ -113,7 +113,10 @@ mason-lock.json
 !/dev/ci/**/Gemfile.lock
 /doc/
 
-# Audit
-docs/audit/raw/
+# Local assistant tooling and audit working files (kept locally, not versioned)
+.claude/
 .superpowers/
+CLAUDE.local.md
+docs/superpowers/
 docs/audit/
+tool/audit/

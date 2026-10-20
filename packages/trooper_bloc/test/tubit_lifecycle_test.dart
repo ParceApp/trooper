@@ -1,6 +1,3 @@
-@Tags(['audit'])
-library;
-
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -65,7 +62,7 @@ final class _ListenTrackingAccessor implements Accessor<String, ()> {
 }
 
 void main() {
-  test('LIFE-02 Tubit close cancels source subscriptions', () async {
+  test('Tubit close cancels source subscriptions', () async {
     final source = _ListenTrackingAccessor();
     final t = _ItemTubit(source);
     await pumpEventQueue();
@@ -75,7 +72,7 @@ void main() {
     await source.close();
   });
 
-  test('LIFE-01 Tubit close is idempotent', () async {
+  test('Tubit close is idempotent', () async {
     final t = _ItemTubit(FakeAccessor<String, ()>(initialData: 'a'));
     await pumpEventQueue();
     await t.close();
