@@ -1,114 +1,121 @@
+# Changelog
+
+All notable changes to this package are documented in this file. The format is based on
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this package follows
+[Semantic Versioning](https://semver.org/).
+
 ## 1.0.0
 
-First stable release. The public API is frozen and follows semantic versioning.
-From 1.0.0 on, public symbols are deprecated for at least one minor release before they are
-removed in the next major release; see `docs/DEPRECATION.md`.
+First release of Trooper, a reactive data-flow and caching framework for Dart.
+The public API is stable and follows semantic versioning: public symbols are deprecated for at
+least one minor release before they are removed in the next major release
+(see `docs/DEPRECATION.md` in the repository).
 
-### Breaking: API freeze for 1.0
+### Building blocks
 
-The public API is prepared for the 1.0 freeze (decisions in `docs/audit/api-freeze-decisions.md`,
-baseline in `docs/api/`). From 1.0 on, removing or changing a public symbol needs a major
-release.
+* **`QueryTrooper<T, P>`**: asynchronous reads with L1/L2 caching, stale-while-revalidate
+  refresh and request deduplication.
+* **`KeyedQueryTrooper<K, T, P>`**: queries partitioned by an entity key `K` (ID, slug, …),
+  with batch reads (`getAll`, `getMany`) and per-key invalidation.
+* **`LocalTrooper<T, P>`** and **`KeyedLocalTrooper<K, T, P>`**: reactive in-memory state with
+  optional persistence and batch operations (`setAll`, `updateAll`, `resetKeys`).
+* **`StreamTrooper<T, P>`** and **`KeyedStreamTrooper<K, T, P>`**: push streams (WebSockets,
+  SSE, event buses) mapped into `StatefulData`, with connection control (`connect`,
+  `disconnect`, `connectKeys`, `disconnectKeys`) and `fromStream` constructors.
+* **`TrooperMutation<T, P>`**: commands executed in FIFO order with declarative cache
+  invalidation (`invalidateOnSuccess`) and cooperative cancellation.
+* **`LoadMore<TPage, F, PP>`**: infinite-scroll decorator over a page query with
+  `fetchNextPage()`, `retryNextPage()` and `hasNextPage`; `LoadMoreData.items` flattens list
+  pages.
+* **Accessors**: read-only facades `Accessor<T, P>` and `KeyedAccessor<K, T, P>` for UI layers
+  and tests (`trooper.accessor`, `keyed[key]`).
 
-#### Migration from 0.1.x
+### Controller
 
-| 0.1.x | 1.0 |
-| :--- | :--- |
-| `query.get()`, `query.refresh()`, `query.trigger()`, `mutation()`, `keyed.getKey(k)`, `local.set(v)`, … (the `Parameterless*` extensions; they were shadowed and never callable) | pass `()` explicitly: `query.get(())`, `mutation(())`, `keyed.getKey(k, ())`, `local.set(v, ())`; `watch(initialParameter: (), eager: true)` |
-| `query(fetch: …)` / `query(cancellableFetch: …)` | `query(fetch: …)` / `cancellableQuery(fetch: (p, token) => …)` |
-| `keyedQuery(cancellableFetch: …)` | `cancellableKeyedQuery(fetch: (k, p, token) => …)` |
-| `mutation(cancellableAction: …)` | `cancellableMutation(action: (p, token) => …)` |
-| `keyedLocal(initialValueFactory: …)` | `keyedLocalBuilder(initialValueFactory: …)` |
-| `controller.executeOrder66()` | `controller.clearAll()` |
-| `TrooperConfig.setDefaultConfig(…)`, `Trooper.setDefaultConfig(…)`, `TrooperConfig.defaultConfig` | `TrooperConfig.setDefault(…)` once in `main()` before the first trooper, read via `TrooperConfig.current`; or `TrooperController(defaultConfig: …)` |
-| `config.queryConflictPolicy` | `config.conflictPolicy` |
-| `ConflictPolicy` | `QueryConflictPolicy` |
-| `keyedAccessor.key(k)` | `keyedAccessor[k]` |
-| `trooper()` (returned the accessor) | `trooper.accessor` |
-| `KeyedLocalTrooper.currentKeyState(k)` | `currentKey(k)` |
-| overriding `initialize()`, `pause()`, `resume()`, `recover()`, `didChangeDependencies()`, `dispose()` in a `TrooperController` | override `onInit`, `onPause`, `onResume`, `onRecover`, `onDependenciesChanged`, `onDispose` (the drivers are `@nonVirtual`) |
-| `streamController:`, `stream:`, `streamManager:` constructor parameters; `StatefulStreamController`, `KeyedStatefulStream`, `KeyedTrooperAccessor` | removed from the public API; observe state through `watch`/`stream`, `watchAll()`, `watchKeys()` |
-| `class X extends QueryTrooper` / `implements QueryTrooper` (and the other concrete troopers, `TrooperConfig`, `RetryPolicy`, `CacheStore`, queues, side-effect classes, `InMemoryStorageBackend`, `StorageEnvelope`, `TelemetryHub`, `ConsoleTrooperLogger`) | these classes are `final`; mock through `Accessor`/`KeyedAccessor` and `FakeAccessor`, wrap `InMemoryStorageBackend` by delegation |
-| `class X extends Trooper` / `KeyedTrooper` | not supported (`abstract base`, internal helpers) |
-| `StorageBackend.delete` returning `Future<String?>`; `clear()`, `containsKey()` | `Future<void> delete(key)`; `clear` and `containsKey` removed (Trooper never called them) |
-| exhaustive `switch` over `TrooperException` or `TrooperEvent` | add a default case; both are `abstract final` and can gain subtypes in minor releases |
-| codec failures as raw `FormatException` etc. | `TrooperCodecException` (original error in `.error`), in `PersistenceErrorEvent` and from `LocalTrooper.set`/`setAsync` |
-| `class X extends DataLoaded` | not allowed (`final`) |
+* **`TrooperController`**: groups the troopers of a feature and shares cache, queues, storage
+  and telemetry between them. Factories: `query`, `cancellableQuery`, `keyedQuery`,
+  `cancellableKeyedQuery`, `local`, `keyedLocal`, `keyedLocalBuilder`, `stream`,
+  `keyedStream`, `mutation`, `cancellableMutation`, `loadMore`.
+* **Lifecycle**: `initialize`, `pause`, `resume`, `recover`, `didChangeDependencies` and
+  `dispose` propagate to all managed children; subclasses hook in through `onInit`,
+  `onPause`, `onResume`, `onRecover`, `onDependenciesChanged` and `onDispose`.
+* **`clearAll()`** removes all cached and persisted data of the controller's troopers,
+  for example on logout.
 
-#### Behavior changes
+### State model
 
-* **Uniform behavior after `dispose()`** (documented on `LifecycleAware.dispose`): loading,
-  writing, emitting, connecting, executing and watching throw a `StateError` (methods
-  returning a `Future` complete with it). Snapshots (`current()`, `currentData()`) return the
-  last state; `invalidate()`, `pause()`, `resume()`, `recover()`, `didChangeDependencies()`
-  and cleanup calls are no-ops. Before, `LocalTrooper`, `KeyedLocalTrooper` and `CacheStore`
-  silently kept working, `StreamTrooper` threw `TrooperCancelledException`, a `QueryTrooper`
-  on a shared queue kept fetching, and `KeyedStreamTrooper.getKey` never completed.
-* `TrooperMutation.execute`, `TrooperQueryQueue.execute` and `TrooperMutationQueue.add` after
-  dispose return a failed `Future` instead of throwing synchronously.
-* `TrooperCodec.encode`/`decode` wrap every failure in `TrooperCodecException`.
+* **`StatefulData<T>`**: sealed hierarchy for pattern matching: `DataInitial`, `DataLoading`,
+  `DataLoaded`, `DataRefreshing`, `DataError` (with `staleData`).
+* **Zero-flicker refresh**: `DataRefreshing<T>` extends `DataLoaded<T>`, so UIs keep showing
+  data during background refreshes.
 
-#### Other changes
+### Configuration
 
-* **New (additive API)**: `TrooperConfig.setDefault(config)` sets a global default
-  configuration, read through `TrooperConfig.current`. It can only be set before the first
-  trooper, mutation or controller field is created; afterwards it throws a `StateError` that
-  says to call it in `main()`. `TrooperConfig.resetDefault()` (`@visibleForTesting`) restores
-  `const TrooperConfig()` and lifts the lock. A trooper uses, in this order: its own `config`,
-  the controller's `defaultConfig`, the global default, `const TrooperConfig()`.
-* **`LoadMore<TPage, F, PP>`**: Load-more (infinite scroll) decorator over an existing page query with `fetchNextPage()`, `retryNextPage()`, and `hasNextPage`, plus the `TrooperController.loadMore(...)` factory.
-* **`LoadMoreData<TPage, PP>`**: Accumulated pages with next-page status; `items` flattens list pages.
-* **Docs**: Pagination guide for classic pages and load more.
-* **Breaking (L2 format)**: `QueryKey.storageKey` now uses the versioned layout `trooper:1:<namespace>:<parameter>[:<key>]` with URI-encoded segments. Entries written by 0.1.0-beta.1 are no longer read and stay in the backend until the app clears it.
-* **Fix**: L2 keys no longer collide for parameters whose `toString()` is the default `Instance of '…'`; such keys now skip L2 storage and report a `PersistenceErrorEvent` (see `QueryKey.hasStableStorageKey`).
-* **Fix**: `invalidate()`, `invalidateKey()`, `removeKey()`, `KeyedTrooper.clearAll()` and `TrooperController.clearAll()` now delete persisted L2 entries of the namespace (or key), including entries from earlier sessions. L2 reads wait for a running purge, so a `get()` right after logout never sees the previous user's data. Requires `StorageBackend.getAllKeys()` to list keys of all sessions.
-* **Docs**: `invalidate()` cancels in-flight requests; their callers receive a `TrooperCancelledException`.
-* **Fix**: `QueryConflictPolicy.parallel` no longer lets an older response overwrite a newer one in stream, cache, or storage.
-* **Fix**: `KeyedStreamTrooper.dispose()` no longer fails with `ConcurrentModificationError` when a listener changes keys or disposes during cancellation.
-* **Docs**: New README section "Persistence & Sensitive Data": L2 values and keys are plain text, how to encrypt values with a `StorageBackend` decorator, and a `flutter_secure_storage` backend example. Same note in the `StorageBackend`/`TrooperCodec` dartdoc and the skill.
-* **Behavior change / new (additive API)**: `ConsoleTrooperLogger` masks query parameters and entity keys as a short stable hash by default, also inside Trooper's own error messages; `ConsoleTrooperLogger(logParameters: true)` prints them in plain text.
-* **New (additive API)**: `releaseUnwatchedKeys` on `KeyedQueryTrooper`, `KeyedStreamTrooper` (also `.fromStream`) and the `TrooperController.keyedQuery`/`keyedStream` factories, default `false`. When enabled, a key's in-memory state (stream controller, last parameter, last stream data) is dropped once it has no listener, no request in flight and no open connection; L1 cache and L2 storage are kept.
-* **New (additive API)**: `CacheStore(maxEntries: …)` caps the L1 store with least-recently-used eviction; the default stays unbounded. Memory bounds and defaults are documented on `CacheStore`.
-* **New (additive API)**: `RetryPolicy.jitter` (also on `RetryPolicy.linear` and `.exponential`), default `RetryPolicy.defaultJitter = 0.5`. Each retry delay is drawn from `[d * (1 - jitter), d]`, so clients that failed together no longer retry in lockstep; `maxDelay` stays the upper bound. **Behavior change**: retry delays are randomized by default; pass `jitter: 0` for exact delays. `RetryPolicy.none()` and `.immediate()` use no jitter.
-* **Docs**: README retry example used a non-existent `multiplier:` parameter; it is `backoffMultiplier:`.
-* **Behavior change**: Errors thrown by side-effect callbacks (`onData`, `onError`, `onRequestStarted`, `onStarted`, `onSuccess`, …, sync or async), `TrooperCancelToken` listeners and `invalidate()` of controller targets are no longer swallowed. They are reported to the current `Zone` as uncaught errors; the request, its result and the remaining callbacks are unaffected.
-* **Fix**: Every L2 failure is now reported as `PersistenceErrorEvent`: unreadable or undecodable entries on restore (then deleted and refetched), failed deletes, and `StreamTrooper`/`KeyedStreamTrooper` write and encode failures, which were silently dropped before.
-* **Fix**: L2 entries without an envelope `version` or with a version other than `StorageEnvelope.currentVersion` (e.g. written by a newer app release) are discarded and fetched again instead of being decoded as the current format. The envelope format v1 is documented as stable.
-* **Fix**: `QueryConflictPolicy.forward` now always resolves a superseded caller with the newer request's result (or error), as documented. Before, the caller received the superseded result if that fetch ignored its token and answered first, which also reached stream and cache briefly, and it failed with `TrooperCancelledException` if the fetch honored its token or was waiting for a retry.
-* **Fix**: A `LoadMore.fetchNextPage()` that a filter change, refresh or invalidate overtakes now completes right away, independent of the source's conflict policy.
-* **Fix**: A cancelled `TrooperMutation` whose action ignores its `TrooperCancelToken` no longer emits `DataLoaded`, runs `invalidateOnSuccess` or calls `onSuccess`; it fails with `TrooperCancelledException` like a cooperative cancel.
+* **`TrooperConfig`**: `timeToLive`, `stalePolicy`, `conflictPolicy`, `deduplicate`,
+  `storage`, `refreshAfterChangeDependencies`, `timeout` and `retryPolicy`;
+  `TrooperConfig.noCache()` for uncached reads.
+* **Global default**: `TrooperConfig.setDefault(config)` sets an app-wide default once in
+  `main()`, before the first trooper is created; `TrooperConfig.current` reads it and
+  `TrooperConfig.resetDefault()` restores it in tests. A trooper uses its own `config`, then
+  the controller's `defaultConfig`, then the global default, then `const TrooperConfig()`.
+* **`QueryConflictPolicy`**: `forward` (default; superseded callers receive the newer result),
+  `cancel` (superseded callers receive a `TrooperCancelledException`) and `parallel`
+  (requests run side by side; only the newest response reaches stream, cache and storage).
+* **`StalePolicy`**: `keepStaleWhileRevalidate` and `discardStaleOnRefresh`.
+* **`RetryPolicy`**: `none()`, `immediate()`, `linear()` and `exponential()` with `maxDelay`,
+  `retryWhen` and `jitter` (default `0.5`, so failing clients do not retry in lockstep).
 
-## 0.1.0-beta.1
+### Caching and persistence
 
-Initial public release of Trooper, an architectural blueprint and reactive data-flow framework for Dart applications.
+* **`CacheStore`**: L1 cache with time-to-live, optional periodic eviction
+  (`evictionInterval`) and an optional size limit with least-recently-used eviction
+  (`maxEntries`).
+* **`releaseUnwatchedKeys`** on keyed queries and streams drops the in-memory state of keys
+  without listeners, while cache and storage are kept.
+* **`StorageBackend`**: interface for L2 persistence (`read`, `write`, `delete`,
+  `getAllKeys`), with `InMemoryStorageBackend` for tests.
+* **`TrooperCodec`**: serialization for L2 with built-in codecs (`string`, `integer`,
+  `doublePrecision`, `boolean`, `dateTime`, `json`, `list`, `map`) and `custom`.
+* **Stable storage format**: entries are stored in `StorageEnvelope` v1 under versioned keys
+  (`trooper:1:<namespace>:<parameter>[:<key>]`). Entries in an unknown format are discarded
+  and fetched again; parameters without a stable `toString()` are not persisted
+  (`QueryKey.hasStableStorageKey`).
+* **Invalidation**: `invalidate()`, `invalidateKey()`, `removeKey()` and `clearAll()` remove
+  cached and persisted entries, including entries written in earlier sessions.
+* **Sensitive data**: the README section "Persistence & Sensitive Data" shows how to encrypt
+  persisted values with a `StorageBackend` decorator.
 
-### Core Reactive Engine
-* **`QueryTrooper<T, P>`**: Asynchronous data queries with multi-tier caching, Stale-While-Revalidate background updates, and automatic request deduplication.
-* **`KeyedQueryTrooper<K, T, P>`**: Dynamic collection of queries partitioned by entity key `K` (e.g. ID, slug) with batch reading support (`getAll`, `getMany`).
-* **`LocalTrooper<T, P>`**: In-memory reactive state management with optional persistent L2 storage synchronization.
-* **`KeyedLocalTrooper<K, T, P>`**: In-memory state collections partitioned dynamically by key with batch operations (`setAll`, `updateAll`, `resetKeys`, `getAll`).
-* **`StreamTrooper<T, P>`**: Push stream bridge for WebSockets, Server-Sent Events, and broadcast channels with connection lifecycle control.
-* **`KeyedStreamTrooper<K, T, P>`**: Multi-channel push streams partitioned dynamically by key with batch connection support (`connectKeys`, `disconnectKeys`, `getAll`).
-* **`TrooperMutation<T, P>`**: Command operations with sequential execution queuing and declarative cache invalidation (`invalidateOnSuccess`).
+### Concurrency and resilience
 
-### Architecture & Controller
-* **`TrooperController`**: Central composition unit for grouping related queries, mutations, and local state into cohesive feature modules.
-* **Hierarchical Lifecycle**: Deterministic propagation of `initialize`, `pause`, `resume`, `recover`, and `dispose` across all managed child components.
-* **Resource Sharing**: Automatic sharing of cache stores, query queues, and telemetry hubs across controller children to prevent memory leaks and redundant resources.
+* **`TrooperQueryQueue`**: coalesces identical in-flight reads into one request and applies
+  the conflict policy.
+* **`TrooperMutationQueue`**: sequential FIFO execution of write operations.
+* **`TrooperCancelToken`**: cooperative cancellation for fetches and mutations; a cancelled
+  mutation never reports success.
+* **Timeouts and retries** per trooper through `TrooperConfig`.
 
-### State Model & SWR
-* **`StatefulData<T>`**: Sealed algebraic data hierarchy for Dart 3 pattern matching (`DataInitial`, `DataLoading`, `DataLoaded`, `DataRefreshing`, `DataError`).
-* **Zero-Flicker SWR**: `DataRefreshing<T>` inherits from `DataLoaded<T>`, ensuring active UI components continue displaying valid data during background revalidation without layout shift.
+### Errors and lifecycle guarantees
 
-### Concurrency & Resilience
-* **`TrooperQueryQueue`**: Coalesces concurrent identical read requests into a single in-flight `Future`, managing conflict policies (`forward`, `cancel`, `parallel`).
-* **`TrooperMutationQueue`**: Sequential FIFO execution queue preventing race conditions during rapid state updates.
-* **`TrooperCancelToken`**: Cooperative cancellation token support with listener registration and teardown isolation.
+* **`TrooperException`** with `TrooperCancelledException`, `TrooperTimeoutException`,
+  `TrooperStorageException` and `TrooperCodecException`.
+* **After `dispose()`** reading, writing, emitting, connecting and executing throw a
+  `StateError`; snapshots return the last state and cleanup calls are no-ops. `dispose()` is
+  idempotent.
+* **Callback errors** from side effects (`onData`, `onError`, `onSuccess`, …) and cancel-token
+  listeners are reported to the current `Zone` without affecting the request.
+* **Persistence errors** are reported as `PersistenceErrorEvent`; Trooper falls back to a
+  fresh fetch.
 
-### Caching & Storage
-* **`CacheStore`**: In-memory L1 cache with configurable time-to-live (TTL), proactive sweep eviction, and cache namespace invalidation.
-* **`StorageBackend` & `TrooperCodec`**: Extensible interface for asynchronous L2 disk/persistent caching (e.g. SQLite, Hive, SharedPreferences).
+### Observability
 
-### Telemetry & Diagnostics
-* **`TelemetryHub`**: Diagnostic event pipeline emitting structured `TrooperEvent` objects for cache hits, cache misses, request durations, and failures.
-* **`TrooperLogger`**: Console and pluggable logging implementations for debugging and performance auditing.
+* **`TelemetryHub`**: structured events (`RequestStartedEvent`, `RequestCompletedEvent`,
+  `RequestErrorEvent`, `CacheHitEvent`, `SWRTriggeredEvent`, `CacheInvalidatedEvent`,
+  `DataSetEvent`, `PersistenceErrorEvent`); without a listener, the hot paths skip event
+  creation entirely.
+* **`TrooperLogger`** and **`ConsoleTrooperLogger`**: pluggable logging; query parameters and
+  keys are masked by default (`logParameters: true` prints them).
+
+### Platforms
+
+* Pure Dart without Flutter dependencies; runs on the Dart VM, the web (dart2js and dart2wasm)
+  and in Flutter apps.
