@@ -76,15 +76,23 @@ final class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
   final TrooperCodec<T>? codec;
 
   bool _isHydrated = false;
+  int _invalidations = 0;
 
-  /// Whether this local trooper has completed hydration from L2 storage.
+  /// Whether hydration from L2 storage is over, because a read finished or
+  /// because [set] replaced the state first.
   bool get isHydrated => _isHydrated;
 
   /// Sets the in-memory value directly, updates the cache, emits on the stream,
   /// and returns the newly set [value].
+  ///
+  /// [value] wins over persisted state: it ends hydration, so a storage read
+  /// that is still running is discarded and no new one starts. To build
+  /// [value] from persisted state, await [get] first; otherwise the persisted
+  /// state is replaced without having been seen.
   @override
   T set(T value, P parameter) {
     ensureNotDisposed('set');
+    _isHydrated = true;
     recordParam(parameter);
     final key = buildQueryKey(parameter);
 
@@ -174,6 +182,10 @@ final class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
 
   /// Updates the local state by applying [transform] to the current value
   /// and returns the updated value.
+  ///
+  /// Before hydration the current value is not yet the persisted one, and the
+  /// result replaces it as described on [set]. Await [get] first to transform
+  /// persisted state.
   T update(T Function(T current) transform, P parameter) {
     final current = currentData() ?? initialValue;
     final updated = transform(current);
@@ -232,9 +244,14 @@ final class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
     if (!_isHydrated && storageFor(key) != null && codec != null) {
       final storage = storageFor(key)!;
       final currentCodec = codec!;
+      final invalidations = _invalidations;
+      // Whatever this read would apply or delete is out of date once the state
+      // has moved on while it ran.
+      bool superseded() => _isHydrated || invalidations != _invalidations;
 
       try {
         final serialized = await storage.read(key.storageKey);
+        if (superseded()) return currentData() ?? initialValue;
         if (serialized != null) {
           final envelope = StorageEnvelope.tryDecode(serialized);
           if (envelope == null) {
@@ -258,6 +275,7 @@ final class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
           }
         }
       } catch (error, stackTrace) {
+        if (superseded()) return currentData() ?? initialValue;
         discardStored(storage, key, error, stackTrace);
       }
 
@@ -301,6 +319,7 @@ final class LocalTrooper<T, P extends Parameter> extends Trooper<T, P> {
   void invalidate() {
     if (isDisposed) return;
     _isHydrated = false;
+    _invalidations++;
     super.invalidate();
   }
 

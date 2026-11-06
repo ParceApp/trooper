@@ -75,7 +75,13 @@ final class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
 
   final Set<K> _hydratedKeys = {};
 
-  /// Whether [key] has been hydrated from L2 storage.
+  /// One token per key whose reads have not been invalidated. Invalidating drops
+  /// the token, so a read that remembers it can tell it is out of date, even if
+  /// the key was set first and [_hydratedKeys] no longer shows that.
+  final Map<K, Object> _hydrationTokens = {};
+
+  /// Whether hydration of [key] from L2 storage is over, because a read finished
+  /// or because [setKey] replaced its state first.
   bool isHydratedKey(K key) => _hydratedKeys.contains(key);
 
   /// Returns the baseline initial value for [key].
@@ -90,8 +96,14 @@ final class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
   ///
   /// Emits [DataLoaded] on [stream], updates L1 cache, and asynchronously persists
   /// to L2 storage if configured.
+  ///
+  /// [value] wins over persisted state: it ends hydration of [key], so a storage
+  /// read that is still running is discarded and no new one starts. To build
+  /// [value] from persisted state, await [getKey] first; otherwise the persisted
+  /// state is replaced without having been seen.
   T setKey(K key, T value, P parameter) {
     ensureNotDisposed('setKey');
+    _hydratedKeys.add(key);
     final qKey = buildQueryKey(key, parameter);
 
     cache.put(
@@ -172,6 +184,10 @@ final class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
 
   /// Updates the state for [key] by applying [transform] to its current value
   /// and returns the updated value.
+  ///
+  /// Before hydration the current value is not yet the persisted one, and the
+  /// result replaces it as described on [setKey]. Await [getKey] first to
+  /// transform persisted state.
   T updateKey(K key, T Function(T current) transform, P parameter) {
     final current = currentKeyData(key) ?? initialValueFactory(key);
     final updated = transform(current);
@@ -313,9 +329,18 @@ final class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
         codec != null) {
       final storage = storageFor(qKey)!;
       final currentCodec = codec!;
+      final token = _hydrationTokens.putIfAbsent(key, Object.new);
+      // Whatever this read would apply or delete is out of date once the key
+      // has moved on while it ran.
+      bool superseded() =>
+          _hydratedKeys.contains(key) ||
+          !identical(_hydrationTokens[key], token);
 
       try {
         final serialized = await storage.read(qKey.storageKey);
+        if (superseded()) {
+          return currentKeyData(key) ?? initialValueFactory(key);
+        }
         if (serialized != null) {
           final envelope = StorageEnvelope.tryDecode(serialized);
           if (envelope == null) {
@@ -346,6 +371,9 @@ final class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
           }
         }
       } catch (error, stackTrace) {
+        if (superseded()) {
+          return currentKeyData(key) ?? initialValueFactory(key);
+        }
         discardStored(storage, qKey, error, stackTrace);
       }
 
@@ -438,6 +466,7 @@ final class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
     if (isDisposed) return;
     super.invalidateKey(key);
     _hydratedKeys.remove(key);
+    _hydrationTokens.remove(key);
   }
 
   @override
@@ -445,12 +474,14 @@ final class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
     if (isDisposed) return;
     super.invalidate();
     _hydratedKeys.clear();
+    _hydrationTokens.clear();
   }
 
   @override
   Future<void> removeKey(K key) async {
     if (isDisposed) return;
     _hydratedKeys.remove(key);
+    _hydrationTokens.remove(key);
     await super.removeKey(key);
   }
 
@@ -458,6 +489,7 @@ final class KeyedLocalTrooper<K extends Object, T, P extends Parameter>
   Future<void> clearAll() async {
     if (isDisposed) return;
     _hydratedKeys.clear();
+    _hydrationTokens.clear();
     await super.clearAll();
   }
 
