@@ -39,6 +39,7 @@ typedef _Filter = ({String query, String sort});
 
 const _Filter _initial = (query: '', sort: 'initial');
 const _Filter _saved = (query: '', sort: 'saved');
+const _Filter _fresh = (query: '', sort: 'fresh');
 const _Filter _next = (query: 'hue', sort: 'next');
 
 final _codec = TrooperCodec.custom<_Filter>(
@@ -318,5 +319,91 @@ void main() {
         },
       );
     }
+
+    final invalidations =
+        <String, void Function(KeyedLocalTrooper<String, _Filter, ()>)>{
+          'invalidateKey()': (trooper) => trooper.invalidateKey('a'),
+          'invalidate()': (trooper) => trooper.invalidate(),
+          'removeKey()': (trooper) => unawaited(trooper.removeKey('a')),
+          'clearAll()': (trooper) => unawaited(trooper.clearAll()),
+        };
+
+    for (final MapEntry(key: name, value: invalidateA)
+        in invalidations.entries) {
+      test('a read already running does not undo $name', () async {
+        await seedSaved();
+        final seen = <_Filter>[];
+        final trooper = build(onData: (_, value) => seen.add(value));
+
+        final read = trooper.getKey('a', const ());
+        invalidateA(trooper);
+        await storage.releaseReads();
+
+        expect(await read, _initial);
+        expect(trooper.currentDataMap, isEmpty);
+        expect(trooper.isHydratedKey('a'), isFalse);
+        expect(seen, isEmpty);
+      });
+
+      test('a failing read does not mark hydration done after $name', () async {
+        storage.failOnRead = true;
+        final trooper = build();
+
+        final read = trooper.getKey('a', const ());
+        invalidateA(trooper);
+        await storage.releaseReads();
+
+        expect(await read, _initial);
+        expect(trooper.isHydratedKey('a'), isFalse);
+      });
+
+      test('a read does not undo setKey() followed by $name', () async {
+        await seedSaved();
+        final trooper = build();
+
+        final read = trooper.getKey('a', const ());
+        trooper.setKey('a', _next, const ());
+        invalidateA(trooper);
+        await storage.releaseReads();
+
+        expect(await read, _initial);
+        expect(trooper.currentDataMap, isEmpty);
+        expect(trooper.isHydratedKey('a'), isFalse);
+      });
+    }
+
+    test('invalidateKey() leaves a read of another key alone', () async {
+      await seedSaved();
+      final trooper = build();
+
+      final read = trooper.getKey('a', const ());
+      trooper.invalidateKey('b');
+      await storage.releaseReads();
+
+      expect(await read, _saved);
+      expect(trooper.currentKeyData('a'), _saved);
+      expect(trooper.isHydratedKey('a'), isTrue);
+    });
+
+    test('a read started after invalidateKey() still hydrates', () async {
+      await seedSaved();
+      final seen = <_Filter>[];
+      final trooper = build(onData: (_, value) => seen.add(value));
+
+      final stale = trooper.getKey('a', const ());
+      trooper.invalidateKey('a');
+      await pumpEventQueue();
+      await storage.write(
+        storageKey,
+        StorageEnvelope(payload: 'fresh', createdAt: DateTime.now()).encode(),
+      );
+      final fresh = trooper.getKey('a', const ());
+      await storage.releaseReads();
+
+      expect(await stale, _initial);
+      expect(await fresh, _fresh);
+      expect(trooper.currentKeyData('a'), _fresh);
+      expect(seen, [_fresh]);
+    });
   });
 }

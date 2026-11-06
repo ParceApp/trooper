@@ -15,8 +15,9 @@ Details per package:
 
 - **`trooper`**: `LocalTrooper.set` and `KeyedLocalTrooper.setKey` now end hydration. A storage
   read that is running, or would start later, can no longer overwrite the value or delete it
-  from storage. `LocalTrooper.invalidate` also discards a running read. Concurrent reads apply
-  the stored value once instead of once per read. To build a value from persisted state, await
+  from storage. Invalidating discards a running read too: `LocalTrooper.invalidate` and
+  `KeyedLocalTrooper.invalidateKey`, `invalidate`, `removeKey` and `clearAll`. Concurrent reads
+  apply the stored value once instead of once per read. To build a value from persisted state, await
   `get` or `getKey` first.
 
 ## [1.0.0] - 2026-10-19
